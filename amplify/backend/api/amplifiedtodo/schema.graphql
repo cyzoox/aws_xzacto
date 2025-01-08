@@ -1,0 +1,185 @@
+type Todo @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  description: String
+}
+
+type Addon {
+  id: ID!
+  name: String!
+  price: Float
+  cost: Float
+}
+
+type Variant {
+  id: ID!
+  name: String!
+  price: Float
+  cost: Float
+}
+
+type Option {
+  id: ID!
+  option: String!
+}
+
+type Product @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  brand: String
+  oprice: Float!
+  sprice: Float!
+  stock: Float
+  category: String
+  sku: String
+  img: String
+  storeId: ID!
+  addons: [Addon]
+  variants: [Variant]
+  options: [Option]
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Supplier @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  contact: String
+  address: String
+  storeId: ID!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Expense @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  description: String!
+  storeId: ID!
+  category: String
+  attendant: String
+  attendantId: ID!
+  amount: Float!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Sale @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  cashierId: ID!
+  storeId: ID!
+  productId: ID!
+  transactionId: ID!
+  productName: String!
+  quantity: Float!
+  price: Float!
+  total: Float!
+  paymentMethod: String
+  status: String
+  void_reason: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Store @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  store_name: String!
+  branch: String!
+  owner: String!
+  password: String!
+  store_type: String!
+  lowstock: Int
+  vat: Float
+  cashierview: Boolean
+  allow_credit: Boolean
+  headers: [String]
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Category @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  storeId: ID!
+  name: String!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Staff @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  password: String!
+  role: [String!]!
+  store_id: ID!
+  store_name: String
+  device_id: String
+  device_name: String
+  status: String!
+  log_status: String!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Customer @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  address: String
+  mobile_no: String
+  tel_no: String
+  credit_balance: Float
+  store: String
+  storeId: ID!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type List @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String
+  brand: String
+  oprice: Float
+  sprice: Float
+  unit: String
+  category: String
+  storeId: ID!
+  productId: ID!
+  cashierId: ID!
+  quantity: Float
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type SaleTransaction @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  store: String
+  storeId: ID!
+  customerName: String
+  customerId: ID!
+  total: Float
+  cashier: String
+  cashierId: ID!
+  paymentMethod: String
+  status: String
+  totalItems: Int
+  discount: Float
+  discountName: String
+  vat: Float
+  received: Float
+  change: Float
+  profit: Float
+  void_reason: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Discount @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  transactionId: ID!
+  total: Float
+  cashier: String
+  cashierId: ID!
+  store: String
+  storeId: ID!
+  customer: String
+  customerId: ID!
+}
+ 

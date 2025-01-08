@@ -1,0 +1,185 @@
+import React, { useState, useEffect } from "react";
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from "react-native";
+import Modal from "react-native-modal";
+import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import List from "../../components/List";
+import Spacer from "../../components/Spacer";
+import colors from "../../themes/colors";
+import AppHeader from "../../components/AppHeader";
+import formatMoney from 'accounting-js/lib/formatMoney.js';
+import ProductsCashier from "../../components/ProductsCashier";
+import { listLists } from "../../graphql/queries";
+import { generateClient } from 'aws-amplify/api';
+
+const client = generateClient();
+
+const CashierScreen = ({ navigation, route }) => {
+  const { staffData } = route.params;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [orientation, setOrientation] = useState("portrait");
+  const [cart, setCart] = useState([]);
+  const [selected, setSelected] = useState(0);
+  const [discount_name, setDiscountName] = useState('');
+  const [discountVisible, setDiscountVisible] = useState(false);
+
+  const onClickPay = () => {
+    setModalVisible(false);
+    navigation.navigate('Checkout');
+  };
+
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      const { height, width } = Dimensions.get("window");
+      setOrientation(height >= width ? "portrait" : "landscape");
+    };
+
+    const subscription = Dimensions.addEventListener("change", handleOrientationChange);
+
+    const fetchList = async () => {
+      try {
+        const result = await client.graphql({
+          query: listLists,
+          variables: { filter: { storeId: { eq: staffData.store_id } } },
+        });
+        setCart(result.data.listLists.items);
+      } catch (err) {
+        console.log('Error fetching list:', err.message);
+      }
+    };
+
+    handleOrientationChange();
+    fetchList();
+
+    return () => subscription.remove();
+  }, [staffData.store_id]);
+
+  const calculateTotal = () => cart.reduce((total, item) => total + item.quantity * item.sprice, 0);
+  const calculateQty = () => cart.reduce((total, item) => total + item.quantity, 0);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <AppHeader 
+        centerText="Home"
+        leftComponent={
+          <TouchableOpacity onPress={() => navigation.openDrawer()}>
+            <EvilIcons name={'navicon'} size={35} color={colors.white} />
+          </TouchableOpacity>
+        }
+      />
+      <ProductsCashier route={route} />
+      <View style={styles.bottomView}>
+        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.checkoutBtn}>
+          <Text style={styles.checkoutText}>
+            Subtotal {formatMoney(calculateTotal(), { symbol: '₱', precision: 2 })}
+          </Text>
+          <Text style={styles.checkoutText}>
+            Qty {formatMoney(calculateQty(), { symbol: '', precision: 2 })}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <Modal
+        animationIn="slideInUp"
+        animationInTiming={800}
+        animationOutTiming={500}
+        useNativeDriver={true}
+        onBackButtonPress={() => setModalVisible(false)}
+        backdropOpacity={0.1}
+        isVisible={modalVisible}
+        style={[
+          styles.modalView,
+          {
+            height: orientation === "portrait" ? "50%" : "100%",
+            width: orientation === "portrait" ? "100%" : "50%",
+            alignSelf: orientation === "portrait" ? "center" : "flex-start",
+          },
+        ]}
+      >
+        <View style={styles.containerStyle}>
+          <View style={styles.content}>
+            <List
+              navigation={navigation}
+              discount_visible={setDiscountVisible}
+              discount={selected}
+              discount_name={discount_name}
+              staff={staffData}
+            />
+            <Spacer>
+              <View style={styles.payButtonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.payButton,
+                    { backgroundColor: cart.length === 0 ? colors.charcoalGrey : colors.accent },
+                  ]}
+                  onPress={() => cart.length !== 0 && onClickPay()}
+                >
+                  <Text style={styles.payButtonText}>P A Y</Text>
+                </TouchableOpacity>
+              </View>
+            </Spacer>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalView: {
+    justifyContent: "flex-end",
+    margin: 0,
+  },
+  containerStyle: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 10,
+    justifyContent: "center",
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  bottomView: {
+    flex: 1,
+    width: '100%',
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 20,
+    borderRadius: 20,
+  },
+  checkoutBtn: {
+    backgroundColor: colors.accent,
+    width: '80%',
+    paddingVertical: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    borderRadius: 30,
+    shadowColor: '#EBECF0',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.89,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  checkoutText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  payButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+  },
+  payButton: {
+    marginRight: 2,
+    borderRadius: 15,
+    paddingVertical: 10,
+  },
+  payButtonText: {
+    textAlign: "center",
+  },
+});
+
+export default CashierScreen;
