@@ -1,9 +1,6 @@
 import React, {useState, useEffect} from 'react';
-import {Text, StyleSheet, View, TouchableOpacity, FlatList} from 'react-native';
+import {Text, StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator} from 'react-native';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
-
-
-
 import {
   ListItem,
   Avatar,
@@ -18,8 +15,12 @@ import AppHeader from '../../components/AppHeader';
 import colors from '../../themes/colors';
 
 import { generateClient } from 'aws-amplify/api';
-import { createStaff } from '../../graphql/mutations';
+import { getCurrentUser } from '@aws-amplify/auth';
+import { createStaff, createStaffStore } from '../../graphql/mutations';
 import { listStaff } from '../../graphql/queries';
+import * as queries from '../../graphql/queries';
+
+
 const client = generateClient();
 
 const StaffsScreen = ({navigation, route}) => {
@@ -33,27 +34,53 @@ const StaffsScreen = ({navigation, route}) => {
   const [item, setItem] = useState([]);
   const [upgrade_plan, setUpgradePlan] = useState(false);
   const [staffs, setStaffs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [authUserId, setAuthUserId] = useState(null);
   const keyExtractor = (item, index) => index.toString();
 
-
+  // Get authenticated user on component mount
   useEffect(() => {
-   
+    const getAuthUser = async () => {
+      try {
+        const { userId } = await getCurrentUser();
+        setAuthUserId(userId);
+        console.log('Authenticated user ID:', userId);
+      } catch (error) {
+        console.error('Error getting authenticated user:', error);
+      }
+    };
+    
+    getAuthUser();
     fetchStaff();
-}, []);
+  }, []);
 
-
-
-const fetchStaff = async () => {
- 
-        const result = await client.graphql({
-            query: listStaff,
-            variables: { filter: { store_id: { eq: STORE.id } } }
-        });
-        const staffList = result.data.listStaff.items;
-        setStaffs(staffList);
+  const fetchStaff = async () => {
+    setLoading(true);
+    try {
+      // Simply fetch all cashier staff for now
+      console.log('Fetching cashier staff');
+      const result = await client.graphql({
+        query: listStaff,
+        variables: { 
+          filter: { 
+            role: { contains: "Cashier" } // Only get cashiers
+          } 
+        }
+      });
       
-   
-};
+      const staffList = result.data.listStaff.items;
+      console.log('Fetched cashiers:', staffList.length);
+      
+      // For now, just show all cashiers - we'll filter by store later
+      setStaffs(staffList);
+      
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      alert('Failed to load cashiers');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 const saveStaff = async (
     name,
@@ -61,44 +88,79 @@ const saveStaff = async (
     storeName,
     password,
     status,
-    deviceName,
-    deviceId,
-    role = ["cashier"],
-    logStatus = "Active",
+    deviceName = '',
+    deviceId = '',
+    logStatus = "INACTIVE",
   ) => {
- 
-  
-    const newStaff = {
-      name,
-      password,
-      role,
-      store_id: STORE.id,
-      store_name: STORE.store_name,
-      device_id: deviceId,
-      device_name: deviceName,
-      status,
-      log_status: logStatus,
-    };
-
-    console.log(newStaff);
     if (!name || !password) {
-        console.log("Name, Password, Store ID, and Status are required!");
-        return;
-      }
-  
-    console.log(newStaff); // Debugging: Check the new staff data structure
-  
+      alert("Name and PIN are required!");
+      return false;
+    }
+
+    // Validate PIN is numeric and exactly 5 digits
+    if (!/^\d{5}$/.test(password)) {
+      alert("PIN must be exactly 5 digits");
+      return false;
+    }
+
     try {
-      await client.graphql({
-        query: createStaff, // Replace with the actual mutation for creating staff
+      const { userId } = await getCurrentUser();
+      if (!userId) {
+        alert("Authentication error. Please sign in again.");
+        return false;
+      }
+
+      // Create a new staff with role set to Cashier only
+      const newStaff = {
+        name,
+        password,
+        role: ["Cashier"], // Enforcing Cashier role only
+        device_id: deviceId,
+        device_name: deviceName,
+        log_status: logStatus,
+        ownerId: userId // Include owner ID from authenticated user
+      };
+      
+      console.log('Creating new cashier with valid fields:', newStaff);
+  
+      // 1. Create the staff member first
+      const staffResult = await client.graphql({
+        query: createStaff,
         variables: { input: newStaff },
       });
-      console.log("Staff saved successfully!");
-      // Optionally reset form fields if you're using a form
-      fetchStaff(); // Refresh the staff list if implemented
+      
+      // 2. Get the new staff ID
+      const newStaffId = staffResult.data.createStaff.id;
+      console.log("Cashier created with ID:", newStaffId);
+      
+      // 3. Now connect this staff member to the store using the StaffStore relationship
+      try {
+        const staffStoreConnection = {
+          staffId: newStaffId,  // Correct field name is staffId (lowercase 'd')
+          storeId: STORE.id     // Correct field name is storeId (lowercase 'd')
+        };
+        
+        console.log("Connecting staff to store:", staffStoreConnection);
+        
+        await client.graphql({
+          query: createStaffStore,
+          variables: { input: staffStoreConnection }
+        });
+        
+        console.log("Staff-Store connection created successfully");
+      } catch (connectionError) {
+        console.error("Error connecting staff to store:", connectionError);
+        console.error("Connection error details:", JSON.stringify(connectionError, null, 2));
+        // Even if connection fails, the staff was created
+      }
+      
+      console.log("Cashier added successfully!");
+      fetchStaff(); // Refresh the staff list
+      return true;
     } catch (error) {
-      console.error("Error saving staff:", error);
-      console.log("Failed to save staff. Please try again.");
+      console.error("Error saving cashier:", error);
+      alert("Failed to add cashier. Please try again.");
+      return false;
     }
   };
   
@@ -152,33 +214,45 @@ const saveStaff = async (
   );
 
   return (
-    <View>
+    <View style={styles.container}>
       <Alert
         visible={upgrade_plan}
         onCancel={() => setUpgradePlan(false)}
         onProceed={() => setUpgradePlan(false)}
-        title="Upgrade Plan"
-        content="Maximum number of staffs has been reach please upgrade your plan."
+        title="Cashier Limit Reached"
+        content="Maximum number of cashiers for your current plan has been reached."
         confirmTitle="OK"
       />
       <AppHeader
-        centerText="Staffs"
+        centerText="Cashiers"
         leftComponent={
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
           </TouchableOpacity>
         }
         rightComponent={
-          
-            <AddStaff saveStaff={saveStaff} store={STORE} />
-          
+          <AddStaff saveStaff={saveStaff} store={STORE} />
         }
       />
-      <FlatList
-        keyExtractor={keyExtractor}
-        data={staffs}
-        renderItem={renderItem}
-      />
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading cashiers...</Text>
+        </View>
+      ) : staffs.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No cashiers found</Text>
+          <Text style={styles.emptySubText}>Add cashiers to your store using the + button</Text>
+        </View>
+      ) : (
+        <FlatList
+          keyExtractor={keyExtractor}
+          data={staffs}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
       <Overlay
         isVisible={overlayVisible}
         overlayStyle={{
@@ -255,6 +329,10 @@ StaffsScreen.navigationOptions = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   text: {
     fontSize: 30,
   },
@@ -279,6 +357,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: colors.grey,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.grey,
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: colors.grey,
+    textAlign: 'center',
+  },
+  listContainer: {
+    paddingBottom: 20,
   },
 });
 

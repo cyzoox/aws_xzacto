@@ -10,9 +10,9 @@ import { TextInput } from 'react-native-paper';
 import Alert from './Alert';
 import { generateClient } from 'aws-amplify/api';
 const client = generateClient();
-import { listLists } from '../graphql/queries';
+import { listCartItems } from '../graphql/queries';
 
-import { updateList, deleteList } from '../graphql/mutations';
+import { updateCartItem, deleteCartItem } from '../graphql/mutations';
 
 export default function List({ navigation, clearAll, archive, screen, toggleScanner, discount_visible, discount, autoPrint_visible,staff}) {
 
@@ -56,19 +56,20 @@ export default function List({ navigation, clearAll, archive, screen, toggleScan
 const fetchList = async () => {
   try {
     const result = await client.graphql({
-      query: listLists,
+      query: listCartItems,
       variables: {
         filter: {
           storeId: { eq: staff.store_id },
+          cashierId: { eq: staff.id }
         },
       },
     });
 
-    const listItems = result.data.listLists.items;
-    console.log(listItems);
-    setCart(listItems); // Ensure setCart is a valid state setter function
+    const cartItems = result.data.listCartItems.items;
+    console.log('Cart items:', cartItems);
+    setCart(cartItems);
   } catch (err) {
-    console.log('Error fetching list:', err.message);
+    console.log('Error fetching cart items:', err.message);
   }
 };
 
@@ -78,7 +79,7 @@ const incrementQuantity = async (item) => {
     const updatedQuantity = item.quantity + 1;
 
     await client.graphql({
-      query: updateList,
+      query: updateCartItem,
       variables: {
         input: {
           id: item.id,
@@ -91,6 +92,7 @@ const incrementQuantity = async (item) => {
     fetchList(); // Refresh the cart
   } catch (err) {
     console.log("Error incrementing quantity:", err.message);
+    alert('Failed to update quantity. Please try again.');
   }
 };
 
@@ -101,7 +103,7 @@ const decrementQuantity = async (item) => {
       const updatedQuantity = item.quantity - 1;
 
       await client.graphql({
-        query: updateList,
+        query: updateCartItem,
         variables: {
           input: {
             id: item.id,
@@ -114,7 +116,7 @@ const decrementQuantity = async (item) => {
     } else {
       // If quantity reaches 0, delete the item
       await client.graphql({
-        query: deleteList,
+        query: deleteCartItem,
         variables: {
           input: {
             id: item.id,
@@ -127,7 +129,8 @@ const decrementQuantity = async (item) => {
 
     fetchList(); // Refresh the cart
   } catch (err) {
-    console.log("Error decrementing quantity:", err.message);
+    console.log("Error updating cart:", err.message);
+    alert('Failed to update cart. Please try again.');
   }
 };
 
@@ -178,10 +181,10 @@ const decrementQuantity = async (item) => {
 
   const renderRow = ({ item })=> {
     return (
-        <View style={{ flex: 1, alignSelf: 'flex-start', flexDirection: 'row', backgroundColor:colors.white, paddingVertical: 10, justifyContent:'space-evenly' }}>
+        <View style={styles.itemRow}>
         <View style={[styles.cellContainer, {flex: 2}]}>
              <Text style={styles.cellStyle}>{item.name}</Text>
-      {item.addon || item.option ?  <Text style={[styles.cellStyle,{ fontSize:10}]}>with {item.addon}, {item.option}</Text> : null}
+      {item.addon || item.option ? <Text style={styles.addonText}>with {item.addon}, {item.option}</Text> : null}
         </View>
         <View style={[styles.cellContainer, {flex: 2.5}]}>
             <View style={{flexDirection:'row',  alignItems:'center'}}>
@@ -206,7 +209,7 @@ const decrementQuantity = async (item) => {
                 </TouchableOpacity>
               }
               <TouchableOpacity onPress={()=> onEditQty(item)}>
-                 <Text style={[styles.cellStyle, {marginHorizontal: 5}]}>{Math.round(item.quantity  * 100) / 100}</Text>
+                 <Text style={styles.quantityText}>{Math.round(item.quantity  * 100) / 100}</Text>
               </TouchableOpacity>
             
                 <TouchableWithoutFeedback  onPress={()=> incrementQuantity(item)}>
@@ -269,7 +272,7 @@ const decrementQuantity = async (item) => {
       <FlatList
         data={cart}
         renderItem={renderRow}
-        keyExtractor={item => item._id}
+        keyExtractor={item => item.id}
       />
         <View style={styles.cellFooterStyle}>
           <Text style={styles.footerTextStyle}>Subtotal</Text>
@@ -318,120 +321,111 @@ const decrementQuantity = async (item) => {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10
+  },
   itemContainer: {
     justifyContent: 'center',
-    alignItems:'center',
-    borderRadius: 5,
+    alignItems: 'center',
+    borderRadius: 10,
     padding: 15,
-    height: 150,
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    marginBottom: 10
   },
   itemName: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: '600',
+    fontSize: 16,
+    color: colors.black,
+    fontWeight: '500',
   },
   itemCode: {
-    fontWeight: '600',
     fontSize: 12,
-    color: '#fff',
+    color: colors.accent,
+    fontWeight: '500',
   },
-  cellHeaderStyle : {
-    paddingVertical: 5,
+  cellHeaderStyle: {
     color: colors.black,
-    fontSize: 15,
-    fontWeight: '400'
-},
-cellStyle : {
-      textAlign:'center',
-
-      fontSize: 13,
-      fontWeight:'400',
-      color: colors.black
+    fontSize: 16,
+    fontWeight: '600',
+    paddingVertical: 10
   },
-  cellContainer: {
-    flex: 1, 
-    alignSelf: 'stretch'
+  cellStyle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.black
+  },
+  footerTextStyle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.black
   },
   cellHeaderContainer: {
-    alignSelf: 'stretch', 
-    flexDirection: 'row' ,
-    justifyContent:'space-between',
-    backgroundColor: colors.white,
-    padding: 5,
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 2
-  },
-  cellFooterStyle:{
-    alignSelf: 'stretch',
-      flexDirection: 'row',
-    justifyContent:'space-between',
-    marginHorizontal: 10,
-    backgroundColor:colors.white,
-    padding: 0,
-    borderRadius: 5
-  }, 
-  footerTextStyle : {
-    fontSize: 17,
-    fontWeight:'500'
-  },
-  container: {
-    backgroundColor: 'white',
-    flex: 1
-},
-backTextWhite: {
-    color: '#FFF'
-},
-rowFront: {
-    alignItems: 'center',
-    backgroundColor: '#CCC',
-    borderBottomColor: 'black',
-    borderBottomWidth: 1,
-    justifyContent: 'center',
-    height: 50
-},
-rowBack: {
-    alignItems: 'center',
-    backgroundColor: '#DDD',
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingLeft: 15
-},
-backRightBtn: {
     alignItems: 'center',
-    bottom: 0,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    marginBottom: 10
+  },
+  cellContainer: {
+    flex: 1,
     justifyContent: 'center',
-    position: 'absolute',
-    top: 0,
-    width: 75,
-},
-backRightBtnLeft: {
-    backgroundColor: 'blue',
-    right: 75,
-},
-backRightBtnRight: {
-    backgroundColor: 'red',
-    right: 0,
-},
-stepBtn: {
-  backgroundColor: colors.accent,
-  borderRadius: 10,
-  shadowColor: "#EBECF0",
-shadowOffset: {
-	width: 0,
-	height: 1,
-},
-shadowOpacity: 0.10,
-shadowRadius: 2,
-elevation: 2,
-marginHorizontal: 10
-}
+    alignItems: 'center',
+    paddingHorizontal: 10
+  },
+  cellFooterStyle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    marginTop: 10
+  },
+  stepBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.black,
+    marginHorizontal: 10
+  },
+  itemRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginVertical: 5,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1
+  },
+  addonText: {
+    fontSize: 12,
+    color: colors.accent,
+    marginTop: 4
+  }
 });

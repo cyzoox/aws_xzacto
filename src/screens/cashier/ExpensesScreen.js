@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect } from "react";
-import { Text, StyleSheet, View, TouchableOpacity, FlatList, ScrollView,Modal } from "react-native";
+import { Text, StyleSheet, View, TouchableOpacity, FlatList, ScrollView, Modal, Alert } from "react-native";
 
 import EvilIcons from 'react-native-vector-icons/EvilIcons'
 import Feather from 'react-native-vector-icons/Feather'
 import { Row, Col, Grid } from 'react-native-easy-grid';
 import { useState } from "react";
-import {TextInput } from 'react-native-paper';
-
-
+import { TextInput } from 'react-native-paper';
+import moment from 'moment';
 
 import formatMoney from 'accounting-js/lib/formatMoney.js'
 import SelectDropdown from 'react-native-select-dropdown'
@@ -28,15 +27,16 @@ const ExpensesScreen = ({navigation, route}) => {
   const [other, setOthers] = useState('')
   const [specificDate, setSpecificDatePicker] = useState(false)
   const [filter, setFilter] = useState('Today')
-  const [attendant, setAttendant] = useState('');
-  const [attendant_info, setAttendantInfo] = useState([]);
+  const [staffFilter, setStaffFilter] = useState('All Staff');
+  const [staffList, setStaffList] = useState(['All Staff', staffData.name]);
   const [expenses, setExpenses] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const descriptions = [
     "Rental Expense",
     "Fuel Expense",
     "Salary",
-    "Electic Bill",
+    "Electric Bill",
     "Water Bill",
     "Internet / Telephone Bill",
     'Others please specify'
@@ -44,273 +44,335 @@ const ExpensesScreen = ({navigation, route}) => {
 
   useEffect(() => {
     fetchExpenses();
-}, []);
+  }, [filter, staffFilter]);
 
   const fetchExpenses = async () => {
- 
-    const result = await client.graphql({
-        query: listExpenses,
-        variables: { filter: { storeId: { eq: staffData.store_id }, attendantId: {eq: staffData.id} } }
-    });
-    const expenseList = result.data.listExpenses.items;
-    setExpenses(expenseList);
-  
+    setIsLoading(true);
+    try {
+      // Get current date in ISO format for filtering
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startOfDayISO = startOfDay.toISOString();
+      
+      // Get start of week and month for filtering
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
+      let filterParams = { storeId: { eq: staffData.store_id } };
+      
+      // Apply date filter
+      if (filter === 'Today') {
+        filterParams.date = { ge: startOfDayISO };
+      } else if (filter === 'This Week') {
+        filterParams.date = { ge: startOfWeek.toISOString() };
+      } else if (filter === 'This Month') {
+        filterParams.date = { ge: startOfMonth.toISOString() };
+      }
+      
+      // Apply staff filter if not 'All Staff'
+      if (staffFilter !== 'All Staff') {
+        filterParams.staffName = { eq: staffFilter };
+      }
 
-};
+      const result = await client.graphql({
+        query: listExpenses,
+        variables: { filter: filterParams }
+      });
+      
+      const expenseList = result.data.listExpenses.items;
+      
+      // Sort expenses by date (newest first)
+      expenseList.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      setExpenses(expenseList);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      Alert.alert("Error", "Failed to load expenses. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-const saveExpense = async () => {
-    // Construct the new customer object correctly
-    const newExpense = {
-        description,
-        storeId: staffData.store_id,
-        category: description,
-        attendant: staffData.name,
-        attendantId: staffData.id,
-        amount: parseFloat(amount),    // Use the parameter directly
-       // Use the parameter directly
-    };
-  
-    console.log(newExpense); // Debugging: Check the new customer data structure
-  
+  const saveExpense = async () => {
     // Validation checks
-    if (!description || !amount) {
-      console.log("Description and Amount are required!");
+    if (!description || description === 'Description') {
+      Alert.alert("Error", "Please select a description");
       return;
     }
+    
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      Alert.alert("Error", "Please enter a valid amount");
+      return;
+    }
+    
+    // Handle "Others" case
+    const finalDescription = description === 'Others please specify' 
+      ? (other || 'Other Expense') 
+      : description;
+    
+    // Construct the new expense object with only valid fields from the schema
+    const newExpense = {
+      name: finalDescription,
+      storeId: staffData.store_id,
+      staffId: staffData.id,
+      staffName: staffData.name,
+      category: description,
+      amount: parseFloat(amount),
+      date: new Date().toISOString(),
+      notes: description === 'Others please specify' ? other : ''
+    };
   
-
     try {
+      setIsLoading(true);
+      
       // Save Expense using a GraphQL mutation
-      await client.graphql({
-        query: createExpense, // Replace with the actual mutation for creating customers
+      const result = await client.graphql({
+        query: createExpense,
         variables: { input: newExpense },
       });
   
-      console.log("Expense saved successfully!");
-      fetchExpenses(); // Reload Expense if implemented
+      // Reset form fields
+      setDescription('Description');
+      setAmount('');
+      setOthers('');
+      
+      // Refresh expenses list
+      await fetchExpenses();
+      Alert.alert("Success", "Expense saved successfully!");
     } catch (error) {
-      console.error("Error saving Expense:", error);
-      console.log("Failed to save Expense. Please try again.");
+      console.error("Error saving expense:", error);
+      Alert.alert("Error", `Failed to save expense: ${error.message || 'Please try again'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-
   const calculateTotal = () => {
     let total = 0;
-    [].forEach(item => {
-      total =+ item.amount
+    expenses.forEach(item => {
+      total += parseFloat(item.amount || 0);
     });
 
     return total;
   }
 
   const renderItem = ({ item }) => (
-    <Row style={{height: 40,shadowColor: "#EBECF0", marginVertical:1.5,marginHorizontal: 5,backgroundColor:'white'}}>    
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{item.description}</Text>
+    <Row style={styles.row}>    
+      <Col style={[styles.ColStyle, {alignItems: 'flex-start', paddingLeft: 5}]}>
+        <Text style={styles.textColor}>{item.name}</Text>
+        <Text style={styles.dateText}>{moment(item.date).format('MMM DD, YYYY')}</Text>
       </Col>   
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{formatMoney(item.amount, { symbol: "₱", precision: 2 })}</Text>
+      <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
+        <Text style={styles.textColor}>{formatMoney(item.amount, { symbol: "₱", precision: 2 })}</Text>
       </Col> 
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{item.attendant}</Text>
+      <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
+        <Text style={styles.textColor}>{item.staffName || 'Unknown'}</Text>
       </Col> 
     </Row>
-)
+  );
 
+  const filterOptions = ['Today', 'This Week', 'This Month', 'All'];
+  const handleStaffFilterChange = (selectedStaff) => {
+    setStaffFilter(selectedStaff);
+  };
 
   return (
-    <View style={{flex: 1}}>
-        <AppHeader 
-          centerText="Expenses"
-          leftComponent={
-            <TouchableOpacity onPress={()=> navigation.goBack()}>
-              <EvilIcons name={'arrow-left'} size={30} color={colors.white}/>
-            </TouchableOpacity>
+    <View style={styles.container}>
+      <AppHeader 
+        centerText="Expenses"
+        leftComponent={
+          <TouchableOpacity onPress={()=> navigation.goBack()}>
+            <EvilIcons name={'arrow-left'} size={30} color={colors.white}/>
+          </TouchableOpacity>
         }
         rightComponent={
           <ModalInputForm
-                displayComponent={
-                    <View style={{flexDirection:"row", justifyContent:"center", alignItems:"center"}}>
-                        <EvilIcons style={{textAlign:'center'}}  name={'plus'} size={30} color={colors.white}/>
-                        <Text style={{color: colors.white, textAlign:'center', marginLeft: 3}}> Expense</Text>
-                    </View>
-                }
-                title="Add Expenses" 
-                onSave={saveExpense}
-                >
-                
-                <SelectDropdown
-                    data={descriptions}
-                    defaultButtonText={description}
-                    onSelect={(selectedItem, index) => {
-                      setDescription(selectedItem)
-                    }}
-                    buttonTextAfterSelection={(selectedItem, index) => {
-                      // text represented after item is selected
-                      // if data array is an array of objects then return selectedItem.property to render after item is selected
-                      return selectedItem
-                    }}
-                    rowTextForSelection={(item, index) => {
-                      // text represented for each item in dropdown
-                      // if data array is an array of objects then return item.property to represent item in dropdown
-                      return item
-                    }}
-                    buttonStyle={{
-                        marginTop: 5,
-                       width: '100%',
-                        height: 56,
-                        backgroundColor: "#FFF",
-                        borderRadius: 5,
-                        borderWidth: 1,
-                        borderColor: "#444",}}
-                        buttonTextStyle={{textAlign: 'left', color: 'grey', fontSize: 15}}
-                  />
-                {description === 'Others please specify' ? <TextInput
-                    mode="outlined"
-                    label="Please specify"
-                    placeholder="Please specify"
-                    onChangeText={(text)=> setOthers(text)}
-                    />: null}
+            displayComponent={
+              <View style={styles.addButtonContainer}>
+                <EvilIcons name={'plus'} size={30} color={colors.white}/>
+                <Text style={styles.addButtonText}>Expense</Text>
+              </View>
+            }
+            title="Add Expenses" 
+            onSave={saveExpense}
+          >
+            <SelectDropdown
+              data={descriptions}
+              defaultButtonText={description}
+              onSelect={(selectedItem) => {
+                setDescription(selectedItem)
+              }}
+              buttonTextAfterSelection={(selectedItem) => selectedItem}
+              rowTextForSelection={(item) => item}
+              buttonStyle={styles.dropdown}
+              buttonTextStyle={styles.dropdownText}
+            />
+            
+            {description === 'Others please specify' && (
               <TextInput
-                    mode="outlined"
-                    label="Amount"
-                    placeholder="Amount"
-                    onChangeText={(text)=> setAmount(text)}
-                    />
-              </ModalInputForm>
-      }
-         />
-         
-      <DataTable
-          headerTitles={['Description', 'Amount', 'Attendant']}
-          total={calculateTotal()}
-          alignment="center"
-        >
-          <FlatList
-                keyExtractor={(key) => key.uid}
-                data={expenses}
-                renderItem={renderItem}
+                mode="outlined"
+                label="Please specify"
+                placeholder="Please specify"
+                value={other}
+                onChangeText={(text) => setOthers(text)}
+                style={styles.textInput}
               />
-        </DataTable>    
-        {/* <Modal animationType={'slide'} visible={specificDate} transparent>
-                   <View style={{ flex: 1 ,flexDirection: 'column', justifyContent: 'flex-end'}}>
-                        <View style={{ height: "30%" ,width: '100%',  justifyContent:"center"}}>
-                            <DatePicker
-                                monthDisplayMode={'en-long'}
-                                minDate={'2020-03-06'}
-                                                    confirm={date => {
-                                       setSpecificDate(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY')),
-                                       setSpecificDatePicker(false)
-                                       setFilter(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY'))
-                                       setFilter(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY'))
-                                    }}
-                                    cancel={date => {
-                                      setSpecificDatePicker(false)
-                                    }}
-                                titleText="Select Start Date"
-                                cancelText="Cancel"
-                                toolBarStyle={{backgroundColor: colors.accent}}
-                                /> 
-                    </View>
-                    </View>
-          </Modal> */}
+            )}
+            
+            <TextInput
+              mode="outlined"
+              label="Amount"
+              placeholder="Amount"
+              value={amount}
+              keyboardType="numeric"
+              onChangeText={(text) => setAmount(text)}
+              style={styles.textInput}
+            />
+          </ModalInputForm>
+        }
+      />
+      
+      <View style={styles.filterContainer}>
+        <Text style={styles.filterLabel}>Date:</Text>
+        <SelectDropdown
+          data={filterOptions}
+          defaultValue={filter}
+          onSelect={(selectedItem) => setFilter(selectedItem)}
+          buttonStyle={styles.filterDropdown}
+          buttonTextStyle={styles.filterDropdownText}
+          dropdownStyle={styles.filterDropdownMenu}
+        />
+        <Text style={[styles.filterLabel, {marginLeft: 15}]}>Staff:</Text>
+        <SelectDropdown
+          data={staffList}
+          defaultValue={staffFilter}
+          onSelect={handleStaffFilterChange}
+          buttonStyle={styles.filterDropdown}
+          buttonTextStyle={styles.filterDropdownText}
+          dropdownStyle={styles.filterDropdownMenu}
+        />
+      </View>
+      
+      <DataTable
+        headerTitles={['Description', 'Amount', 'Staff']}
+        total={calculateTotal()}
+        alignment="center"
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text>Loading expenses...</Text>
+          </View>
+        ) : expenses.length > 0 ? (
+          <FlatList
+            keyExtractor={(item) => item.id}
+            data={expenses}
+            renderItem={renderItem}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No expenses found</Text>
+          </View>
+        )}
+      </DataTable>
     </View>
   );
 };
 
-ExpensesScreen.navigationOptions = () => {
-  return {
-    headerShown: false
-  };
-}
-
 const styles = StyleSheet.create({
-  text: {
-    fontSize: 30
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  addButtonContainer: {
+    flexDirection: "row", 
+    justifyContent: "center", 
+    alignItems: "center"
+  },
+  addButtonText: {
+    color: colors.white, 
+    textAlign: 'center', 
+    marginLeft: 3
+  },
+  row: {
+    height: 50, 
+    shadowColor: "#EBECF0", 
+    marginVertical: 1.5, 
+    marginHorizontal: 5, 
+    backgroundColor: 'white'
   },
   ColStyle: {
-    width: 120,
     justifyContent: 'center',
-    
-}, textColor: {
-  fontSize: 14,
-  color: colors.black,
-  textAlign:'center'
-},
-
-avatarStyle: {
-  borderColor: colors.accent,
-  borderStyle: 'solid',
-  borderWidth: 1,
-  borderRadius: 20,
-  backgroundColor:colors.white
-},
-listStyle: {
-  flexDirection:'row',
-  justifyContent:'space-between', 
-  backgroundColor: colors.white,
-  borderColor: colors.accent,
-  borderWidth: 1,
-  shadowColor: "#EBECF0",
-shadowOffset: {
-  width: 0,
-  height: 5,
- 
-},
-shadowOpacity: 0.89,
-shadowRadius: 2,
-elevation: 5,
-paddingVertical: 15, 
-marginHorizontal: 10, 
-marginVertical: 5,
-paddingHorizontal: 10, 
-borderRadius: 10},
-filterStyle: {
-  backgroundColor:colors.white, 
-  paddingVertical: 9, 
-  width: '45%',
-  borderRadius: 5,
-  shadowColor: "#EBECF0",
-  shadowOffset: {
-    width: 0,
-    height: 5,
-   
   },
-  shadowOpacity: 0.89,
-  shadowRadius: 2,
-  elevation: 5,
-  borderColor: colors.white,
-  borderWidth:  1
-},
-storeList: {
-  flex: 1,
-  borderColor: colors.boldGrey,
-  borderWidth: 1,
-  paddingVertical: 8,
-  marginVertical: 5,
-  borderRadius: 5,
-  backgroundColor: colors.white,
-  shadowColor: "#EBECF0",
-  shadowOffset: {
-    width: 0,
-    height: 2,
-   
+  textColor: {
+    color: colors.black,
+    fontSize: 14,
   },
-  shadowOpacity: 0.89,
-  shadowRadius: 2,
-  elevation: 2,
-},
-dateFilter : {
-  borderWidth: 1, 
-  borderRadius: 5, 
-  flexDirection:'row', 
-  alignItems:'center', 
-  flex: 1, 
-  margin: 2, 
-  justifyContent:'center', 
-  borderColor: colors.accent,
-backgroundColor: colors.accent}
+  dateText: {
+    color: colors.charcoalGrey,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  dropdown: {
+    marginTop: 5,
+    width: '100%',
+    height: 56,
+    backgroundColor: "#FFF",
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#444",
+  },
+  dropdownText: {
+    textAlign: 'left', 
+    color: 'grey', 
+    fontSize: 15
+  },
+  textInput: {
+    marginTop: 10,
+    backgroundColor: colors.white,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGrey,
+  },
+  filterLabel: {
+    fontSize: 14,
+    marginRight: 10,
+    color: colors.charcoalGrey,
+  },
+  filterDropdown: {
+    width: 120,
+    height: 35,
+    backgroundColor: colors.lightGrey,
+    borderRadius: 5,
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+  },
+  filterDropdownMenu: {
+    borderRadius: 5,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.charcoalGrey,
+  }
 });
 
 export default ExpensesScreen;

@@ -12,10 +12,11 @@ import {
   TextInput
 } from 'react-native';
 import FlatGrid from 'react-native-super-grid';
-import {Button, Input, Overlay} from 'react-native-elements';
+import {Button, Input} from 'react-native-elements';
+import Modal from 'react-native-modal';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
-import { listCategories,listProducts, listLists } from '../graphql/queries';
-import { createList,updateList } from '../graphql/mutations';
+import { listCategories, listCartItems, listProducts, listVariants, listAddons } from '../graphql/queries';
+import { createCartItem, updateCartItem } from '../graphql/mutations';
 
 
 const windowWidth = Dimensions.get('window').width;
@@ -30,7 +31,10 @@ import { generateClient } from 'aws-amplify/api';
 import SearchBar from './SearchBar';
 const client = generateClient();
 export default function ProductsCashier({
-route
+  route,
+  cart,
+  setCart,
+  onCartUpdate
 }) {
   const { staffData } = route.params;
     
@@ -42,25 +46,14 @@ route
   const [quantity, setQuantity] = useState(1);
   const [alerts, alertVisible] = useState(false);
   const [alerts2, alertVisible2] = useState(false);
-  const [product_info, setProductInfo] = useState([]);
-  const [additionals, setWithAdditional] = useState(false);
   const [category, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [cart, setList] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [selectedVariant, setSelectedVariant] = useState({
-    name: '',
-    price: 0,
-    cost: 0,
-  });
-  const [selectedAddon, setSelectedAddon] = useState({
-    name: '',
-    price: 0,
-    cost: 0,
-  });
-  const [selectedOption, setSelectedOption] = useState([]);
+  const [variantModal, setVariantModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedVariantId, setSelectedVariantId] = useState(null);
+  const [selectedAddonId, setSelectedAddonId] = useState(null);
   const [total, setTotal] = useState(0);
-  const [aqty, setAqty] = useState(1);
   const [bcode, setBarcode] = useState('');
 
   const setVariables = itemss => {
@@ -86,8 +79,9 @@ route
   useEffect(() => {
     fetchCategories();
     fetchProducts();
-    fetchList();
   }, []); // Initial fetch only
+  
+  // We'll use the existing fetchProductDetails function defined below
   
   useEffect(() => {
     let filtered = products;
@@ -123,103 +117,294 @@ route
 const fetchList = async () => {
   try {
     const result = await client.graphql({
-      query: listLists,
+      query: listCartItems,
       variables: {
         filter: {
           storeId: { eq: staffData.store_id},
+          cashierId: { eq: staffData.id }
         },
       },
     });
 
-    const listItems = result.data.listLists.items;
-    console.log(listItems);
-    setList(listItems); // Ensure setCart is a valid state setter function
+    // Get the items from the backend
+    const serverItems = result.data.listCartItems.items;
+    
+    // Only update non-pending items to avoid overwriting local changes
+    setCart(prevCart => {
+      const pendingItems = prevCart.filter(item => item.pending);
+      const syncedItems = serverItems.filter(serverItem => 
+        !pendingItems.some(pending => pending.productId === serverItem.productId)
+      );
+      return [...syncedItems, ...pendingItems];
+    });
   } catch (err) {
-    console.log('Error fetching list:', err.message);
+    console.log('Error fetching cart items:', err.message);
+  }
+};
+
+// Helper function to fetch product details (variants and addons)
+const fetchProductDetails = async (productId) => {
+  try {
+    console.log('Fetching product details for:', productId);
+    
+    // Fetch variants
+    const variantsResult = await client.graphql({
+      query: listVariants,
+      variables: {
+        filter: { productId: { eq: productId } }
+      }
+    });
+
+    // Fetch addons
+    const addonsResult = await client.graphql({
+      query: listAddons,
+      variables: {
+        filter: { productId: { eq: productId } }
+      }
+    });
+
+    const variants = variantsResult.data?.listVariants?.items || [];
+    const addons = addonsResult.data?.listAddons?.items || [];
+
+    console.log(`Found ${variants.length} variants and ${addons.length} addons`);
+    console.log('Variants:', JSON.stringify(variants));
+    console.log('Addons:', JSON.stringify(addons));
+
+    return {
+      variants,
+      addons
+    };
+  } catch (error) {
+    console.error('Error fetching product details:', error);
+    return { variants: [], addons: [] };
   }
 };
 
 const fetchProducts = async () => {
-try {
-  const result = await client.graphql({
-    query: listProducts,
-    // Uncomment the filter if needed
-    variables: { filter: { storeId: { eq: staffData.store_id} } },
-  });
+  try {
+    // Fetch basic product information first
+    const result = await client.graphql({
+      query: listProducts,
+      variables: { 
+        filter: { storeId: { eq: staffData.store_id } }
+      },
+    });
+    
+    const productsList = result.data?.listProducts?.items ?? [];
+    console.log('Products from query:', productsList);
+    
+    // Fetch variants and addons for each product
+    const productsWithExtras = await Promise.all(
+      productsList.map(async (product) => {
+        const details = await fetchProductDetails(product.id);
+        console.log(`Product ${product.name} details:`, details);
+        
+        return {
+          ...product,
+          variants: { items: details.variants },
+          addons: { items: details.addons }
+        };
+      })
+    );
 
-  // console.log('GraphQL Response:', JSON.stringify(result, null, 2));
-
-  const productsList = result.data?.listProducts?.items ?? [];
-  if (!Array.isArray(productsList)) {
-    throw new Error('Invalid response format: items is not an array');
+    console.log('Products with extras count:', productsWithExtras.length);
+    setProducts(productsWithExtras);
+    setFilteredProducts(productsWithExtras);
+  } catch (err) {
+    console.error('Error fetching products:', err);
   }
-
- 
-
-  setProducts(productsList);
-} catch (err) {
-  console.error('Error fetching products:', err.message);
-}
 };
 
 
 
-const addToCart = async (item) => {
+  const addToCart = async (item) => {
   try {
-    const newList = {
-      name: item.name,
-      brand: item.brand,
-      oprice: item.oprice,
-      sprice: item.sprice,
-      productId: item.id,
-      cashierId: "f2da884d-c91e-4050-a1ec-24071fd8d608",
-      category: item.category,
-      unit: "TBF",
-      storeId: item.storeId,
-      quantity: 1,
-    };
-
-    // Query to check if item already exists in the cart
-    const result = await client.graphql({
-      query: listLists,
-      variables: {
-        filter: {
-          productId: { eq: newList.productId },
-          storeId: { eq: newList.storeId },
-        },
-      },
-    });
-
-    const existingItem = result.data.listLists.items[0]; // Assuming productId and storeId are unique together
-
-    if (existingItem) {
-      // If item exists, update the quantity
-      const updatedQuantity = existingItem.quantity + newList.quantity;
-
-      await client.graphql({
-        query: updateList, // Define the updateList mutation in your GraphQL API
-        variables: {
-          input: {
-            id: existingItem.id,
-            quantity: updatedQuantity,
-          },
-        },
-      });
-
-      console.log("Quantity updated for existing item:", existingItem.id);
-    } else {
-      // If item doesn't exist, create a new one
-      await client.graphql({
-        query: createList,
-        variables: { input: newList },
-      });
-
-      console.log("New item added to cart");
+    if (!staffData || !staffData.id) {
+      console.error('No staff data available');
+      return;
     }
 
-    fetchList(); // Refresh the cart list
+    // Check if product has variants or addons
+    const hasVariants = Array.isArray(item.variants?.items) && item.variants.items.length > 0;
+    const hasAddons = Array.isArray(item.addons?.items) && item.addons.items.length > 0;
+    
+    console.log(`Product ${item.name} checking for variants/addons:`, {
+      hasVariants,
+      hasAddons,
+      variants: item.variants,
+      addons: item.addons
+    });
+    
+    if ((hasVariants || hasAddons) && !variantModal) {
+      console.log('Opening variant modal for product:', item.name);
+      
+      // Use the product data we already have directly
+      try {
+        console.log(`Fetching detailed data for product ${item.name} (${item.id})`);
+        
+        // Fetch the complete product data with variants and addons
+        const details = await fetchProductDetails(item.id);
+        console.log('Product details:', details);
+        
+        // Create a complete product object with variants and addons
+        const productWithExtras = {
+          ...item,
+          variants: { items: details.variants },
+          addons: { items: details.addons }
+        };
+        
+        console.log('Enhanced product data:', JSON.stringify(productWithExtras));
+        
+        if (details.variants.length === 0 && details.addons.length === 0) {
+          console.log('No variants or addons found for this product. Adding directly to cart.');
+          addToCart(item);
+          return;
+        }
+        
+        // Now set the selected product and show the modal
+        const enhancedProduct = {
+          ...productWithExtras,
+          variants,
+          addons
+        };
+        
+        setSelectedVariantId(null);  // Reset selected variant
+        setSelectedAddonId(null);   // Reset selected addon
+        setSelectedProduct(enhancedProduct);   // Set the selected product
+        setVariantModal(true);      // Open the modal
+      } catch (err) {
+        console.error('Error fetching product details:', err);
+        // Fallback to using the basic product info
+        setSelectedVariantId(null);  
+        setSelectedAddonId(null);   
+        setSelectedProduct(item);   
+        setVariantModal(true);      
+      }
+      return;
+    }
+
+    // Check if we have enough stock
+    const cartItem = cart.find((cartItem) => cartItem.productId === item.id);
+    const currentQty = cartItem?.quantity || 0;
+    if (currentQty + 1 > item.stock) {
+      alert('Not enough stock available');
+      return;
+    }
+
+    // Use the pre-calculated price if available, otherwise calculate it
+    let totalPrice = item.calculatedPrice || item.sprice;
+    
+    // If we don't have a pre-calculated price but we have selections, calculate it
+    if (!item.calculatedPrice) {
+      if (item.selectedVariants && item.selectedVariants.length > 0) {
+        item.selectedVariants.forEach(variant => {
+          if (variant && variant.price) totalPrice += variant.price;
+        });
+      }
+      
+      if (item.selectedAddons && item.selectedAddons.length > 0) {
+        item.selectedAddons.forEach(addon => {
+          if (addon && addon.price) totalPrice += addon.price;
+        });
+      }
+    }
+    
+    console.log(`Adding product ${item.name} to cart with price ${totalPrice}:`, {
+      hasSelections: !!(item.selectedVariants || item.selectedAddons),
+      calculatedPrice: item.calculatedPrice,
+      finalPrice: totalPrice
+    });
+
+    // Optimistically update the UI immediately
+    if (cartItem) {
+      // Update existing item in local state
+      const updatedCart = cart.map(item => 
+        item.id === cartItem.id 
+          ? { ...item, quantity: item.quantity + 1 } 
+          : item
+      );
+      setCart(updatedCart);
+    } else {
+      // Create new item in local state
+      const newCartItem = {
+        id: `temp-${Date.now()}`, // Temporary ID for optimistic update
+        name: item.name,
+        brand: item.brand,
+        oprice: item.oprice,
+        sprice: totalPrice,
+        productId: item.id,
+        cashierId: staffData.id,
+        category: item.category,
+        unit: item.unit || 'PCS',
+        storeId: item.storeId,
+        quantity: 1,
+        pending: true // Flag to identify optimistic updates
+      };
+      setCart(prevCart => [...prevCart, newCartItem]);
+    }
+
+    // Now sync with the backend
+    try {
+      if (cartItem) {
+        // Update existing item in backend
+        await client.graphql({
+          query: updateCartItem,
+          variables: {
+            input: {
+              id: cartItem.id,
+              quantity: cartItem.quantity + 1,
+            },
+          },
+        });
+      } else {
+        // Create new item in backend
+        const newItem = {
+          name: item.name,
+          brand: item.brand,
+          oprice: item.oprice,
+          sprice: totalPrice,
+          productId: item.id,
+          cashierId: staffData.id,
+          category: item.category,
+          unit: item.unit || 'PCS',
+          storeId: item.storeId,
+          quantity: 1
+        };
+
+        await client.graphql({
+          query: createCartItem,
+          variables: { 
+            input: newItem 
+          },
+        });
+      }
+
+      // Only fetch the full cart after a small delay to avoid unnecessary API calls
+      setTimeout(() => {
+        onCartUpdate();
+      }, 500);
+
+    } catch (err) {
+      console.log('Error syncing with backend:', err.message);
+      alert('Failed to add item to cart. Please try again.');
+      
+      // Revert optimistic update on error
+      if (cartItem) {
+        // Revert to previous cart state
+        const originalCart = cart.map(item => 
+          item.id === cartItem.id 
+            ? { ...item, quantity: cartItem.quantity } 
+            : item
+        );
+        setCart(originalCart);
+      } else {
+        // Remove the optimistically added item
+        setCart(prevCart => prevCart.filter(item => !item.pending));
+      }
+    }
+
   } catch (err) {
-    console.log("Error adding to cart:", err.message);
+    console.log('Error adding to cart:', err.message);
   }
 };
 
@@ -227,7 +412,7 @@ const addToCart = async (item) => {
 
   const calculateTotal = () => {
     let total = 0;
-    [].forEach(list => {
+    cart.forEach(list => {
       total += list.quantity * list.sprice;
     });
     return total;
@@ -235,7 +420,7 @@ const addToCart = async (item) => {
 
   const calculateQty = () => {
     let total = 0;
-    [].forEach(list => {
+    cart.forEach(list => {
       total += list.quantity;
     });
     return total;
@@ -293,68 +478,254 @@ const addToCart = async (item) => {
   const _renderitem = ({item}) => {
     const cartItem = cart.find((cartItem) => cartItem.productId === item.id);
     const remainingStock = item.stock - (cartItem?.quantity || 0);
-  
     const isOutOfStock = remainingStock <= 0;
     const hasLowStock = item.stock <= 10 && !isOutOfStock;
+    // Check if product has variants or addons with enhanced detection
+    const hasVariants = Array.isArray(item.variants?.items) && item.variants.items.length > 0;
+    const hasAddons = Array.isArray(item.addons?.items) && item.addons.items.length > 0;
+    const hasExtras = hasVariants || hasAddons;
+    
+    if (item.name === 'TEST2' || hasExtras) {
+      console.log(`Product ${item.name} details:`, {
+        id: item.id,
+        variants: item.variants?.items || [],
+        addons: item.addons?.items || [],
+        hasVariants,
+        hasAddons,
+        hasExtras
+      });
+    }
   
     return (
-      <TouchableWithoutFeedback
-        onPress={() => !isOutOfStock && 
-          (item.withAddons || item.withOptions || item.withVariants
-            ? withAddtional(item)
-            : addToCart(item)
-          )
-        }>
-        <View style={styles.itemContainer}>
-          {/* Product Image */}
-          <View>
-            <Image
-              style={styles.stretch}
-              source={
-                item.img 
-                  ? {uri: item.img, headers: {Authorization: 'auth-token'}}
-                  : require('../../assets/noproduct.png')
-              }
-              resizeMode="contain"
-            />
-            {isOutOfStock && (
-              <View style={styles.overlay}>
-                <Text style={styles.outOfStockText}>Out of Stock</Text>
-              </View>
-            )}
-          </View>
-  
-          {/* Product Details */}
-          <View>
-            <Text style={styles.priceText}>
-              {formatMoney(item.sprice, {symbol: '₱', precision: 2})}
-            </Text>
-            <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.stockText}>
-              {item.stock} {item.unit}
-            </Text>
-          </View>
-  
+      <TouchableOpacity
+        onPress={() => !isOutOfStock && addToCart(item)}
+        style={styles.itemContainer}
+        activeOpacity={0.7}
+      >
+        <Image
+          style={styles.itemImage}
+          source={
+            item.img 
+              ? {uri: item.img, headers: {Authorization: 'auth-token'}}
+              : require('../../assets/noproduct.png')
+          }
+        />
+        
+        <View style={styles.itemContent}>
+          <Text numberOfLines={2} style={styles.itemName}>{item.name}</Text>
+          <Text style={styles.itemPrice}>
+            {formatMoney(item.sprice, {symbol: '₱', precision: 2})}
+          </Text>
+          
+          {/* Stock Status */}
+          {isOutOfStock ? (
+            <View style={[styles.statusBadge, styles.outOfStockBadge]}>
+              <Text style={styles.statusText}>Out of Stock</Text>
+            </View>
+          ) : hasLowStock ? (
+            <View style={[styles.statusBadge, styles.lowStockBadge]}>
+              <Text style={styles.statusText}>Low Stock: {item.stock}</Text>
+            </View>
+          ) : null}
+          
           {/* Cart Quantity */}
           {cartItem && (
-            <View style={styles.cartQuantity}>
-              <Text style={styles.cartQuantityText}>{cartItem.quantity}</Text>
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartItem.quantity}</Text>
             </View>
           )}
-  
-          {/* Low Stock Indicator */}
-          {hasLowStock && (
-            <View style={styles.lowStock}>
-              <Text style={styles.lowStockText}>Low stock</Text>
+          
+          {/* Variant/Addon Indicator */}
+          {hasExtras && (
+            <View style={styles.variantBadge}>
+              <Ionicons name="options" size={14} color="#fff" />
             </View>
           )}
         </View>
-      </TouchableWithoutFeedback>
+      </TouchableOpacity>
     );
   };
 
   const onCancel = () => {
     alertVisible2(!alerts2);
+  };
+
+  const renderVariantModal = () => {
+    if (!selectedProduct) return null;
+
+    console.log('Rendering variant modal for:', selectedProduct.name);
+    console.log('Variants available:', selectedProduct.variants);
+    console.log('Addons available:', selectedProduct.addons);
+
+    // Calculate total price including base price, selected variants and addons
+    let totalPrice = selectedProduct.sprice || 0;
+    
+    // Add selected variant price
+    if (selectedVariantId && selectedProduct.variants?.items) {
+      const selectedVariant = selectedProduct.variants.items.find(v => v.id === selectedVariantId);
+      if (selectedVariant) {
+        totalPrice += parseFloat(selectedVariant.price) || 0;
+      }
+    }
+    
+    // Add selected addon price
+    if (selectedAddonId && selectedProduct.addons?.items) {
+      const selectedAddon = selectedProduct.addons.items.find(a => a.id === selectedAddonId);
+      if (selectedAddon) {
+        totalPrice += parseFloat(selectedAddon.price) || 0;
+      }
+    };
+
+    return (
+      <Modal
+        isVisible={variantModal}
+        onBackdropPress={() => setVariantModal(false)}
+        backdropOpacity={0.5}
+        animationIn="slideInRight"
+        animationOut="slideOutRight"
+        style={styles.variantModal}
+        backdropTransitionOutTiming={0}
+        useNativeDriver={true}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{selectedProduct.name}</Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setVariantModal(false)}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* Variants Section */}
+            {selectedProduct.variants?.items?.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, {color: '#333', fontWeight: '700', fontSize: 18}]}>Select Size/Variant <Text style={{color: 'red'}}>*</Text></Text>
+                {selectedProduct.variants.items.map((variant) => (
+                  <TouchableOpacity
+                    key={variant.id}
+                    style={[styles.optionContainer, 
+                      selectedVariantId === variant.id && styles.selectedOption
+                    ]}
+                    onPress={() => setSelectedVariantId(selectedVariantId === variant.id ? null : variant.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.radioContainer}>
+                      <View style={selectedVariantId === variant.id ? styles.radioOuterSelected : styles.radioOuter}>
+                        {selectedVariantId === variant.id && <View style={styles.radioInner} />}
+                      </View>
+                      <Text style={[styles.optionText, selectedVariantId === variant.id && {fontWeight: '600', color: '#000'}]}>
+                        {variant.name}
+                      </Text>
+                    </View>
+                    <Text style={[styles.optionPrice, selectedVariantId === variant.id && {color: '#000'}]}>
+                      {formatMoney(parseFloat(variant.price) || 0, {symbol: '₱', precision: 2})}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Addons Section */}
+            {selectedProduct.addons?.items?.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, {color: '#333', fontWeight: '700', fontSize: 18}]}>Add Extras (Pick one)</Text>
+                {selectedProduct.addons.items.map((addon) => (
+                  <TouchableOpacity
+                    key={addon.id}
+                    style={[styles.optionContainer,
+                      selectedAddonId === addon.id && styles.selectedOption
+                    ]}
+                    onPress={() => setSelectedAddonId(selectedAddonId === addon.id ? null : addon.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.radioContainer}>
+                      <View style={selectedAddonId === addon.id ? styles.radioOuterSelected : styles.radioOuter}>
+                        {selectedAddonId === addon.id && <View style={styles.radioInner} />}
+                      </View>
+                      <Text style={[styles.optionText, selectedAddonId === addon.id && {fontWeight: '600', color: '#000'}]}>
+                        {addon.name}
+                      </Text>
+                    </View>
+                    <Text style={[styles.optionPrice, selectedAddonId === addon.id && {color: '#000'}]}>
+                      {formatMoney(parseFloat(addon.price) || 0, {symbol: '₱', precision: 2})}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.totalSection}>
+              <Text style={styles.totalLabel}>Total Price:</Text>
+              <Text style={styles.totalPrice}>
+                {formatMoney(totalPrice, {symbol: '₱', precision: 2})}
+              </Text>
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity 
+            style={[styles.addButton, 
+              (!selectedVariantId && selectedProduct.variants?.items?.length > 0) ? styles.addButtonDisabled : null
+            ]}
+            onPress={() => {
+              // Validate selections - variant selection is required if variants exist
+              if (selectedProduct.variants?.items?.length > 0 && !selectedVariantId) {
+                Alert.alert('Selection Required', 'Please select a variant to continue');
+                return;
+              }
+
+              // Get the selected variant and addon objects
+              let selectedVariant = null;
+              let selectedAddon = null;
+              
+              if (selectedVariantId && selectedProduct.variants?.items) {
+                selectedVariant = selectedProduct.variants.items.find(v => v.id === selectedVariantId);
+              }
+              
+              if (selectedAddonId && selectedProduct.addons?.items) {
+                selectedAddon = selectedProduct.addons.items.find(a => a.id === selectedAddonId);
+              }
+
+              // Calculate the total price including all selections
+              let totalPrice = selectedProduct.sprice;
+              if (selectedVariant) totalPrice += parseFloat(selectedVariant.price) || 0;
+              if (selectedAddon) totalPrice += parseFloat(selectedAddon.price) || 0;
+              
+              console.log('Adding to cart with selections:', {
+                product: selectedProduct.name,
+                variant: selectedVariant?.name,
+                addon: selectedAddon?.name,
+                totalPrice
+              });
+              
+              const productWithOptions = {
+                ...selectedProduct,
+                // Store selected variant and addon information
+                selectedVariantId: selectedVariantId,
+                selectedAddonId: selectedAddonId,
+                selectedVariant: selectedVariant,
+                selectedAddon: selectedAddon,
+                // Override the original price with the calculated total
+                calculatedPrice: totalPrice
+              };
+              
+              addToCart(productWithOptions);
+              setVariantModal(false);
+              
+              // Reset selections after adding to cart
+              setSelectedVariantId(null);
+              setSelectedAddonId(null);
+            }}
+            disabled={selectedProduct.variants?.items?.length > 0 && !selectedVariantId}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.addButtonText}>Add to Order</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
   };
 
   return (
@@ -376,82 +747,285 @@ const addToCart = async (item) => {
         content="Input must be a number."
         confirmTitle="OK"
       />
-      <Alert
-        visible={alerts2}
-        onCancel={onCancel}
-        onProceed={onCancel}
-        title="Invalid Input"
-        content="Input value must be equal or lesser than the number of stocks."
-        confirmTitle="OK"
-      />
 
-<SearchBar
+      <SearchBar
         term={searchTerm}
         onTermChange={setSearchTerm}
-        onTermSubmit={() => console.log('Search Submitted')} // Optional
+        onTermSubmit={() => console.log('Search Submitted')}
       />
     
-     <View style={styles.tabsContainer}>
-      {/* "All" Category Tab */}
-      <TouchableOpacity
-        style={[styles.tab, selectedCategory === 'All' && styles.activeTab]}
-        onPress={() => onTabChange('All')}
-      >
-        <Text style={[styles.tabText, selectedCategory === 'All' && styles.activeTabText]}>
-          All
-        </Text>
-      </TouchableOpacity>
-
-      {/* Other Category Tabs */}
-      {category.map((category) => (
+      <View style={styles.tabsContainer}>
         <TouchableOpacity
-          key={category.id}
-          style={[
-            styles.tab,
-            selectedCategory === category.name && styles.activeTab,
-          ]}
-          onPress={() => onTabChange(category.name)}
+          style={[styles.tab, selectedCategory === 'All' && styles.activeTab]}
+          onPress={() => onTabChange('All')}
         >
-          <Text
-            style={[
-              styles.tabText,
-              selectedCategory === category.name && styles.activeTabText,
-            ]}
-          >
-            {category.name}
+          <Text style={[styles.tabText, selectedCategory === 'All' && styles.activeTabText]}>
+            All
           </Text>
         </TouchableOpacity>
-      ))}
-    </View>
+
+        {category.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.tab,
+              selectedCategory === category.name && styles.activeTab,
+            ]}
+            onPress={() => onTabChange(category.name)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                selectedCategory === category.name && styles.activeTabText,
+              ]}
+            >
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <FlatGrid
-        itemDimension={90}
+        itemDimension={120}
         data={filteredProducts}
-        // staticDimension={300}
-        // fixed
         spacing={10}
         renderItem={_renderitem}
       />
-   
+
+      {renderVariantModal()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-
-    overlay: {
-      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-      justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)'
-    },
-    outOfStockText: { color: 'red', fontWeight: 'bold' },
-    priceText: { fontSize: 14, color: colors.primary, fontWeight: '500', textAlign: 'center' },
-    stockText: { color: 'gray', textAlign: 'center', fontSize: 13 },
-    cartQuantity: {
-      position: 'absolute', top: 5, left: 5, height: 35, width: 35, borderRadius: 25,
-      justifyContent: 'center', backgroundColor: colors.black
-    },
-    cartQuantityText: { fontWeight: 'bold', textAlign: 'center', color: colors.white },
-    lowStock: { height: 20, justifyContent: 'center', alignItems: 'center' },
-    lowStockText: { color: colors.white, fontSize: 11, fontWeight: 'bold' },
+  itemContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5,
+    backgroundColor: colors.white,
+    height: Dimensions.get('window').height * 0.20, 
+    shadowColor: '#EBECF0',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.89,
+    shadowRadius: 2,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  itemImage: {
+    width: '100%',
+    height: 130,
+    resizeMode: 'cover'
+  },
+  itemContent: {
+    padding: 12
+  },
+  itemName: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 4,
+    lineHeight: 20
+  },
+  itemPrice: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '700'
+  },
+  statusBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4
+  },
+  outOfStockBadge: {
+    backgroundColor: '#ff4444'
+  },
+  lowStockBadge: {
+    backgroundColor: '#ffbb33'
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: colors.primary,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  variantBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: colors.accent,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  variantModal: {
+    margin: 0,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    padding: 0,
+    width: '85%',
+    height: '100%',
+  },
+  modalHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333'
+  },
+  closeButton: {
+    padding: 5
+  },
+  modalContent: {
+    flex: 1,
+  },
+  totalSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 0,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingHorizontal: 20,
+    backgroundColor: '#f9f9f9',
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  totalPrice: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.accent,
+  },
+  section: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: 'white',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15
+  },
+  optionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa'
+  },
+  radioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  radioOuter: {
+    height: 24,
+    width: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#bbb', // Lighter color for unselected radio buttons
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+    backgroundColor: '#f8f8f8',
+  },
+  radioOuterSelected: {
+    height: 24,
+    width: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+    backgroundColor: '#e3f2fd',
+  },
+  radioInner: {
+    height: 12,
+    width: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  selectedOption: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+    marginVertical: 2,
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333'
+  },
+  optionPrice: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: '600'
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    padding: 18,
+    borderRadius: 0,
+    margin: 0,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: -2},
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  addButtonDisabled: {
+    backgroundColor: '#cccccc',
+    opacity: 0.8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600'
+  },
   plusBtn: {
     backgroundColor: colors.accent,
     justifyContent: 'center',
@@ -673,7 +1247,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: colors.white,
-    height: 150,
+    height: Dimensions.get('window').height * 0.25, 
     shadowColor: '#EBECF0',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.89,

@@ -6,222 +6,333 @@ import {
   TouchableOpacity,
   FlatList,
   TouchableHighlight,
-  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TextInput,
 } from 'react-native';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import colors from '../../themes/colors';
 import {ListItem, Card, Overlay} from 'react-native-elements';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
-// import SmoothPinCodeInput from 'react-native-smooth-pincode-input';
 import moment from 'moment';
 import {useFocusEffect} from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import AlertwithChild from '../../components/AlertwithChild';
 import SearchInput, {createFilter} from 'react-native-search-filter';
-import {listSale} from '../../graphql/queries';
+import {getSaleTransaction, getProduct, listSales} from '../../graphql/queries';
+import {updateSaleTransaction, updateProduct, updateSale} from '../../graphql/mutations';
 import {generateClient} from 'aws-amplify/api';
 const client = generateClient();
 
 const TransactionDetailsScreen = ({navigation, route}) => {
-    const {transactions} = route.params;
-const [reason, setReason] = useState('');
-const [alerts, alertVisible] = useState(false);
-const [pinVisible, setPinVisible] = useState(false);
-const [error, setError] = useState('');
-const [code, setCode] = useState('');
-const [items, setItem] = useState([]);
-const [sales, setSales] = useState([]);
-
+  const {transactions, staffData} = route.params;
+  const [reason, setReason] = useState('');
+  const [alerts, alertVisible] = useState(false);
+  const [pinVisible, setPinVisible] = useState(false);
+  const [error, setError] = useState('');
+  const [code, setCode] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState(null);
+  const [saleItems, setSaleItems] = useState([]);
+  
   useEffect(() => {
-    fetchSales();
+    fetchTransactionDetails();
   }, []);
 
-  const fetchSales = async () => {
-    const result = await client.graphql({
-      query: listSale,
-      variables: {
-        filter: {
-          transactionId: {eq: transactions.id},
-         
+  const fetchTransactionDetails = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch the full transaction details
+      const result = await client.graphql({
+        query: getSaleTransaction,
+        variables: {
+          id: transactions.id,
         },
-      },
+      });
+      
+      const transactionData = result.data.getSaleTransaction;
+      setTransactionDetails(transactionData);
+      
+      // Fetch sales for this transaction
+      const salesResult = await fetchSaleItems(transactions.id);
+      
+      // If no sale items found (old transaction format), fallback to product items from transaction
+      if (salesResult.length === 0 && transactionData?.items && Array.isArray(transactionData.items)) {
+        console.log("No sale records found. Using legacy transaction items format.");
+        await fetchProductDetails(transactionData.items);
+      }
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+      Alert.alert('Error', 'Failed to load transaction details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchSaleItems = async (transactionId) => {
+    try {
+      // Query sales records associated with this transaction
+      const result = await client.graphql({
+        query: listSales,
+        variables: {
+          filter: {
+            transactionID: { eq: transactionId },
+          },
+        },
+      });
+      
+      const sales = result.data.listSales.items;
+      
+      if (sales && sales.length > 0) {
+        // For each sale, fetch the associated product to get the name
+        const salesWithProductDetails = await Promise.all(
+          sales.map(async (sale) => {
+            try {
+              const productResult = await client.graphql({
+                query: getProduct,
+                variables: {
+                  id: sale.productID,
+                },
+              });
+              
+              const product = productResult.data.getProduct;
+              return {
+                ...sale,
+                productName: product?.name || 'Unknown Product',
+              };
+            } catch (error) {
+              console.error(`Error fetching product ${sale.productID}:`, error);
+              return {
+                ...sale,
+                productName: 'Unknown Product',
+              };
+            }
+          })
+        );
+        
+        setSaleItems(salesWithProductDetails);
+        return salesWithProductDetails;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching sale items:', error);
+      Alert.alert('Error', 'Failed to load sale items');
+      return [];
+    }
+  };
+
+  const fetchProductDetails = async (productIds) => {
+    try {
+      const productDetails = [];
+      
+      // Fetch details for each product ID in the transaction
+      for (const productId of productIds) {
+        const result = await client.graphql({
+          query: getProduct,
+          variables: {
+            id: productId,
+          },
+        });
+        
+        const product = result.data.getProduct;
+        if (product) {
+          // For legacy transactions, we'll assume quantity of 1 for each product
+          productDetails.push({
+            id: product.id,
+            productID: product.id,
+            productName: product.name,
+            price: product.sprice,
+            quantity: 1,
+            total: product.sprice,
+            status: 'Completed',
+          });
+        }
+      }
+      
+      setSaleItems(productDetails);
+      return productDetails;
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      Alert.alert('Error', 'Failed to load product details');
+      return [];
+    }
+  };
+
+  const onCancelAlert = () => {
+    alertVisible(false);
+    setSelectedItem(null);
+  };
+
+  const handleVoidItem = async () => {
+    if (!selectedItem) return;
+    
+    if (!reason.trim()) {
+      setError('Please provide a reason for voiding this item');
+      return;
+    }
+    
+    if (code !== staffData?.password) {
+      setError('Invalid PIN code');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      // Update the sale status to voided
+      await client.graphql({
+        query: updateSale,
+        variables: {
+          input: {
+            id: selectedItem.id,
+            status: 'Voided',
+            void_reason: reason,
+          },
+        },
+      });
+      
+      // Try to restore product stock
+      try {
+        // Get current product stock
+        const productResult = await client.graphql({
+          query: getProduct,
+          variables: {
+            id: selectedItem.productID,
+          },
+        });
+        
+        const product = productResult.data.getProduct;
+        
+        if (product) {
+          // Update product stock
+          await client.graphql({
+            query: updateProduct,
+            variables: {
+              input: {
+                id: selectedItem.productID,
+                stock: product.stock + selectedItem.quantity,
+              },
+            },
+          });
+        }
+      } catch (stockError) {
+        console.error('Error restoring stock:', stockError);
+      }
+      
+      // Check if all sales are now voided
+      const updatedSales = saleItems.map(item => 
+        item.id === selectedItem.id ? {...item, status: 'Voided'} : item
+      );
+      
+      const allVoided = updatedSales.every(item => item.status === 'Voided');
+      
+      // Update transaction status if all items are voided
+      if (allVoided) {
+        await client.graphql({
+          query: updateSaleTransaction,
+          variables: {
+            input: {
+              id: transactions.id,
+              status: 'Voided',
+              notes: `Transaction voided. Reason: ${reason}`,
+            },
+          },
+        });
+      } else {
+        // Update transaction notes to indicate partial void
+        const currentNotes = transactionDetails.notes || '';
+        const voidNote = `Item voided: ${selectedItem.productName}. Reason: ${reason}`;
+        const updatedNotes = currentNotes ? `${currentNotes}; ${voidNote}` : voidNote;
+        
+        await client.graphql({
+          query: updateSaleTransaction,
+          variables: {
+            input: {
+              id: transactions.id,
+              notes: updatedNotes,
+            },
+          },
+        });
+      }
+      
+      // Reset state
+      setReason('');
+      setCode('');
+      setPinVisible(false);
+      alertVisible(false);
+      setSelectedItem(null);
+      
+      Alert.alert('Success', 'Item has been voided');
+      
+      // Refresh transaction details
+      await fetchTransactionDetails();
+    } catch (error) {
+      console.error('Error voiding item:', error);
+      setError('Failed to void item. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderItem = ({item}) => (
+    <View style={styles.itemContainer}>
+      <View style={styles.itemDetails}>
+        <View style={styles.itemTextContainer}>
+          <Text style={styles.quantityText}>{item.quantity}</Text>
+        </View>
+        <View style={styles.itemTextContainer}>
+          <Text style={styles.productNameText}>
+            {item.productName || 'Unknown Product'}
+          </Text>
+          <Text style={styles.priceText}>
+            @ {formatMoney(item.price, {symbol: '₱', precision: 2})}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.itemPrice}>
+        {formatMoney(item.total, {
+          symbol: '₱',
+          precision: 2,
+        })}
+      </Text>
+      {item.status !== 'Voided' && (
+        <TouchableOpacity
+          onPress={() => {
+            setSelectedItem(item);
+            alertVisible(true);
+          }}
+          style={styles.voidButton}>
+          <Text style={styles.voidButtonText}>Void</Text>
+        </TouchableOpacity>
+      )}
+      {item.status === 'Voided' && (
+        <View style={styles.voidedIndicator}>
+          <Text style={styles.voidedText}>Voided</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const calculateTotal = () => {
+    let total = 0;
+    saleItems.forEach(item => {
+      if (item.status !== 'Voided') {
+        total += parseFloat(item.total);
+      }
     });
-    const salesList = result.data.listSale.items;
-    setSales(salesList);
+    return total;
   };
 
-const onCancelAlert = () => {
-  alertVisible(false);
-};
-
-
- const renderItem = ({item}) =>
-   item.status == 'Completed' && (
-     <View
-       style={{
-         flexDirection: 'row',
-         justifyContent: 'space-between',
-         marginHorizontal: 10,
-         marginVertical: 10,
-       }}>
-       <View style={{flexDirection: 'row'}}>
-         {/* <Text style={{textAlign: 'center', paddingRight: 30}}>
-           x{Math.round(item.quantity * 100) / 100}
-         </Text> */}
-         <View style={{flexDirection: 'column'}}>
-           <Text>{item.name}</Text>
-           {/* <Text>
-             with {item.addon}, {item.option}
-           </Text> */}
-         </View>
-       </View>
-
-       <Text style={{color: colors.statusBarCoverDark, textAlign: 'center'}}>
-         {formatMoney(item.quantity * item.price, {
-           symbol: '₱',
-           precision: 2,
-         })}
-       </Text>
-       {sales.length === 1 && item.quantity === 1 ? null : (
-         <TouchableOpacity
-           onPress={() => {
-             alertVisible(true), setItem(item);
-           }}
-           style={{
-             width: 50,
-             backgroundColor: colors.red,
-             justifyContent: 'center',
-             alignItems: 'center',
-             paddingHorizontal: 5,
-             borderRadius: 15,
-             height: 30,
-           }}>
-           <Text style={{fontSize: 10, color: colors.white}}>Void</Text>
-         </TouchableOpacity>
-       )}
-     </View>
-   );
-
- const calculateTotal = () => {
-   let total = 0;
-   sales.forEach(list => {
-     if (list.status == 'Completed') {
-       total += list.quantity * (list.sprice + list.addon_price);
-     }
-   });
-   return total;
- };
-
- const onProceed = () => {
-//   s onVoidSingleTransaction(items, reason);
-   setPinVisible(false);
-   alertVisible(false);
- };
-
- const printReceipt = () => {
+  const printReceipt = () => {
     // Implement the print receipt functionality here
-    console.log("Print receipt");
+    console.log('Print receipt');
+    Alert.alert('Print', 'Printing receipt...');
   };
 
-  return (
-    <View style={{flex: 1}}>
-      <AlertwithChild
-        visible={alerts}
-        onCancel={onCancelAlert}
-        onProceed={() => setPinVisible(true)}
-        title="Void Item?"
-        confirmTitle="PROCEED">
-        <View
-          style={{
-            flexDirection: 'column',
-            justifyContent: 'space-evenly',
-            marginVertical: 2,
-            alignItems: 'center',
-          }}>
-          <Text>Please select reason: </Text>
-          <View style={{flexDirection: 'row', marginTop: 10}}>
-            <TouchableOpacity
-              style={
-                reason === 'Return' ? styles.selectedBtn : styles.reasonBTn
-              }
-              onPress={() => setReason('Return')}>
-              <Text
-                style={
-                  reason === 'Return'
-                    ? {fontSize: 13, color: colors.white, fontWeight: 'bold'}
-                    : {fontSize: 13, color: colors.black, fontWeight: 'bold'}
-                }>
-                Return
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={
-                reason === 'Change Item' ? styles.selectedBtn : styles.reasonBTn
-              }
-              onPress={() => setReason('Change Item')}>
-              <Text
-                style={
-                  reason === 'Change Item'
-                    ? {fontSize: 12, color: colors.white, fontWeight: 'bold'}
-                    : {fontSize: 12, color: colors.black, fontWeight: 'bold'}
-                }>
-                Change Item
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={
-                reason === 'Refunded' ? styles.selectedBtn : styles.reasonBTn
-              }
-              onPress={() => setReason('Refunded')}>
-              <Text
-                style={
-                  reason === 'Refunded'
-                    ? {fontSize: 13, color: colors.white, fontWeight: 'bold'}
-                    : {fontSize: 13, color: colors.black, fontWeight: 'bold'}
-                }>
-                Refunded
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </AlertwithChild>
-      {/* <AlertwithChild
-        visible={pinVisible}
-        onCancel={() => setPinVisible(false)}
-        onProceed={() => onProceed()}
-        title="Enter your code"
-        confirmTitle="PROCEED">
-        <View
-          style={{
-            flexDirection: 'column',
-            justifyContent: 'space-evenly',
-            marginVertical: 2,
-            alignItems: 'center',
-          }}>
-          <View style={{padding: 20}}>
-            <SmoothPinCodeInput
-              password
-              mask="﹡"
-              cellStyle={{
-                borderWidth: 1,
-                borderColor: 'gray',
-                borderRadius: 15,
-              }}
-              cellSize={35}
-              codeLength={6}
-              value={code}
-              onTextChange={code => setCode(code)}
-            />
-
-            {error.length !== 0 ? (
-              <Text style={{textAlign: 'center', color: colors.red}}>
-                {error}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </AlertwithChild> */}
+  const renderHeader = () => (
+    <View>
       <AppHeader
         centerText="Transaction Details"
         leftComponent={
@@ -229,202 +340,444 @@ const onCancelAlert = () => {
             <EvilIcons name={'arrow-left'} size={35} color={colors.white} />
           </TouchableOpacity>
         }
+        rightComponent={
+          <TouchableOpacity onPress={printReceipt}>
+            <AntDesign name={'printer'} size={25} color={colors.white} />
+          </TouchableOpacity>
+        }
       />
-
-      <ScrollView style={{padding: 15, backgroundColor: colors.white}}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            padding: 15,
-          }}>
-          <View>
-            <Text style={{fontWeight: '500'}}>
-              Customer :{' '}
-              {transactions.customerName ? transactions.customerName : 'None'}
+      <View style={styles.transactionDetails}>
+        <View style={styles.transactionInfo}>
+          <Text style={styles.transactionText}>
+            Date: {moment(transactions.createdAt).format('MMM DD, YYYY hh:mm A')}
+          </Text>
+          <Text style={styles.transactionText}>
+            Receipt #: {transactions.id.substring(0, 8)}
+          </Text>
+          <Text style={styles.transactionText}>
+            Status: <Text style={{color: transactions.status === 'Completed' ? colors.green : colors.red}}>
+              {transactions.status || 'Completed'}
             </Text>
-            <Text style={{fontWeight: '500'}}>Date : {transactions.date}</Text>
-            <Text style={{fontWeight: '500'}}>
-              Receipt # : {transactions.id}
+          </Text>
+          <Text style={styles.transactionText}>
+            Payment Method: {transactions.payment_status || 'Cash'}
+          </Text>
+          {transactions.notes && (
+            <Text style={styles.transactionText}>
+              Notes: {transactions.notes}
             </Text>
-            <Text style={{fontWeight: '500'}}>
-              Status : {transactions.status}
-            </Text>
-            <Text style={{fontWeight: '500'}}>
-              Customer Name : {transactions.customerName}
-            </Text>
-            <Text style={{fontWeight: '500'}}>
-              Cashier Name : {transactions.cashier}
-            </Text>
+          )}
+        </View>
+      </View>
+      <ListItem bottomDivider>
+        <ListItem.Content style={styles.listItemContent}>
+          <View style={styles.listItemTextContainer}>
+            <Text style={[styles.listItemText, styles.qtyHeader]}>Qty</Text>
+            <Text style={[styles.listItemText, styles.productHeader]}>Product</Text>
           </View>
-          <TouchableOpacity onPress={() => printReceipt()}>
-            <AntDesign name={'printer'} size={25} color={colors.primary} />
+          <Text style={[styles.listItemText, styles.totalHeader]}>Total</Text>
+          <Text style={[styles.listItemText, styles.actionHeader]}>Action</Text>
+        </ListItem.Content>
+      </ListItem>
+    </View>
+  );
+
+  const renderFooter = () => (
+    <View>
+      <ListItem>
+        <ListItem.Content style={styles.listItemContent}>
+          <Text style={styles.subtotalLabel}>Sub Total</Text>
+          <Text></Text>
+          <Text style={styles.subTotalText}>
+            {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
+          </Text>
+        </ListItem.Content>
+      </ListItem>
+      <ListItem style={styles.listItem}>
+        <ListItem.Content style={styles.listItemContent}>
+          <Text style={styles.discountText}>Discount</Text>
+          <Text></Text>
+          <Text style={styles.discountText}>
+            -{formatMoney(transactionDetails?.discount || 0, {symbol: '₱', precision: 2})}
+          </Text>
+        </ListItem.Content>
+      </ListItem>
+      <ListItem style={styles.listItem}>
+        <ListItem.Content style={styles.listItemContent}>
+          <Text style={styles.totalText}>Total</Text>
+          <Text></Text>
+          <Text style={styles.totalText}>
+            {formatMoney(transactionDetails?.total || calculateTotal(), {
+              symbol: '₱',
+              precision: 2,
+            })}
+          </Text>
+        </ListItem.Content>
+      </ListItem>
+      <ListItem style={styles.listItem}>
+        <ListItem.Content style={styles.listItemContent}>
+          <Text style={styles.paymentLabel}>Amount Received</Text>
+          <Text></Text>
+          <Text style={styles.paymentText}>
+            {formatMoney(transactionDetails?.cash_received || 0, {
+              symbol: '₱',
+              precision: 2,
+            })}
+          </Text>
+        </ListItem.Content>
+      </ListItem>
+      <ListItem style={styles.listItem}>
+        <ListItem.Content style={styles.listItemContent}>
+          <Text style={styles.changeLabel}>Change</Text>
+          <Text></Text>
+          <Text style={styles.changeText}>
+            {formatMoney(transactionDetails?.change || 0, {
+              symbol: '₱', 
+              precision: 2
+            })}
+          </Text>
+        </ListItem.Content>
+      </ListItem>
+    </View>
+  );
+
+  // Render void item confirmation modal
+  const renderVoidItemAlert = () => (
+    <AlertwithChild
+      visible={alerts}
+      onCancel={onCancelAlert}
+      onProceed={() => setPinVisible(true)}
+      title="Void Item"
+      message="Are you sure you want to void this item?"
+      cancelText="Cancel"
+      proceedText="Continue">
+      <View style={styles.voidReasonContainer}>
+        <Text style={styles.voidReasonLabel}>Reason for Void:</Text>
+        <View style={styles.reasonInputContainer}>
+          <TextInput
+            placeholder="Enter reason"
+            value={reason}
+            onChangeText={setReason}
+            style={styles.reasonInput}
+          />
+        </View>
+      </View>
+    </AlertwithChild>
+  );
+
+  // Render PIN confirmation modal
+  const renderPinConfirmation = () => (
+    <Overlay
+      isVisible={pinVisible}
+      onBackdropPress={() => setPinVisible(false)}
+      overlayStyle={styles.overlay}>
+      <View style={styles.pinContainer}>
+        <Text style={styles.pinTitle}>Enter PIN</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <TextInput
+          placeholder="Enter PIN"
+          value={code}
+          onChangeText={setCode}
+          keyboardType="numeric"
+          secureTextEntry
+          style={styles.pinInput}
+        />
+        <View style={styles.pinButtonContainer}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              setPinVisible(false);
+              setError('');
+              setCode('');
+            }}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.confirmButton}
+            onPress={handleVoidItem}>
+            <Text style={styles.confirmButtonText}>Confirm</Text>
           </TouchableOpacity>
         </View>
+      </View>
+    </Overlay>
+  );
 
-        <ListItem bottomDivider>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <View style={{flexDirection: 'row'}}>
-              <Text style={{fontWeight: 'bold', paddingRight: 20}}>Qty</Text>
-              <Text style={{fontWeight: 'bold'}}>Product</Text>
-            </View>
+  if (isLoading && saleItems.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading transaction details...</Text>
+      </View>
+    );
+  }
 
-            <Text style={{fontWeight: 'bold'}}>Total</Text>
-            <Text style={{fontWeight: 'bold'}}>Action</Text>
-          </ListItem.Content>
-        </ListItem>
-        <FlatList
-          keyExtractor={key => key.name}
-          data={sales}
-          renderItem={renderItem}
-        />
-        <ListItem>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text>Sub Total</Text>
-            <Text></Text>
-            <Text style={{color: colors.statusBarCoverDark}}>
-              {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
-            </Text>
-          </ListItem.Content>
-        </ListItem>
-        <ListItem style={{marginTop: -20}}>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={{fontWeight: 'bold', color: colors.red}}>
-              Discount
-            </Text>
-            <Text></Text>
-            <Text style={{fontWeight: 'bold', color: colors.red}}>
-              -
-              {formatMoney(transactions.discount, {
-                symbol: '₱',
-                precision: 2,
-              })}
-            </Text>
-          </ListItem.Content>
-        </ListItem>
-        <ListItem style={{marginTop: -20}}>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text
-              style={{fontWeight: 'bold', fontSize: 18, color: colors.green}}>
-              Total
-            </Text>
-            <Text></Text>
-            <Text
-              style={{fontWeight: 'bold', fontSize: 18, color: colors.green}}>
-              {formatMoney(calculateTotal() - transactions.discount, {
-                symbol: '₱',
-                precision: 2,
-              })}
-            </Text>
-          </ListItem.Content>
-        </ListItem>
-        <ListItem style={{marginTop: -20}}>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text>VAT Sales</Text>
-            <Text></Text>
-            <Text>
-              {formatMoney(
-                calculateTotal() -
-                  (calculateTotal() - transactions.discount) * 0.12,
-                {symbol: '₱', precision: 2},
-              )}
-            </Text>
-          </ListItem.Content>
-        </ListItem>
-        <ListItem style={{marginTop: -20}}>
-          <ListItem.Content
-            style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text>VAT Amount</Text>
-            <Text></Text>
-            <Text>
-              {formatMoney((calculateTotal() - transactions.discount) * 0.12, {
-                symbol: '₱',
-                precision: 2,
-              })}
-            </Text>
-          </ListItem.Content>
-        </ListItem>
-        <View style={{margin: 15}}>
-          <Text style={{textAlign: 'center'}}>Voided Products</Text>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginVertical: 10,
-            }}>
-            <Text style={{flex: 2}}>Item</Text>
-            <Text style={{flex: 1}}>Total</Text>
-            <Text>Reason</Text>
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={saleItems}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No items found for this transaction</Text>
           </View>
-          <View>
-            {sales.map(
-              item =>
-                item.status == 'Voided' && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      marginVertical: 10,
-                    }}>
-                    <Text style={{textAlign: 'left', flex: 2}}>
-                      x{item.quantity} {item.name}
-                    </Text>
-                    <Text style={{flex: 1, textAlign: 'center'}}>
-                      {formatMoney(
-                        item.quantity * (item.sprice + item.addon_price),
-                        {symbol: '₱', precision: 2},
-                      )}
-                    </Text>
-                    <Text style={{flex: 1, textAlign: 'center'}}>
-                      {item.void_reason}
-                    </Text>
-                  </View>
-                ),
-            )}
-          </View>
-        </View>
-      </ScrollView>
+        }
+      />
+      
+      {/* Void Item Alert */}
+      {renderVoidItemAlert()}
+      
+      {/* PIN Confirmation */}
+      {renderPinConfirmation()}
     </View>
   );
 };
+
 const styles = StyleSheet.create({
-  text: {
-    fontSize: 30,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  reasonBTn: {
-    padding: 6,
-    borderColor: colors.black,
-    borderWidth: 1,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: colors.charcoalGrey,
+  },
+  transactionDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     backgroundColor: colors.white,
-    borderRadius: 15,
-    marginVertical: 10,
-    marginHorizontal: 2,
+    padding: 15,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGrey,
   },
-  selectedBtn: {
-    padding: 6,
-    borderColor: colors.primary,
-    borderWidth: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 15,
-    marginVertical: 10,
-    marginHorizontal: 2,
+  transactionInfo: {
+    flex: 1,
   },
-  openButton: {
-    backgroundColor: '#F194FF',
-    borderRadius: 20,
-    padding: 8,
-    elevation: 2,
+  transactionText: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+    marginBottom: 5,
+    fontWeight: '500',
   },
-  textStyle: {
-    color: 'white',
+  itemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGrey,
+  },
+  itemDetails: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  itemTextContainer: {
+    marginRight: 15,
+  },
+  quantityText: {
+    fontSize: 14,
+    color: colors.black,
     fontWeight: 'bold',
+  },
+  productNameText: {
+    fontSize: 14,
+    color: colors.black,
+    fontWeight: '500',
+  },
+  priceText: {
+    fontSize: 12,
+    color: colors.charcoalGrey,
+  },
+  itemPrice: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.black,
+    fontWeight: '500',
+    textAlign: 'right',
+    marginRight: 15,
+  },
+  voidButton: {
+    backgroundColor: colors.red,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  voidButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  voidedIndicator: {
+    backgroundColor: colors.lightGrey,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  voidedText: {
+    color: colors.charcoalGrey,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  listItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  listItemTextContainer: {
+    flex: 2,
+    flexDirection: 'row',
+  },
+  listItemText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.charcoalGrey,
+  },
+  qtyHeader: {
+    marginRight: 15,
+    width: 30,
+  },
+  productHeader: {
+    flex: 1,
+  },
+  totalHeader: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  actionHeader: {
+    width: 60,
     textAlign: 'center',
+  },
+  subtotalLabel: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+  },
+  subTotalText: {
+    fontSize: 14,
+    color: colors.black,
+    fontWeight: '500',
+  },
+  discountText: {
+    fontSize: 14,
+    color: colors.accent,
+  },
+  totalText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+  },
+  paymentText: {
+    fontSize: 14,
+    color: colors.green,
+    fontWeight: '500',
+  },
+  changeLabel: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+  },
+  changeText: {
+    fontSize: 14,
+    color: colors.accent,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.charcoalGrey,
+  },
+  voidReasonContainer: {
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  voidReasonLabel: {
+    fontSize: 14,
+    color: colors.charcoalGrey,
+    marginBottom: 5,
+  },
+  reasonInputContainer: {
+    borderWidth: 1,
+    borderColor: colors.lightGrey,
+    borderRadius: 5,
+    backgroundColor: colors.white,
+  },
+  reasonInput: {
+    padding: 10,
+    fontSize: 14,
+  },
+  overlay: {
+    width: '80%',
+    borderRadius: 10,
+    padding: 20,
+  },
+  pinContainer: {
+    alignItems: 'center',
+  },
+  pinTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 15,
+  },
+  errorText: {
+    color: colors.red,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  pinInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.lightGrey,
+    borderRadius: 5,
+    padding: 10,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  pinButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  cancelButton: {
+    backgroundColor: colors.lightGrey,
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: colors.charcoalGrey,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  confirmButton: {
+    backgroundColor: colors.accent,
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+  },
+  confirmButtonText: {
+    color: colors.white,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
 

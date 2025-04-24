@@ -1,36 +1,279 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const onCreateTodo = /* GraphQL */ `
-  subscription OnCreateTodo($filter: ModelSubscriptionTodoFilterInput) {
-    onCreateTodo(filter: $filter) {
+export const onCreateStaff = /* GraphQL */ `
+  subscription OnCreateStaff($filter: ModelSubscriptionStaffFilterInput) {
+    onCreateStaff(filter: $filter) {
       id
       name
-      description
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onUpdateTodo = /* GraphQL */ `
-  subscription OnUpdateTodo($filter: ModelSubscriptionTodoFilterInput) {
-    onUpdateTodo(filter: $filter) {
+export const onUpdateStaff = /* GraphQL */ `
+  subscription OnUpdateStaff($filter: ModelSubscriptionStaffFilterInput) {
+    onUpdateStaff(filter: $filter) {
       id
       name
-      description
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onDeleteTodo = /* GraphQL */ `
-  subscription OnDeleteTodo($filter: ModelSubscriptionTodoFilterInput) {
-    onDeleteTodo(filter: $filter) {
+export const onDeleteStaff = /* GraphQL */ `
+  subscription OnDeleteStaff($filter: ModelSubscriptionStaffFilterInput) {
+    onDeleteStaff(filter: $filter) {
       id
       name
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateCategory = /* GraphQL */ `
+  subscription OnCreateCategory($filter: ModelSubscriptionCategoryFilterInput) {
+    onCreateCategory(filter: $filter) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCategory = /* GraphQL */ `
+  subscription OnUpdateCategory($filter: ModelSubscriptionCategoryFilterInput) {
+    onUpdateCategory(filter: $filter) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCategory = /* GraphQL */ `
+  subscription OnDeleteCategory($filter: ModelSubscriptionCategoryFilterInput) {
+    onDeleteCategory(filter: $filter) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateWarehouseProduct = /* GraphQL */ `
+  subscription OnCreateWarehouseProduct(
+    $filter: ModelSubscriptionWarehouseProductFilterInput
+  ) {
+    onCreateWarehouseProduct(filter: $filter) {
+      id
+      name
+      brand
       description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateWarehouseProduct = /* GraphQL */ `
+  subscription OnUpdateWarehouseProduct(
+    $filter: ModelSubscriptionWarehouseProductFilterInput
+  ) {
+    onUpdateWarehouseProduct(filter: $filter) {
+      id
+      name
+      brand
+      description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteWarehouseProduct = /* GraphQL */ `
+  subscription OnDeleteWarehouseProduct(
+    $filter: ModelSubscriptionWarehouseProductFilterInput
+  ) {
+    onDeleteWarehouseProduct(filter: $filter) {
+      id
+      name
+      brand
+      description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -43,30 +286,73 @@ export const onCreateProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
         __typename
       }
       createdAt
@@ -81,30 +367,73 @@ export const onUpdateProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
         __typename
       }
       createdAt
@@ -119,30 +448,853 @@ export const onDeleteProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateStore = /* GraphQL */ `
+  subscription OnCreateStore($filter: ModelSubscriptionStoreFilterInput) {
+    onCreateStore(filter: $filter) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateStore = /* GraphQL */ `
+  subscription OnUpdateStore($filter: ModelSubscriptionStoreFilterInput) {
+    onUpdateStore(filter: $filter) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteStore = /* GraphQL */ `
+  subscription OnDeleteStore($filter: ModelSubscriptionStoreFilterInput) {
+    onDeleteStore(filter: $filter) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateSaleTransaction = /* GraphQL */ `
+  subscription OnCreateSaleTransaction(
+    $filter: ModelSubscriptionSaleTransactionFilterInput
+  ) {
+    onCreateSaleTransaction(filter: $filter) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSaleTransaction = /* GraphQL */ `
+  subscription OnUpdateSaleTransaction(
+    $filter: ModelSubscriptionSaleTransactionFilterInput
+  ) {
+    onUpdateSaleTransaction(filter: $filter) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSaleTransaction = /* GraphQL */ `
+  subscription OnDeleteSaleTransaction(
+    $filter: ModelSubscriptionSaleTransactionFilterInput
+  ) {
+    onDeleteSaleTransaction(filter: $filter) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateSale = /* GraphQL */ `
+  subscription OnCreateSale($filter: ModelSubscriptionSaleFilterInput) {
+    onCreateSale(filter: $filter) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSale = /* GraphQL */ `
+  subscription OnUpdateSale($filter: ModelSubscriptionSaleFilterInput) {
+    onUpdateSale(filter: $filter) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSale = /* GraphQL */ `
+  subscription OnDeleteSale($filter: ModelSubscriptionSaleFilterInput) {
+    onDeleteSale(filter: $filter) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateAddon = /* GraphQL */ `
+  subscription OnCreateAddon($filter: ModelSubscriptionAddonFilterInput) {
+    onCreateAddon(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateAddon = /* GraphQL */ `
+  subscription OnUpdateAddon($filter: ModelSubscriptionAddonFilterInput) {
+    onUpdateAddon(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteAddon = /* GraphQL */ `
+  subscription OnDeleteAddon($filter: ModelSubscriptionAddonFilterInput) {
+    onDeleteAddon(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateVariant = /* GraphQL */ `
+  subscription OnCreateVariant($filter: ModelSubscriptionVariantFilterInput) {
+    onCreateVariant(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateVariant = /* GraphQL */ `
+  subscription OnUpdateVariant($filter: ModelSubscriptionVariantFilterInput) {
+    onUpdateVariant(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteVariant = /* GraphQL */ `
+  subscription OnDeleteVariant($filter: ModelSubscriptionVariantFilterInput) {
+    onDeleteVariant(filter: $filter) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateCustomer = /* GraphQL */ `
+  subscription OnCreateCustomer($filter: ModelSubscriptionCustomerFilterInput) {
+    onCreateCustomer(filter: $filter) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCustomer = /* GraphQL */ `
+  subscription OnUpdateCustomer($filter: ModelSubscriptionCustomerFilterInput) {
+    onUpdateCustomer(filter: $filter) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCustomer = /* GraphQL */ `
+  subscription OnDeleteCustomer($filter: ModelSubscriptionCustomerFilterInput) {
+    onDeleteCustomer(filter: $filter) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -156,9 +1308,22 @@ export const onCreateSupplier = /* GraphQL */ `
     onCreateSupplier(filter: $filter) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -170,9 +1335,22 @@ export const onUpdateSupplier = /* GraphQL */ `
     onUpdateSupplier(filter: $filter) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -184,9 +1362,22 @@ export const onDeleteSupplier = /* GraphQL */ `
     onDeleteSupplier(filter: $filter) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -197,12 +1388,23 @@ export const onCreateExpense = /* GraphQL */ `
   subscription OnCreateExpense($filter: ModelSubscriptionExpenseFilterInput) {
     onCreateExpense(filter: $filter) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
+      date
+      storeId
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -213,12 +1415,23 @@ export const onUpdateExpense = /* GraphQL */ `
   subscription OnUpdateExpense($filter: ModelSubscriptionExpenseFilterInput) {
     onUpdateExpense(filter: $filter) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
+      date
+      storeId
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -229,480 +1442,581 @@ export const onDeleteExpense = /* GraphQL */ `
   subscription OnDeleteExpense($filter: ModelSubscriptionExpenseFilterInput) {
     onDeleteExpense(filter: $filter) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateSale = /* GraphQL */ `
-  subscription OnCreateSale($filter: ModelSubscriptionSaleFilterInput) {
-    onCreateSale(filter: $filter) {
-      id
-      cashierId
+      date
       storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onUpdateSale = /* GraphQL */ `
-  subscription OnUpdateSale($filter: ModelSubscriptionSaleFilterInput) {
-    onUpdateSale(filter: $filter) {
-      id
-      cashierId
-      storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteSale = /* GraphQL */ `
-  subscription OnDeleteSale($filter: ModelSubscriptionSaleFilterInput) {
-    onDeleteSale(filter: $filter) {
-      id
-      cashierId
-      storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateStore = /* GraphQL */ `
-  subscription OnCreateStore($filter: ModelSubscriptionStoreFilterInput) {
-    onCreateStore(filter: $filter) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateStore = /* GraphQL */ `
-  subscription OnUpdateStore($filter: ModelSubscriptionStoreFilterInput) {
-    onUpdateStore(filter: $filter) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteStore = /* GraphQL */ `
-  subscription OnDeleteStore($filter: ModelSubscriptionStoreFilterInput) {
-    onDeleteStore(filter: $filter) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateCategory = /* GraphQL */ `
-  subscription OnCreateCategory($filter: ModelSubscriptionCategoryFilterInput) {
-    onCreateCategory(filter: $filter) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateCategory = /* GraphQL */ `
-  subscription OnUpdateCategory($filter: ModelSubscriptionCategoryFilterInput) {
-    onUpdateCategory(filter: $filter) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteCategory = /* GraphQL */ `
-  subscription OnDeleteCategory($filter: ModelSubscriptionCategoryFilterInput) {
-    onDeleteCategory(filter: $filter) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateStaff = /* GraphQL */ `
-  subscription OnCreateStaff($filter: ModelSubscriptionStaffFilterInput) {
-    onCreateStaff(filter: $filter) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateStaff = /* GraphQL */ `
-  subscription OnUpdateStaff($filter: ModelSubscriptionStaffFilterInput) {
-    onUpdateStaff(filter: $filter) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteStaff = /* GraphQL */ `
-  subscription OnDeleteStaff($filter: ModelSubscriptionStaffFilterInput) {
-    onDeleteStaff(filter: $filter) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateCustomer = /* GraphQL */ `
-  subscription OnCreateCustomer($filter: ModelSubscriptionCustomerFilterInput) {
-    onCreateCustomer(filter: $filter) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateCustomer = /* GraphQL */ `
-  subscription OnUpdateCustomer($filter: ModelSubscriptionCustomerFilterInput) {
-    onUpdateCustomer(filter: $filter) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteCustomer = /* GraphQL */ `
-  subscription OnDeleteCustomer($filter: ModelSubscriptionCustomerFilterInput) {
-    onDeleteCustomer(filter: $filter) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateList = /* GraphQL */ `
-  subscription OnCreateList($filter: ModelSubscriptionListFilterInput) {
-    onCreateList(filter: $filter) {
+export const onCreateCartItem = /* GraphQL */ `
+  subscription OnCreateCartItem($filter: ModelSubscriptionCartItemFilterInput) {
+    onCreateCartItem(filter: $filter) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onUpdateList = /* GraphQL */ `
-  subscription OnUpdateList($filter: ModelSubscriptionListFilterInput) {
-    onUpdateList(filter: $filter) {
+export const onUpdateCartItem = /* GraphQL */ `
+  subscription OnUpdateCartItem($filter: ModelSubscriptionCartItemFilterInput) {
+    onUpdateCartItem(filter: $filter) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onDeleteList = /* GraphQL */ `
-  subscription OnDeleteList($filter: ModelSubscriptionListFilterInput) {
-    onDeleteList(filter: $filter) {
+export const onDeleteCartItem = /* GraphQL */ `
+  subscription OnDeleteCartItem($filter: ModelSubscriptionCartItemFilterInput) {
+    onDeleteCartItem(filter: $filter) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onCreateSaleTransaction = /* GraphQL */ `
-  subscription OnCreateSaleTransaction(
-    $filter: ModelSubscriptionSaleTransactionFilterInput
+export const onCreateInventoryRequest = /* GraphQL */ `
+  subscription OnCreateInventoryRequest(
+    $filter: ModelSubscriptionInventoryRequestFilterInput
   ) {
-    onCreateSaleTransaction(filter: $filter) {
+    onCreateInventoryRequest(filter: $filter) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onUpdateSaleTransaction = /* GraphQL */ `
-  subscription OnUpdateSaleTransaction(
-    $filter: ModelSubscriptionSaleTransactionFilterInput
+export const onUpdateInventoryRequest = /* GraphQL */ `
+  subscription OnUpdateInventoryRequest(
+    $filter: ModelSubscriptionInventoryRequestFilterInput
   ) {
-    onUpdateSaleTransaction(filter: $filter) {
+    onUpdateInventoryRequest(filter: $filter) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onDeleteSaleTransaction = /* GraphQL */ `
-  subscription OnDeleteSaleTransaction(
-    $filter: ModelSubscriptionSaleTransactionFilterInput
+export const onDeleteInventoryRequest = /* GraphQL */ `
+  subscription OnDeleteInventoryRequest(
+    $filter: ModelSubscriptionInventoryRequestFilterInput
   ) {
-    onDeleteSaleTransaction(filter: $filter) {
+    onDeleteInventoryRequest(filter: $filter) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onCreateDiscount = /* GraphQL */ `
-  subscription OnCreateDiscount($filter: ModelSubscriptionDiscountFilterInput) {
-    onCreateDiscount(filter: $filter) {
+export const onCreateRequestItem = /* GraphQL */ `
+  subscription OnCreateRequestItem(
+    $filter: ModelSubscriptionRequestItemFilterInput
+  ) {
+    onCreateRequestItem(filter: $filter) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
-      storeId
-      customer
-      customerId
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onUpdateDiscount = /* GraphQL */ `
-  subscription OnUpdateDiscount($filter: ModelSubscriptionDiscountFilterInput) {
-    onUpdateDiscount(filter: $filter) {
+export const onUpdateRequestItem = /* GraphQL */ `
+  subscription OnUpdateRequestItem(
+    $filter: ModelSubscriptionRequestItemFilterInput
+  ) {
+    onUpdateRequestItem(filter: $filter) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
-      storeId
-      customer
-      customerId
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const onDeleteDiscount = /* GraphQL */ `
-  subscription OnDeleteDiscount($filter: ModelSubscriptionDiscountFilterInput) {
-    onDeleteDiscount(filter: $filter) {
+export const onDeleteRequestItem = /* GraphQL */ `
+  subscription OnDeleteRequestItem(
+    $filter: ModelSubscriptionRequestItemFilterInput
+  ) {
+    onDeleteRequestItem(filter: $filter) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateStaffStore = /* GraphQL */ `
+  subscription OnCreateStaffStore(
+    $filter: ModelSubscriptionStaffStoreFilterInput
+  ) {
+    onCreateStaffStore(filter: $filter) {
+      id
+      staffId
       storeId
-      customer
-      customerId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateStaffStore = /* GraphQL */ `
+  subscription OnUpdateStaffStore(
+    $filter: ModelSubscriptionStaffStoreFilterInput
+  ) {
+    onUpdateStaffStore(filter: $filter) {
+      id
+      staffId
+      storeId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteStaffStore = /* GraphQL */ `
+  subscription OnDeleteStaffStore(
+    $filter: ModelSubscriptionStaffStoreFilterInput
+  ) {
+    onDeleteStaffStore(filter: $filter) {
+      id
+      staffId
+      storeId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename

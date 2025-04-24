@@ -46,7 +46,7 @@ const StoreSettings = ({ route, navigation }) => {
 
         if (storeSetting.length > 0) {
           const storeData = storeSetting[0];
-          setStoreName(storeData.store_name || "");
+          setStoreName(storeData.name || "");
           setVat(storeData.vat || 0);
           setLowStock(storeData.lowstock || 0);
           setToggle(storeData.cashierview || false);
@@ -67,7 +67,7 @@ const StoreSettings = ({ route, navigation }) => {
         variables: {
           input: {
             storeId: STORE.id,
-            store_name: storeName,
+            name: storeName,
             lowstock: parseFloat(lowStock),
             vat: parseFloat(vat),
             cashierview: toggle,

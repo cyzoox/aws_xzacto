@@ -17,8 +17,11 @@ import Alert from './Alert';
 export function DrawerContent(props) {
   const { staffData } = props;
   const [alerts, setAlert] = useState(false);
-  const [switch_alerts, setSwitchAlert] = useState(false)
-  const [switchStore, setSwitchStore] = useState(false)
+  const [switch_alerts, setSwitchAlert] = useState(false);
+  const [switchStore, setSwitchStore] = useState(false);
+  
+  // Check if user is SuperAdmin
+  const isSuperAdmin = staffData?.role?.includes('SuperAdmin');
   const onSwitch = async() => {
     await AsyncStorage.removeItem('@store');
     await AsyncStorage.removeItem('@currency');
@@ -27,8 +30,18 @@ export function DrawerContent(props) {
   }
 
   const logout = async () => {
-    await AsyncStorage.removeItem('staffSession');
-    props.navigation.replace('RoleSelection');
+    try {
+      // Clear all session data
+      await AsyncStorage.removeItem('staffSession');
+      await AsyncStorage.removeItem('@store');
+      await AsyncStorage.removeItem('@currency');
+      
+      // Navigate back to role selection
+      props.navigation.replace('RoleSelection');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'Failed to log out. Please try again.');
+    }
   };
 
   const onCancelAlert = () => {
@@ -66,7 +79,7 @@ export function DrawerContent(props) {
             }}>
             <Title style={styles.title}>XZACTO</Title>
             <Title style={styles.branch_title}>
-              {staffData ? staffData.store_name : 'No Branch'}
+              {staffData ? staffData.name : 'No Branch'}
             </Title>
           </View>
           <View
@@ -97,6 +110,43 @@ export function DrawerContent(props) {
           </View>
         </View>
         <Drawer.Section style={styles.drawerSection}>
+          {isSuperAdmin && (
+            <>
+              <DrawerItem
+                icon={({color, size}) => (
+                  <Image
+                    source={require('../../assets/assets/fintech.png')}
+                    style={{width: 30, height: 30}}
+                  />
+                )}
+                label="Dashboard"
+                labelStyle={styles.drawerItemLabel}
+                onPress={() => props.navigation.navigate('SuperAdminDashboard')}
+              />
+              <DrawerItem
+                icon={({color, size}) => (
+                  <Image
+                    source={require('../../assets/assets/settings.png')}
+                    style={{width: 30, height: 30}}
+                  />
+                )}
+                label="Staff Management"
+                labelStyle={styles.drawerItemLabel}
+                onPress={() => props.navigation.navigate('Staff Management')}
+              />
+              <DrawerItem
+                icon={({color, size}) => (
+                  <Image
+                    source={require('../../assets/assets/fintech.png')}
+                    style={{width: 30, height: 30}}
+                  />
+                )}
+                label="Store Management"
+                labelStyle={styles.drawerItemLabel}
+                onPress={() => props.navigation.navigate('Store Management')}
+              />
+            </>
+          )}
           <DrawerItem
             icon={({color, size}) => (
               <Image

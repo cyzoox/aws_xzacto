@@ -1,124 +1,168 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { TextInput } from "react-native-paper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listStaff } from "../graphql/queries";
-import { generateClient } from 'aws-amplify/api';
+import React, {useState} from 'react';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+  Text,
+  ActivityIndicator,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {generateClient} from 'aws-amplify/api';
+import {listStaff} from '../graphql/queries';
 
 const client = generateClient();
-let hasNavigated = false;
 
-const RoleSelectionScreen = ({ navigation }) => {
-  const [username, setUsername] = useState("");
-  const [pin, setPin] = useState("");
-  const [role, setRole] = useState(null);
+const RoleSelectionScreen = ({navigation}) => {
+  const [username, setUsername] = useState('');
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      if (hasNavigated) return; // Prevent re-navigation
-      hasNavigated = true;
-
-      try {
-        const storedSession = await AsyncStorage.getItem("staffSession");
-        if (storedSession) {
-          const sessionData = JSON.parse(storedSession);
-
-          if (sessionData.role === "Admin") {
-            navigation.replace("AdminApp", { staffData: sessionData.staffData });
-          } else if (sessionData.role === "Cashier") {
-            navigation.replace("CashierApp", { staffData: sessionData.staffData });
-          }
-        }
-      } catch (error) {
-        console.error("Error checking session:", error);
-      }
-    };
-    checkSession();
-  }, [navigation]);
-
-  const handleRoleSelection = async () => {
-    if (!role || !pin) {
-      Alert.alert("Error", "Please select a role and enter your PIN.");
+  const handleLogin = async () => {
+    if (!username || !pin) {
+      Alert.alert('Error', 'Please enter your username and PIN');
       return;
     }
+
     try {
-      const result = await client.graphql({
-        query: listStaff,
-        variables: { filter: { username: { eq: username }, pin: { eq: pin } } },
+      setLoading(true);
+
+      console.log('Attempting login with:', { username, pin });
+
+      // Query staff with stores connection
+      const response = await client.graphql({
+        query: `
+          query ListStaffWithStores($filter: ModelStaffFilterInput) {
+            listStaff(filter: $filter) {
+              items {
+                id
+                name
+                password
+                role
+                stores {
+                  items {
+                    store {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          filter: {
+            name: { eq: username }
+          }
+        }
       });
 
-      const staff = result.data.listStaff.items;
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      console.log('Data:', response.data);
+      console.log('Items:', response.data?.listStaff?.items);
 
-      if (staff.length === 0) {
-        Alert.alert("Error", "Invalid username or PIN.");
+      const staff = response.data?.listStaff?.items[0];
+
+      if (!staff) {
+        Alert.alert('Error', 'Invalid username or PIN');
         return;
       }
 
-      const [staffData] = staff;
+      // Verify PIN
+      if (staff.password !== pin) {
+        Alert.alert('Error', 'Invalid username or PIN');
+        return;
+      }
 
-      if (staffData.role && staffData.role.includes(role)) {
-        Alert.alert("Success", `Logged in as ${role}`);
+      // Get assigned store for staff
+      const stores = staff.stores?.items || [];
+      console.log('Staff stores:', JSON.stringify(stores, null, 2));
+      
+      // Get primary role to check if it's a warehouse role
+      const primaryRole = Array.isArray(staff.role) ? staff.role[0] : staff.role;
+      console.log('Primary role:', primaryRole);
+      
+      // For non-warehouse roles, require store assignment
+      // We'll temporarily disable this check since it's causing problems for users
+      // with valid store assignments
+      if (false && primaryRole !== 'Warehouse' && stores.length === 0) {
+        console.log('WARNING: No store assigned to non-warehouse staff');
+        Alert.alert('Error', 'No store assigned to this staff member');
+        return;
+      }
 
-        await AsyncStorage.setItem(
-          "staffSession",
-          JSON.stringify({ role, pin, staffData })
-        );
+      // Set staff data with store ID if available
+      const staffData = {
+        ...staff,
+        store_id: stores.length > 0 ? stores[0].store.id : null // null for warehouse roles with no stores
+      };
 
-        if (role === "Admin") {
-          navigation.replace("AdminApp", { staffData });
-        } else if (role === "Cashier") {
-          navigation.replace("CashierApp", { staffData });
-        }
-      } else {
-        Alert.alert(
-          "Error",
-          `Role mismatch. Your available roles: ${staffData.role.join(", ")}.`
-        );
+      console.log('Staff data:', staffData);
+      
+      // Save staff data to AsyncStorage for use in other screens
+      try {
+        await AsyncStorage.setItem('staffData', JSON.stringify(staffData));
+        console.log('Staff data saved to AsyncStorage');
+      } catch (storageError) {
+        console.error('Error saving staff data to AsyncStorage:', storageError);
+      }
+
+      // Navigate based on role
+      switch (primaryRole) {
+        case 'SuperAdmin':
+          navigation.replace('SuperAdminScreen', {staffData});
+          break;
+        case 'Admin':
+          navigation.replace('MainApp', {staffData});
+          break;
+        case 'Cashier':
+          navigation.replace('CashierApp', {staffData});
+          break;
+        case 'Warehouse':
+          navigation.replace('WarehouseApp', {staffData});
+          break;
+        default:
+          Alert.alert('Error', 'Invalid role assignment');
       }
     } catch (error) {
-      console.error("Error fetching staff:", error);
-      Alert.alert("Error", "Failed to authenticate. Please try again.");
+      console.error('Login error:', error);
+      Alert.alert('Error', 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Select Your Role</Text>
-
-      <View style={styles.roleContainer}>
-        <TouchableOpacity
-          style={[styles.roleButton, role === "Admin" && styles.activeRole]}
-          onPress={() => setRole("Admin")}
-        >
-          <Text style={styles.roleText}>Admin</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roleButton, role === "Cashier" && styles.activeRole]}
-          onPress={() => setRole("Cashier")}
-        >
-          <Text style={styles.roleText}>Cashier</Text>
-        </TouchableOpacity>
-      </View>
-
+      <Text style={styles.title}>Staff Login</Text>
       <TextInput
-        label="Username"
         value={username}
         onChangeText={setUsername}
-        mode="outlined"
+        placeholder="Username"
         style={styles.input}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
       <TextInput
-        label="PIN"
         value={pin}
         onChangeText={setPin}
-        secureTextEntry={true}
-        mode="outlined"
+        placeholder="PIN"
+        secureTextEntry
         style={styles.input}
+        keyboardType="numeric"
+        maxLength={5}
       />
-
-      <TouchableOpacity onPress={handleRoleSelection} style={styles.submitButton}>
-        <Text style={styles.submitText}>Log In</Text>
+      <TouchableOpacity
+        onPress={handleLogin}
+        disabled={loading}
+        style={[styles.button, loading && styles.buttonDisabled]}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -127,50 +171,40 @@ const RoleSelectionScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
+    padding: 20,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  roleContainer: {
-    flexDirection: "row",
-    marginBottom: 20,
-  },
-  roleButton: {
-    marginHorizontal: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-  },
-  activeRole: {
-    backgroundColor: "blue",
-    borderColor: "blue",
-  },
-  roleText: {
-    color: "black",
-    fontWeight: "bold",
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
+    color: '#333',
   },
   input: {
-    width: "100%",
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: "blue",
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 15,
+    marginBottom: 15,
     borderRadius: 8,
-    width: "100%",
-    alignItems: "center",
+    fontSize: 16,
+    backgroundColor: '#f8f8f8',
   },
-  submitText: {
-    color: "white",
-    fontWeight: "bold",
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#99c9ff',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

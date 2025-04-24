@@ -1,185 +1,217 @@
-type Todo @model @auth(rules: [{allow: public}]) {
+# @model: Creates a DynamoDB table for the type and CRUD operations in the GraphQL API
+# @auth: Defines the authorization rules for the type
+
+type Staff @model @auth(rules: [{ allow: public }]) {
   id: ID!
   name: String!
+  password: String!
+  ownerId: ID
+  role: [String!]!
+  log_status: String
+  device_id: String
+  device_name: String
+  stores: [Store] @manyToMany(relationName: "StaffStore")
+  transactions: [SaleTransaction] @hasMany(fields: ["id"])
+  cartItems: [CartItem] @hasMany(fields: ["id"])
+}
+
+type Category @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  storeId: ID!
+  store: Store @belongsTo(fields: ["storeId"])
+  products: [Product] @hasMany(fields: ["id"])
+}
+
+type WarehouseProduct @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String!
+  brand: String
   description: String
-}
-
-type Addon {
-  id: ID!
-  name: String!
-  price: Float
-  cost: Float
-}
-
-type Variant {
-  id: ID!
-  name: String!
-  price: Float
-  cost: Float
-}
-
-type Option {
-  id: ID!
-  option: String!
+  purchasePrice: Float!
+  sellingPrice: Float!
+  totalStock: Float!
+  availableStock: Float!
+  sku: String!
+  barcode: String
+  img: String
+  category: String
+  subcategory: String
+  supplier: String
+  supplierContact: String
+  reorderPoint: Float
+  reorderQuantity: Float
+  location: String
+  isActive: Boolean!
+  lastRestockDate: AWSDateTime
+  storeProducts: [Product] @hasMany(fields: ["id"])
+  requestItems: [RequestItem] @hasMany(fields: ["id"])
 }
 
 type Product @model @auth(rules: [{allow: public}]) {
   id: ID!
   name: String!
   brand: String
+  description: String
   oprice: Float!
   sprice: Float!
   stock: Float
-  category: String
+  categoryId: ID
+  subcategory: String
   sku: String
   img: String
   storeId: ID!
-  addons: [Addon]
-  variants: [Variant]
-  options: [Option]
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  warehouseProductId: ID
+  addons: [Addon] @hasMany(fields: ["id"])
+  variants: [Variant] @hasMany(fields: ["id"])
+  isActive: Boolean!
+  store: Store @belongsTo(fields: ["storeId"])
+  category: Category @belongsTo(fields: ["categoryId"])
+  warehouseProduct: WarehouseProduct @belongsTo(fields: ["warehouseProductId"])
+  cartItems: [CartItem] @hasMany(fields: ["id"])
+  sales: [Sale] @hasMany(fields: ["id"])
 }
 
-type Supplier @model @auth(rules: [{allow: public}]) {
+type Store @model @auth(rules: [{ allow: public }]) {
   id: ID!
   name: String!
-  contact: String
-  address: String
-  storeId: ID!
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  location: String!
+  ownerId: ID
+  products: [Product] @hasMany(fields: ["id"])
+  categories: [Category] @hasMany(fields: ["id"])
+  staff: [Staff] @manyToMany(relationName: "StaffStore")
+  transactions: [SaleTransaction] @hasMany(fields: ["id"])
+  expenses: [Expense] @hasMany(fields: ["id"])
+  customers: [Customer] @hasMany(fields: ["id"])
+  suppliers: [Supplier] @hasMany(fields: ["id"])
+  cartItems: [CartItem] @hasMany(fields: ["id"])
+  inventoryRequests: [InventoryRequest] @hasMany(fields: ["id"])
 }
 
-type Expense @model @auth(rules: [{allow: public}]) {
+type SaleTransaction @model @auth(rules: [{ allow: public }]) {
   id: ID!
-  description: String!
-  storeId: ID!
-  category: String
-  attendant: String
-  attendantId: ID!
-  amount: Float!
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
-}
-
-type Sale @model @auth(rules: [{allow: public}]) {
-  id: ID!
-  cashierId: ID!
-  storeId: ID!
-  productId: ID!
-  transactionId: ID!
-  productName: String!
-  quantity: Float!
-  price: Float!
+  items: [String!]!
   total: Float!
-  paymentMethod: String
+  discount: Float
+  points: Float
+  staffID: ID!
+  staffName: String
+  storeID: ID!
+  customerID: ID
   status: String
-  void_reason: String
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  payment_status: String
+  cash_received: Float
+  change: Float
+  notes: String
+  staff: Staff @belongsTo(fields: ["staffID"])
+  store: Store @belongsTo(fields: ["storeID"])
+  customer: Customer @belongsTo(fields: ["customerID"])
+  sales: [Sale] @hasMany(fields: ["id"])
 }
 
-type Store @model @auth(rules: [{allow: public}]) {
+type Sale @model @auth(rules: [{ allow: public }]) {
   id: ID!
-  store_name: String!
-  branch: String!
-  owner: String!
-  password: String!
-  store_type: String!
-  lowstock: Int
-  vat: Float
-  cashierview: Boolean
-  allow_credit: Boolean
-  headers: [String]
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
-}
-
-type Category @model @auth(rules: [{allow: public}]) {
-  id: ID!
-  storeId: ID!
-  name: String!
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
-}
-
-type Staff @model @auth(rules: [{allow: public}]) {
-  id: ID!
-  name: String!
-  password: String!
-  role: [String!]!
-  store_id: ID!
-  store_name: String
-  device_id: String
-  device_name: String
+  productID: ID!
+  productName: String
+  transactionID: ID!
+  price: Float!
+  quantity: Int!
+  discount: Float
+  total: Float!
   status: String!
-  log_status: String!
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  product: Product @belongsTo(fields: ["productID"])
+  transaction: SaleTransaction @belongsTo(fields: ["transactionID"])
+  void_reason: String
 }
 
-type Customer @model @auth(rules: [{allow: public}]) {
+type Addon @model @auth(rules: [{ allow: public }]) {
   id: ID!
   name: String!
-  address: String
-  mobile_no: String
-  tel_no: String
-  credit_balance: Float
-  store: String
-  storeId: ID!
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  price: Float!
+  productId: ID!
+  product: Product @belongsTo(fields: ["productId"])
 }
 
-type List @model @auth(rules: [{allow: public}]) {
+type Variant @model @auth(rules: [{ allow: public }]) {
   id: ID!
-  name: String
-  brand: String
-  oprice: Float
-  sprice: Float
-  unit: String
-  category: String
+  name: String!
+  price: Float!
+  productId: ID!
+  product: Product @belongsTo(fields: ["productId"])
+}
+
+type Customer @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  email: AWSEmail
+  phone: AWSPhone
   storeId: ID!
+  points: Float
+  purchases: [SaleTransaction] @hasMany(fields: ["id"])
+  store: Store @belongsTo(fields: ["storeId"])
+}
+
+type Supplier @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  email: AWSEmail
+  phone: AWSPhone
+  storeId: ID!
+  products: [Product] @hasMany(fields: ["id"])
+  store: Store @belongsTo(fields: ["storeId"])
+}
+
+type Expense @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  amount: Float!
+  date: AWSDateTime!
+  storeId: ID!
+  staffId: ID
+  staffName: String
+  category: String
+  notes: String
+  store: Store @belongsTo(fields: ["storeId"])
+}
+
+type CartItem @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  brand: String
+  oprice: Float!
+  sprice: Float!
   productId: ID!
   cashierId: ID!
-  quantity: Float
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  category: String
+  unit: String
+  storeId: ID!
+  quantity: Int!
+  store: Store @belongsTo(fields: ["storeId"])
+  product: Product @belongsTo(fields: ["productId"])
+  staff: Staff @belongsTo(fields: ["cashierId"])
 }
 
-type SaleTransaction @model @auth(rules: [{allow: public}]) {
+type InventoryRequest @model @auth(rules: [{ allow: public }]) {
   id: ID!
-  store: String
   storeId: ID!
-  customerName: String
-  customerId: ID!
-  total: Float
-  cashier: String
-  cashierId: ID!
-  paymentMethod: String
-  status: String
-  totalItems: Int
-  discount: Float
-  discountName: String
-  vat: Float
-  received: Float
-  change: Float
-  profit: Float
-  void_reason: String
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
+  status: String!
+  requestDate: AWSDateTime!
+  fulfillmentDate: AWSDateTime
+  requestedBy: ID!
+  processedBy: ID
+  priority: String!
+  notes: String
+  store: Store @belongsTo(fields: ["storeId"])
+  requestItems: [RequestItem] @hasMany(fields: ["id"])
 }
 
-type Discount @model @auth(rules: [{allow: public}]) {
+type RequestItem @model @auth(rules: [{ allow: public }]) {
   id: ID!
-  transactionId: ID!
-  total: Float
-  cashier: String
-  cashierId: ID!
-  store: String
-  storeId: ID!
-  customer: String
-  customerId: ID!
+  requestId: ID!
+  warehouseProductId: ID!
+  requestedQuantity: Float!
+  fulfilledQuantity: Float
+  status: String!
+  inventoryRequest: InventoryRequest @belongsTo(fields: ["requestId"])
+  warehouseProduct: WarehouseProduct @belongsTo(fields: ["warehouseProductId"])
 }
- 

@@ -8,7 +8,7 @@ import colors from "../../themes/colors";
 import AppHeader from "../../components/AppHeader";
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import ProductsCashier from "../../components/ProductsCashier";
-import { listLists } from "../../graphql/queries";
+import { listCartItems } from "../../graphql/queries";
 import { generateClient } from 'aws-amplify/api';
 
 const client = generateClient();
@@ -27,6 +27,23 @@ const CashierScreen = ({ navigation, route }) => {
     navigation.navigate('Checkout');
   };
 
+  const fetchList = async () => {
+    try {
+      const result = await client.graphql({
+        query: listCartItems,
+        variables: { 
+          filter: { 
+            storeId: { eq: staffData.store_id },
+            cashierId: { eq: staffData.id }
+          } 
+        },
+      });
+      setCart(result.data.listCartItems.items);
+    } catch (err) {
+      console.log('Error fetching cart items:', err.message);
+    }
+  };
+
   useEffect(() => {
     const handleOrientationChange = () => {
       const { height, width } = Dimensions.get("window");
@@ -35,23 +52,26 @@ const CashierScreen = ({ navigation, route }) => {
 
     const subscription = Dimensions.addEventListener("change", handleOrientationChange);
 
-    const fetchList = async () => {
-      try {
-        const result = await client.graphql({
-          query: listLists,
-          variables: { filter: { storeId: { eq: staffData.store_id } } },
-        });
-        setCart(result.data.listLists.items);
-      } catch (err) {
-        console.log('Error fetching list:', err.message);
-      }
-    };
-
     handleOrientationChange();
     fetchList();
 
-    return () => subscription.remove();
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('CashierScreen focused - refreshing cart');
+      fetchList();
+    });
+
+    return () => {
+      subscription.remove();
+      unsubscribe();
+    };
   }, [staffData.store_id]);
+
+  useEffect(() => {
+    if (route.params?.refreshCart) {
+      console.log('Refreshing cart due to refreshCart flag');
+      fetchList();
+    }
+  }, [route.params?.refreshCart, route.params?.timestamp]);
 
   const calculateTotal = () => cart.reduce((total, item) => total + item.quantity * item.sprice, 0);
   const calculateQty = () => cart.reduce((total, item) => total + item.quantity, 0);
@@ -66,7 +86,12 @@ const CashierScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         }
       />
-      <ProductsCashier route={route} />
+      <ProductsCashier 
+        route={route} 
+        cart={cart}
+        setCart={setCart}
+        onCartUpdate={fetchList}
+      />
       <View style={styles.bottomView}>
         <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.checkoutBtn}>
           <Text style={styles.checkoutText}>
@@ -102,6 +127,9 @@ const CashierScreen = ({ navigation, route }) => {
               discount={selected}
               discount_name={discount_name}
               staff={staffData}
+              cart={cart}
+              setCart={setCart}
+              onCartUpdate={fetchList}
             />
             <Spacer>
               <View style={styles.payButtonContainer}>

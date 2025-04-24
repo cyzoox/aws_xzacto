@@ -1,45 +1,300 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const createTodo = /* GraphQL */ `
-  mutation CreateTodo(
-    $input: CreateTodoInput!
-    $condition: ModelTodoConditionInput
+export const createStaff = /* GraphQL */ `
+  mutation CreateStaff(
+    $input: CreateStaffInput!
+    $condition: ModelStaffConditionInput
   ) {
-    createTodo(input: $input, condition: $condition) {
+    createStaff(input: $input, condition: $condition) {
       id
       name
-      description
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateTodo = /* GraphQL */ `
-  mutation UpdateTodo(
-    $input: UpdateTodoInput!
-    $condition: ModelTodoConditionInput
+export const updateStaff = /* GraphQL */ `
+  mutation UpdateStaff(
+    $input: UpdateStaffInput!
+    $condition: ModelStaffConditionInput
   ) {
-    updateTodo(input: $input, condition: $condition) {
+    updateStaff(input: $input, condition: $condition) {
       id
       name
-      description
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteTodo = /* GraphQL */ `
-  mutation DeleteTodo(
-    $input: DeleteTodoInput!
-    $condition: ModelTodoConditionInput
+export const deleteStaff = /* GraphQL */ `
+  mutation DeleteStaff(
+    $input: DeleteStaffInput!
+    $condition: ModelStaffConditionInput
   ) {
-    deleteTodo(input: $input, condition: $condition) {
+    deleteStaff(input: $input, condition: $condition) {
       id
       name
+      password
+      ownerId
+      role
+      log_status
+      device_id
+      device_name
+      stores {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createCategory = /* GraphQL */ `
+  mutation CreateCategory(
+    $input: CreateCategoryInput!
+    $condition: ModelCategoryConditionInput
+  ) {
+    createCategory(input: $input, condition: $condition) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateCategory = /* GraphQL */ `
+  mutation UpdateCategory(
+    $input: UpdateCategoryInput!
+    $condition: ModelCategoryConditionInput
+  ) {
+    updateCategory(input: $input, condition: $condition) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteCategory = /* GraphQL */ `
+  mutation DeleteCategory(
+    $input: DeleteCategoryInput!
+    $condition: ModelCategoryConditionInput
+  ) {
+    deleteCategory(input: $input, condition: $condition) {
+      id
+      name
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      products {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createWarehouseProduct = /* GraphQL */ `
+  mutation CreateWarehouseProduct(
+    $input: CreateWarehouseProductInput!
+    $condition: ModelWarehouseProductConditionInput
+  ) {
+    createWarehouseProduct(input: $input, condition: $condition) {
+      id
+      name
+      brand
       description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateWarehouseProduct = /* GraphQL */ `
+  mutation UpdateWarehouseProduct(
+    $input: UpdateWarehouseProductInput!
+    $condition: ModelWarehouseProductConditionInput
+  ) {
+    updateWarehouseProduct(input: $input, condition: $condition) {
+      id
+      name
+      brand
+      description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteWarehouseProduct = /* GraphQL */ `
+  mutation DeleteWarehouseProduct(
+    $input: DeleteWarehouseProductInput!
+    $condition: ModelWarehouseProductConditionInput
+  ) {
+    deleteWarehouseProduct(input: $input, condition: $condition) {
+      id
+      name
+      brand
+      description
+      purchasePrice
+      sellingPrice
+      totalStock
+      availableStock
+      sku
+      barcode
+      img
+      category
+      subcategory
+      supplier
+      supplierContact
+      reorderPoint
+      reorderQuantity
+      location
+      isActive
+      lastRestockDate
+      storeProducts {
+        nextToken
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -55,30 +310,73 @@ export const createProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
         __typename
       }
       createdAt
@@ -96,30 +394,73 @@ export const updateProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
         __typename
       }
       createdAt
@@ -137,30 +478,901 @@ export const deleteProduct = /* GraphQL */ `
       id
       name
       brand
+      description
       oprice
       sprice
       stock
-      category
+      categoryId
+      subcategory
       sku
       img
       storeId
+      warehouseProductId
       addons {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
       variants {
-        id
-        name
-        price
-        cost
+        nextToken
         __typename
       }
-      options {
+      isActive
+      store {
         id
-        option
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      category {
+        id
+        name
+        storeId
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createStore = /* GraphQL */ `
+  mutation CreateStore(
+    $input: CreateStoreInput!
+    $condition: ModelStoreConditionInput
+  ) {
+    createStore(input: $input, condition: $condition) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateStore = /* GraphQL */ `
+  mutation UpdateStore(
+    $input: UpdateStoreInput!
+    $condition: ModelStoreConditionInput
+  ) {
+    updateStore(input: $input, condition: $condition) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteStore = /* GraphQL */ `
+  mutation DeleteStore(
+    $input: DeleteStoreInput!
+    $condition: ModelStoreConditionInput
+  ) {
+    deleteStore(input: $input, condition: $condition) {
+      id
+      name
+      location
+      ownerId
+      products {
+        nextToken
+        __typename
+      }
+      categories {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      transactions {
+        nextToken
+        __typename
+      }
+      expenses {
+        nextToken
+        __typename
+      }
+      customers {
+        nextToken
+        __typename
+      }
+      suppliers {
+        nextToken
+        __typename
+      }
+      cartItems {
+        nextToken
+        __typename
+      }
+      inventoryRequests {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createSaleTransaction = /* GraphQL */ `
+  mutation CreateSaleTransaction(
+    $input: CreateSaleTransactionInput!
+    $condition: ModelSaleTransactionConditionInput
+  ) {
+    createSaleTransaction(input: $input, condition: $condition) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateSaleTransaction = /* GraphQL */ `
+  mutation UpdateSaleTransaction(
+    $input: UpdateSaleTransactionInput!
+    $condition: ModelSaleTransactionConditionInput
+  ) {
+    updateSaleTransaction(input: $input, condition: $condition) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteSaleTransaction = /* GraphQL */ `
+  mutation DeleteSaleTransaction(
+    $input: DeleteSaleTransactionInput!
+    $condition: ModelSaleTransactionConditionInput
+  ) {
+    deleteSaleTransaction(input: $input, condition: $condition) {
+      id
+      items
+      total
+      discount
+      points
+      staffID
+      staffName
+      storeID
+      customerID
+      status
+      payment_status
+      cash_received
+      change
+      notes
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        points
+        createdAt
+        updatedAt
+        __typename
+      }
+      sales {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createSale = /* GraphQL */ `
+  mutation CreateSale(
+    $input: CreateSaleInput!
+    $condition: ModelSaleConditionInput
+  ) {
+    createSale(input: $input, condition: $condition) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateSale = /* GraphQL */ `
+  mutation UpdateSale(
+    $input: UpdateSaleInput!
+    $condition: ModelSaleConditionInput
+  ) {
+    updateSale(input: $input, condition: $condition) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteSale = /* GraphQL */ `
+  mutation DeleteSale(
+    $input: DeleteSaleInput!
+    $condition: ModelSaleConditionInput
+  ) {
+    deleteSale(input: $input, condition: $condition) {
+      id
+      productID
+      productName
+      transactionID
+      price
+      quantity
+      discount
+      total
+      status
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        status
+        payment_status
+        cash_received
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      void_reason
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createAddon = /* GraphQL */ `
+  mutation CreateAddon(
+    $input: CreateAddonInput!
+    $condition: ModelAddonConditionInput
+  ) {
+    createAddon(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateAddon = /* GraphQL */ `
+  mutation UpdateAddon(
+    $input: UpdateAddonInput!
+    $condition: ModelAddonConditionInput
+  ) {
+    updateAddon(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteAddon = /* GraphQL */ `
+  mutation DeleteAddon(
+    $input: DeleteAddonInput!
+    $condition: ModelAddonConditionInput
+  ) {
+    deleteAddon(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createVariant = /* GraphQL */ `
+  mutation CreateVariant(
+    $input: CreateVariantInput!
+    $condition: ModelVariantConditionInput
+  ) {
+    createVariant(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateVariant = /* GraphQL */ `
+  mutation UpdateVariant(
+    $input: UpdateVariantInput!
+    $condition: ModelVariantConditionInput
+  ) {
+    updateVariant(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteVariant = /* GraphQL */ `
+  mutation DeleteVariant(
+    $input: DeleteVariantInput!
+    $condition: ModelVariantConditionInput
+  ) {
+    deleteVariant(input: $input, condition: $condition) {
+      id
+      name
+      price
+      productId
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createCustomer = /* GraphQL */ `
+  mutation CreateCustomer(
+    $input: CreateCustomerInput!
+    $condition: ModelCustomerConditionInput
+  ) {
+    createCustomer(input: $input, condition: $condition) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateCustomer = /* GraphQL */ `
+  mutation UpdateCustomer(
+    $input: UpdateCustomerInput!
+    $condition: ModelCustomerConditionInput
+  ) {
+    updateCustomer(input: $input, condition: $condition) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteCustomer = /* GraphQL */ `
+  mutation DeleteCustomer(
+    $input: DeleteCustomerInput!
+    $condition: ModelCustomerConditionInput
+  ) {
+    deleteCustomer(input: $input, condition: $condition) {
+      id
+      name
+      email
+      phone
+      storeId
+      points
+      purchases {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -177,9 +1389,22 @@ export const createSupplier = /* GraphQL */ `
     createSupplier(input: $input, condition: $condition) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -194,9 +1419,22 @@ export const updateSupplier = /* GraphQL */ `
     updateSupplier(input: $input, condition: $condition) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -211,9 +1449,22 @@ export const deleteSupplier = /* GraphQL */ `
     deleteSupplier(input: $input, condition: $condition) {
       id
       name
-      contact
-      address
+      email
+      phone
       storeId
+      products {
+        nextToken
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -227,12 +1478,23 @@ export const createExpense = /* GraphQL */ `
   ) {
     createExpense(input: $input, condition: $condition) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
+      date
+      storeId
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -246,12 +1508,23 @@ export const updateExpense = /* GraphQL */ `
   ) {
     updateExpense(input: $input, condition: $condition) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
+      date
+      storeId
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -265,546 +1538,599 @@ export const deleteExpense = /* GraphQL */ `
   ) {
     deleteExpense(input: $input, condition: $condition) {
       id
-      description
-      storeId
-      category
-      attendant
-      attendantId
+      name
       amount
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createSale = /* GraphQL */ `
-  mutation CreateSale(
-    $input: CreateSaleInput!
-    $condition: ModelSaleConditionInput
-  ) {
-    createSale(input: $input, condition: $condition) {
-      id
-      cashierId
+      date
       storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
+      staffId
+      staffName
+      category
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateSale = /* GraphQL */ `
-  mutation UpdateSale(
-    $input: UpdateSaleInput!
-    $condition: ModelSaleConditionInput
+export const createCartItem = /* GraphQL */ `
+  mutation CreateCartItem(
+    $input: CreateCartItemInput!
+    $condition: ModelCartItemConditionInput
   ) {
-    updateSale(input: $input, condition: $condition) {
-      id
-      cashierId
-      storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteSale = /* GraphQL */ `
-  mutation DeleteSale(
-    $input: DeleteSaleInput!
-    $condition: ModelSaleConditionInput
-  ) {
-    deleteSale(input: $input, condition: $condition) {
-      id
-      cashierId
-      storeId
-      productId
-      transactionId
-      productName
-      quantity
-      price
-      total
-      paymentMethod
-      status
-      void_reason
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createStore = /* GraphQL */ `
-  mutation CreateStore(
-    $input: CreateStoreInput!
-    $condition: ModelStoreConditionInput
-  ) {
-    createStore(input: $input, condition: $condition) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateStore = /* GraphQL */ `
-  mutation UpdateStore(
-    $input: UpdateStoreInput!
-    $condition: ModelStoreConditionInput
-  ) {
-    updateStore(input: $input, condition: $condition) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteStore = /* GraphQL */ `
-  mutation DeleteStore(
-    $input: DeleteStoreInput!
-    $condition: ModelStoreConditionInput
-  ) {
-    deleteStore(input: $input, condition: $condition) {
-      id
-      store_name
-      branch
-      owner
-      password
-      store_type
-      lowstock
-      vat
-      cashierview
-      allow_credit
-      headers
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createCategory = /* GraphQL */ `
-  mutation CreateCategory(
-    $input: CreateCategoryInput!
-    $condition: ModelCategoryConditionInput
-  ) {
-    createCategory(input: $input, condition: $condition) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateCategory = /* GraphQL */ `
-  mutation UpdateCategory(
-    $input: UpdateCategoryInput!
-    $condition: ModelCategoryConditionInput
-  ) {
-    updateCategory(input: $input, condition: $condition) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteCategory = /* GraphQL */ `
-  mutation DeleteCategory(
-    $input: DeleteCategoryInput!
-    $condition: ModelCategoryConditionInput
-  ) {
-    deleteCategory(input: $input, condition: $condition) {
-      id
-      storeId
-      name
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createStaff = /* GraphQL */ `
-  mutation CreateStaff(
-    $input: CreateStaffInput!
-    $condition: ModelStaffConditionInput
-  ) {
-    createStaff(input: $input, condition: $condition) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateStaff = /* GraphQL */ `
-  mutation UpdateStaff(
-    $input: UpdateStaffInput!
-    $condition: ModelStaffConditionInput
-  ) {
-    updateStaff(input: $input, condition: $condition) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteStaff = /* GraphQL */ `
-  mutation DeleteStaff(
-    $input: DeleteStaffInput!
-    $condition: ModelStaffConditionInput
-  ) {
-    deleteStaff(input: $input, condition: $condition) {
-      id
-      name
-      password
-      role
-      store_id
-      store_name
-      device_id
-      device_name
-      status
-      log_status
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createCustomer = /* GraphQL */ `
-  mutation CreateCustomer(
-    $input: CreateCustomerInput!
-    $condition: ModelCustomerConditionInput
-  ) {
-    createCustomer(input: $input, condition: $condition) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateCustomer = /* GraphQL */ `
-  mutation UpdateCustomer(
-    $input: UpdateCustomerInput!
-    $condition: ModelCustomerConditionInput
-  ) {
-    updateCustomer(input: $input, condition: $condition) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteCustomer = /* GraphQL */ `
-  mutation DeleteCustomer(
-    $input: DeleteCustomerInput!
-    $condition: ModelCustomerConditionInput
-  ) {
-    deleteCustomer(input: $input, condition: $condition) {
-      id
-      name
-      address
-      mobile_no
-      tel_no
-      credit_balance
-      store
-      storeId
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createList = /* GraphQL */ `
-  mutation CreateList(
-    $input: CreateListInput!
-    $condition: ModelListConditionInput
-  ) {
-    createList(input: $input, condition: $condition) {
+    createCartItem(input: $input, condition: $condition) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateList = /* GraphQL */ `
-  mutation UpdateList(
-    $input: UpdateListInput!
-    $condition: ModelListConditionInput
+export const updateCartItem = /* GraphQL */ `
+  mutation UpdateCartItem(
+    $input: UpdateCartItemInput!
+    $condition: ModelCartItemConditionInput
   ) {
-    updateList(input: $input, condition: $condition) {
+    updateCartItem(input: $input, condition: $condition) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteList = /* GraphQL */ `
-  mutation DeleteList(
-    $input: DeleteListInput!
-    $condition: ModelListConditionInput
+export const deleteCartItem = /* GraphQL */ `
+  mutation DeleteCartItem(
+    $input: DeleteCartItemInput!
+    $condition: ModelCartItemConditionInput
   ) {
-    deleteList(input: $input, condition: $condition) {
+    deleteCartItem(input: $input, condition: $condition) {
       id
       name
       brand
       oprice
       sprice
-      unit
-      category
-      storeId
       productId
       cashierId
+      category
+      unit
+      storeId
       quantity
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      product {
+        id
+        name
+        brand
+        description
+        oprice
+        sprice
+        stock
+        categoryId
+        subcategory
+        sku
+        img
+        storeId
+        warehouseProductId
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const createSaleTransaction = /* GraphQL */ `
-  mutation CreateSaleTransaction(
-    $input: CreateSaleTransactionInput!
-    $condition: ModelSaleTransactionConditionInput
+export const createInventoryRequest = /* GraphQL */ `
+  mutation CreateInventoryRequest(
+    $input: CreateInventoryRequestInput!
+    $condition: ModelInventoryRequestConditionInput
   ) {
-    createSaleTransaction(input: $input, condition: $condition) {
+    createInventoryRequest(input: $input, condition: $condition) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateSaleTransaction = /* GraphQL */ `
-  mutation UpdateSaleTransaction(
-    $input: UpdateSaleTransactionInput!
-    $condition: ModelSaleTransactionConditionInput
+export const updateInventoryRequest = /* GraphQL */ `
+  mutation UpdateInventoryRequest(
+    $input: UpdateInventoryRequestInput!
+    $condition: ModelInventoryRequestConditionInput
   ) {
-    updateSaleTransaction(input: $input, condition: $condition) {
+    updateInventoryRequest(input: $input, condition: $condition) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteSaleTransaction = /* GraphQL */ `
-  mutation DeleteSaleTransaction(
-    $input: DeleteSaleTransactionInput!
-    $condition: ModelSaleTransactionConditionInput
+export const deleteInventoryRequest = /* GraphQL */ `
+  mutation DeleteInventoryRequest(
+    $input: DeleteInventoryRequestInput!
+    $condition: ModelInventoryRequestConditionInput
   ) {
-    deleteSaleTransaction(input: $input, condition: $condition) {
+    deleteInventoryRequest(input: $input, condition: $condition) {
       id
-      store
       storeId
-      customerName
-      customerId
-      total
-      cashier
-      cashierId
-      paymentMethod
       status
-      totalItems
-      discount
-      discountName
-      vat
-      received
-      change
-      profit
-      void_reason
+      requestDate
+      fulfillmentDate
+      requestedBy
+      processedBy
+      priority
+      notes
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      requestItems {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const createDiscount = /* GraphQL */ `
-  mutation CreateDiscount(
-    $input: CreateDiscountInput!
-    $condition: ModelDiscountConditionInput
+export const createRequestItem = /* GraphQL */ `
+  mutation CreateRequestItem(
+    $input: CreateRequestItemInput!
+    $condition: ModelRequestItemConditionInput
   ) {
-    createDiscount(input: $input, condition: $condition) {
+    createRequestItem(input: $input, condition: $condition) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
-      storeId
-      customer
-      customerId
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateDiscount = /* GraphQL */ `
-  mutation UpdateDiscount(
-    $input: UpdateDiscountInput!
-    $condition: ModelDiscountConditionInput
+export const updateRequestItem = /* GraphQL */ `
+  mutation UpdateRequestItem(
+    $input: UpdateRequestItemInput!
+    $condition: ModelRequestItemConditionInput
   ) {
-    updateDiscount(input: $input, condition: $condition) {
+    updateRequestItem(input: $input, condition: $condition) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
-      storeId
-      customer
-      customerId
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteDiscount = /* GraphQL */ `
-  mutation DeleteDiscount(
-    $input: DeleteDiscountInput!
-    $condition: ModelDiscountConditionInput
+export const deleteRequestItem = /* GraphQL */ `
+  mutation DeleteRequestItem(
+    $input: DeleteRequestItemInput!
+    $condition: ModelRequestItemConditionInput
   ) {
-    deleteDiscount(input: $input, condition: $condition) {
+    deleteRequestItem(input: $input, condition: $condition) {
       id
-      transactionId
-      total
-      cashier
-      cashierId
-      store
+      requestId
+      warehouseProductId
+      requestedQuantity
+      fulfilledQuantity
+      status
+      inventoryRequest {
+        id
+        storeId
+        status
+        requestDate
+        fulfillmentDate
+        requestedBy
+        processedBy
+        priority
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      warehouseProduct {
+        id
+        name
+        brand
+        description
+        purchasePrice
+        sellingPrice
+        totalStock
+        availableStock
+        sku
+        barcode
+        img
+        category
+        subcategory
+        supplier
+        supplierContact
+        reorderPoint
+        reorderQuantity
+        location
+        isActive
+        lastRestockDate
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createStaffStore = /* GraphQL */ `
+  mutation CreateStaffStore(
+    $input: CreateStaffStoreInput!
+    $condition: ModelStaffStoreConditionInput
+  ) {
+    createStaffStore(input: $input, condition: $condition) {
+      id
+      staffId
       storeId
-      customer
-      customerId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateStaffStore = /* GraphQL */ `
+  mutation UpdateStaffStore(
+    $input: UpdateStaffStoreInput!
+    $condition: ModelStaffStoreConditionInput
+  ) {
+    updateStaffStore(input: $input, condition: $condition) {
+      id
+      staffId
+      storeId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteStaffStore = /* GraphQL */ `
+  mutation DeleteStaffStore(
+    $input: DeleteStaffStoreInput!
+    $condition: ModelStaffStoreConditionInput
+  ) {
+    deleteStaffStore(input: $input, condition: $condition) {
+      id
+      staffId
+      storeId
+      staff {
+        id
+        name
+        password
+        ownerId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      store {
+        id
+        name
+        location
+        ownerId
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename

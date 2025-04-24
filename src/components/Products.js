@@ -2,35 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { TouchableOpacity, Image, StyleSheet, View, Text } from 'react-native';
 import { FlatGrid } from 'react-native-super-grid';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import SearchBar from './SearchBar'; // Importing SearchBar
+import { useStore } from '../context/StoreContext';
+import SearchBar from './SearchBar';
 import colors from '../themes/colors';
 
-export default function Products({ products, store, navigation, categories }) {
+export default function Products({ products, navigation, categories }) {
+  const { currentStore } = useStore();
   const [filteredProducts, setFilteredProducts] = useState(products);
-  const [selectedCategory, setSelectedCategory] = useState('All'); // Default to 'All'
+  const [selectedCategory, setSelectedCategory] = useState(null); // Default to null (All)
   const [searchTerm, setSearchTerm] = useState(''); // Search query
-
-  // Update filtered products when search term or category changes
+  
+  // Debug logging when products change
   useEffect(() => {
-    let filtered = products;
+    console.log('Products component received products:', products?.length || 0);
+    
+    if (!products || products.length === 0) {
+      console.log('No products received in Products component');
+    } else {
+      console.log('First product in Products component:', JSON.stringify(products[0], null, 2));
+    }
+  }, [products]);
 
-    if (selectedCategory !== 'All') {
+  // Filter products based on category and search term
+  useEffect(() => {
+    // Ensure products is always an array
+    let filtered = Array.isArray(products) ? products : [];
+    
+    console.log('Filtering products, count:', filtered.length);
+
+    if (selectedCategory) {
       filtered = filtered.filter(
-        (product) => product.category?.toLowerCase() === selectedCategory.toLowerCase()
+        (product) => product.categoryId === selectedCategory.id
       );
+      console.log('After category filter:', filtered.length);
     }
 
     if (searchTerm) {
       filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
       );
+      console.log('After search filter:', filtered.length);
     }
 
     setFilteredProducts(filtered);
   }, [searchTerm, selectedCategory, products]);
 
   const onTabChange = (category) => {
-    setSelectedCategory(category);
+    setSelectedCategory(category); // category will be null for 'All' or a category object
   };
 
   return (
@@ -44,47 +63,59 @@ export default function Products({ products, store, navigation, categories }) {
 
       {/* Category Tabs */}
       <View style={styles.tabsContainer}>
-      {/* "All" Category Tab */}
-      <TouchableOpacity
-        style={[styles.tab, selectedCategory === 'All' && styles.activeTab]}
-        onPress={() => onTabChange('All')}
-      >
-        <Text style={[styles.tabText, selectedCategory === 'All' && styles.activeTabText]}>
-          All
-        </Text>
-      </TouchableOpacity>
-
-      {/* Other Category Tabs */}
-      {categories.map((category) => (
+        {/* "All" Category Tab */}
         <TouchableOpacity
-          key={category.id}
-          style={[
-            styles.tab,
-            selectedCategory === category.name && styles.activeTab,
-          ]}
-          onPress={() => onTabChange(category.name)}
+          style={[styles.tab, !selectedCategory && styles.activeTab]}
+          onPress={() => onTabChange(null)}
         >
-          <Text
-            style={[
-              styles.tabText,
-              selectedCategory === category.name && styles.activeTabText,
-            ]}
-          >
-            {category.name}
+          <Text style={[styles.tabText, !selectedCategory && styles.activeTabText]}>
+            All
           </Text>
         </TouchableOpacity>
-      ))}
+
+        {/* Other Category Tabs */}
+        {categories
+          .filter(category => category.storeId === currentStore?.id) // Only show categories for current store
+          .map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.tab,
+                selectedCategory?.id === category.id && styles.activeTab,
+              ]}
+              onPress={() => onTabChange(category)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  selectedCategory?.id === category.id && styles.activeTabText,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
     </View>
 
       {/* Product Grid */}
-      <FlatGrid
-        itemDimension={120} // Adjust based on screen size as needed
-        data={filteredProducts}
-        spacing={15}
-        renderItem={({ item }) => (
+      {filteredProducts.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No products found</Text>
+          <Text style={styles.emptySubtext}>
+            {searchTerm ? 'Try a different search term' : selectedCategory ? 'Try a different category' : 'Add products to get started'}
+          </Text>
+        </View>
+      ) : (
+        <FlatGrid
+          itemDimension={120} // Adjust based on screen size as needed
+          data={filteredProducts}
+          spacing={15}
+          renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() =>
-              navigation.navigate('ProductDetails', { product: item, categories, store })
+              navigation.navigate('EditProduct', { product: item })
             }
             style={styles.itemContainer}
           >
@@ -101,6 +132,16 @@ export default function Products({ products, store, navigation, categories }) {
               <Text style={{ textAlign: 'center', fontSize: 9 }}>
                 {Math.round(item.stock * 100) / 100} In Stock
               </Text>
+              {item.variants?.items?.length > 0 && (
+                <Text style={{ textAlign: 'center', fontSize: 8, color: colors.accent }}>
+                  {item.variants.items.length} Variants
+                </Text>
+              )}
+              {item.addons?.items?.length > 0 && (
+                <Text style={{ textAlign: 'center', fontSize: 8, color: colors.accent }}>
+                  {item.addons.items.length} Add-ons
+                </Text>
+              )}
             </View>
             {item.stock < 10 && (
               <Text
@@ -124,6 +165,7 @@ export default function Products({ products, store, navigation, categories }) {
           </TouchableOpacity>
         )}
       />
+      )}
     </>
   );
 }
@@ -160,12 +202,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: colors.white,
-    height: 150,
+    height: 170,
     shadowColor: '#EBECF0',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 2,
     overflow: 'hidden',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.charcoalGrey,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.gray,
+    textAlign: 'center',
   },
 });

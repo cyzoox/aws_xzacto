@@ -1843,10 +1843,10 @@
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
 
-"@react-native-async-storage/async-storage@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-2.1.0.tgz"
-  integrity sha512-eAGQGPTAuFNEoIQSB5j2Jh1zm5NPyBRTfjRMfCN0W1OakC5WIB5vsDyIQhUweKN9XOE2/V07lqTMGsL0dGXNkA==
+"@react-native-async-storage/async-storage@^2.1.2":
+  version "2.1.2"
+  resolved "https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-2.1.2.tgz"
+  integrity sha512-dvlNq4AlGWC+ehtH12p65+17V0Dx7IecOWl6WanF2ja38O1Dcjjvn7jVzkUHJ5oWkQBlyASurTPlTHgKXyYiow==
   dependencies:
     merge-options "^3.0.4"
 
@@ -1981,13 +1981,22 @@
     prompts "^2.4.2"
     semver "^7.5.2"
 
+"@react-native-community/datetimepicker@^8.3.0":
+  version "8.3.0"
+  resolved "https://registry.npmjs.org/@react-native-community/datetimepicker/-/datetimepicker-8.3.0.tgz"
+  integrity sha512-K/KgaJbLtjMpx4PaG4efrVIcSe6+DbLufeX1lwPB5YY8i3sq9dOh6WcAcMTLbaRTUpurebQTkl7puHPFm9GalA==
+  dependencies:
+    invariant "^2.2.4"
+
 "@react-native-community/netinfo@^11.4.1":
   version "11.4.1"
+  resolved "https://registry.npmjs.org/@react-native-community/netinfo/-/netinfo-11.4.1.tgz"
+  integrity sha512-B0BYAkghz3Q2V09BF88RA601XursIEA111tnc2JOaN7axJWmNefmfjZqw/KdSxKZp7CZUuPpjBmz/WCR9uaHYg==
 
-"@react-native-picker/picker@^2.9.0":
-  version "2.9.0"
-  resolved "https://registry.npmjs.org/@react-native-picker/picker/-/picker-2.9.0.tgz"
-  integrity sha512-khEhIW/uhfMqq/+tvg4rEAiPGT8GX+Y6QydlP2TSMSmRHoSJK+ShXvXZXSr4Sii4imkj4BwvLunGywwtQDODqg==
+"@react-native-picker/picker@^2.11.0":
+  version "2.11.0"
+  resolved "https://registry.npmjs.org/@react-native-picker/picker/-/picker-2.11.0.tgz"
+  integrity sha512-QuZU6gbxmOID5zZgd/H90NgBnbJ3VV6qVzp6c7/dDrmWdX8S0X5YFYgDcQFjE3dRen9wB9FWnj2VVdPU64adSg==
 
 "@react-native-segmented-control/segmented-control@^2.5.7":
   version "2.5.7"
@@ -2211,10 +2220,10 @@
     color "^4.2.3"
     warn-once "^0.1.0"
 
-"@reduxjs/toolkit@^2.5.0":
-  version "2.5.0"
-  resolved "https://registry.npmjs.org/@reduxjs/toolkit/-/toolkit-2.5.0.tgz"
-  integrity sha512-awNe2oTodsZ6LmRqmkFhtb/KH03hUhxOamEQy411m3Njj3BbFvoBovxo4Q1cBWnV1ErprVj9MlF0UPXkng0eyg==
+"@reduxjs/toolkit@^2.6.1":
+  version "2.6.1"
+  resolved "https://registry.npmjs.org/@reduxjs/toolkit/-/toolkit-2.6.1.tgz"
+  integrity sha512-SSlIqZNYhqm/oMkXbtofwZSt9lrncblzo6YcZ9zoX+zLngRBrCOjK4lNLdkNucJF58RHOWrD9txT3bT3piH7Zw==
   dependencies:
     immer "^10.0.3"
     redux "^5.0.1"
@@ -5513,7 +5522,7 @@ lodash.merge@^4.6.2:
 lodash.throttle@^4.1.1:
   version "4.1.1"
 
-lodash@^4.17.15, lodash@^4.17.21, lodash@4.17.21:
+lodash@^4.17.13, lodash@^4.17.15, lodash@^4.17.21, lodash@4.17.21:
   version "4.17.21"
 
 log-symbols@^4.1.0:
@@ -6139,6 +6148,11 @@ path-scurry@^1.11.1:
 path-type@^4.0.0:
   version "4.0.0"
 
+paths-js@^0.4.10:
+  version "0.4.11"
+  resolved "https://registry.npmjs.org/paths-js/-/paths-js-0.4.11.tgz"
+  integrity sha512-3mqcLomDBXOo7Fo+UlaenG6f71bk1ZezPQy2JCmYHy2W2k5VKpP+Jbin9H0bjXynelTbglCqdFhSEkeIkKTYUA==
+
 picocolors@^1.0.0, picocolors@^1.1.0:
   version "1.1.0"
 
@@ -6160,6 +6174,11 @@ pkg-dir@^4.2.0:
   version "4.2.0"
   dependencies:
     find-up "^4.0.0"
+
+point-in-polygon@^1.0.1:
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/point-in-polygon/-/point-in-polygon-1.1.0.tgz"
+  integrity sha512-3ojrFwjnnw8Q9242TzgXuTD+eKiutbzyslcq1ydfu82Db2y+Ogbmyrkpv0Hgj31qwT3lbS9+QAAO/pIQM35XRw==
 
 possible-typed-array-names@^1.0.0:
   version "1.0.0"
@@ -6299,6 +6318,15 @@ react-native-animatable@1.3.3:
   dependencies:
     prop-types "^15.7.2"
 
+react-native-chart-kit@^6.12.0:
+  version "6.12.0"
+  resolved "https://registry.npmjs.org/react-native-chart-kit/-/react-native-chart-kit-6.12.0.tgz"
+  integrity sha512-nZLGyCFzZ7zmX0KjYeeSV1HKuPhl1wOMlTAqa0JhlyW62qV/1ZPXHgT8o9s8mkFaGxdqbspOeuaa6I9jUQDgnA==
+  dependencies:
+    lodash "^4.17.13"
+    paths-js "^0.4.10"
+    point-in-polygon "^1.0.1"
+
 react-native-device-info@^14.0.1:
   version "14.0.1"
   resolved "https://registry.npmjs.org/react-native-device-info/-/react-native-device-info-14.0.1.tgz"
@@ -6340,10 +6368,10 @@ react-native-get-random-values@^1.11.0, react-native-get-random-values@>=1.8.0:
   dependencies:
     fast-base64-decode "^1.0.0"
 
-react-native-image-picker@^7.1.2:
-  version "7.1.2"
-  resolved "https://registry.npmjs.org/react-native-image-picker/-/react-native-image-picker-7.1.2.tgz"
-  integrity sha512-b5y5nP60RIPxlAXlptn2QwlIuZWCUDWa/YPUVjgHc0Ih60mRiOg1PSzf0IjHSLeOZShCpirpvSPGnDExIpTRUg==
+react-native-image-picker@^7.2.3:
+  version "7.2.3"
+  resolved "https://registry.npmjs.org/react-native-image-picker/-/react-native-image-picker-7.2.3.tgz"
+  integrity sha512-zKIZUlQNU3EtqizsXSH92zPeve4vpUrsqHu2kkpCxWE9TZhJFZBb+irDsBOY8J21k0+Edgt06TMQGJ+iPUIXyA==
 
 react-native-linear-gradient@^2.8.3:
   version "2.8.3"
@@ -6358,10 +6386,10 @@ react-native-modal@^13.0.1:
     prop-types "^15.6.2"
     react-native-animatable "1.3.3"
 
-react-native-paper@^5.12.5:
-  version "5.12.5"
-  resolved "https://registry.npmjs.org/react-native-paper/-/react-native-paper-5.12.5.tgz"
-  integrity sha512-Qpqd1g9PClmjGj/Dkr1htAwt8cTZ3SCHVmhttxRuG/QML7KzHm5ArLNgR7vz5dW1EwJqTmyl/3gd6gnrtw90mw==
+react-native-paper@^5.13.1:
+  version "5.13.1"
+  resolved "https://registry.npmjs.org/react-native-paper/-/react-native-paper-5.13.1.tgz"
+  integrity sha512-8frKVKJ5JBd8WL1G3tpcYzOgK40kxkD/U+yLHGKNeLnD6v1Qc9W6DxWTHWN7lsX/DPYnhgvw1aKkYaPTmDj5pg==
   dependencies:
     "@callstack/react-theme-provider" "^3.0.9"
     color "^3.1.2"
@@ -6446,10 +6474,10 @@ react-native-svg-transformer@^1.5.0:
     "@svgr/plugin-svgo" "^8.1.0"
     path-dirname "^1.0.2"
 
-react-native-svg@>=12.0.0:
-  version "15.9.0"
-  resolved "https://registry.npmjs.org/react-native-svg/-/react-native-svg-15.9.0.tgz"
-  integrity sha512-pwo7hteAM0P8jNpPGQtiSd0SnbBhE8tNd94LT8AcZcbnH5AJdXBIcXU4+tWYYeGUjiNAH2E5d0T5XIfnvaz1gA==
+react-native-svg@^15.11.2, "react-native-svg@> 6.4.1", react-native-svg@>=12.0.0:
+  version "15.11.2"
+  resolved "https://registry.npmjs.org/react-native-svg/-/react-native-svg-15.11.2.tgz"
+  integrity sha512-+YfF72IbWQUKzCIydlijV1fLuBsQNGMT6Da2kFlo1sh+LE3BIm/2Q7AR1zAAR6L0BFLi1WaQPLfFUC9bNZpOmw==
   dependencies:
     css-select "^5.1.0"
     css-tree "^1.1.3"
@@ -6473,7 +6501,7 @@ react-native-vector-icons@*, react-native-vector-icons@^10.2.0, react-native-vec
     prop-types "^15.7.2"
     yargs "^16.1.1"
 
-react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", "react-native@^0.70 || ^0.71 || ^0.72 || ^0.73 || ^0.74 || ^0.75", "react-native@>= 0.56.0", react-native@>=0.56, react-native@>=0.59, react-native@>=0.59.0, react-native@>=0.62, react-native@>=0.65.0, react-native@>=0.70, react-native@>=0.74.0, react-native@0.74.4:
+react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", "react-native@^0.70 || ^0.71 || ^0.72 || ^0.73 || ^0.74 || ^0.75", "react-native@>= 0.50.0", "react-native@>= 0.56.0", react-native@>=0.56, react-native@>=0.59, react-native@>=0.59.0, react-native@>=0.62, react-native@>=0.65.0, react-native@>=0.70, react-native@>=0.74.0, react-native@0.74.4:
   version "0.74.4"
   dependencies:
     "@jest/create-cache-key-function" "^29.6.3"
@@ -6547,7 +6575,7 @@ react-test-renderer@18.2.0:
     react-shallow-renderer "^16.15.0"
     scheduler "^0.23.0"
 
-react@*, "react@^16.0.0 || ^17.0.0 || ^18.0.0", "react@^16.14.0 || ^17.0 || ^18.0", "react@^16.8.0 || ^17 || ^18 || ^19", "react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18.0 || ^19", react@^18.2.0, react@>=16.0, react@>=16.3.0, react@>=16.8, react@>=16.8.0, react@>=17.0.0, react@>=18, react@18.2.0:
+react@*, "react@^16.0.0 || ^17.0.0 || ^18.0.0", "react@^16.14.0 || ^17.0 || ^18.0", "react@^16.8.0 || ^17 || ^18 || ^19", "react@^16.8.0 || ^17.0.0 || ^18.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18.0 || ^19", react@^18.2.0, "react@> 16.7.0", react@>=16.0, react@>=16.3.0, react@>=16.8, react@>=16.8.0, react@>=17.0.0, react@>=18, react@18.2.0:
   version "18.2.0"
   dependencies:
     loose-envify "^1.1.0"
