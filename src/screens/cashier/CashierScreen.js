@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions, Alert } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import List from "../../components/List";
 import Spacer from "../../components/Spacer";
 import colors from "../../themes/colors";
@@ -21,6 +23,41 @@ const CashierScreen = ({ navigation, route }) => {
   const [selected, setSelected] = useState(0);
   const [discount_name, setDiscountName] = useState('');
   const [discountVisible, setDiscountVisible] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        { 
+          text: "Logout", 
+          onPress: async () => {
+            try {
+              // Clear all session data
+              await AsyncStorage.removeItem('staffData');
+              await AsyncStorage.removeItem('staffSession');
+              await AsyncStorage.removeItem('@store');
+              await AsyncStorage.removeItem('@currency');
+              
+              // Navigate to role selection screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'RoleSelection' }],
+              });
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
+  };
 
   const onClickPay = () => {
     setModalVisible(false);
@@ -83,6 +120,11 @@ const CashierScreen = ({ navigation, route }) => {
         leftComponent={
           <TouchableOpacity onPress={() => navigation.openDrawer()}>
             <EvilIcons name={'navicon'} size={35} color={colors.white} />
+          </TouchableOpacity>
+        }
+        rightComponent={
+          <TouchableOpacity onPress={handleLogout}>
+            <Ionicons name={'log-out-outline'} size={24} color={colors.white} />
           </TouchableOpacity>
         }
       />

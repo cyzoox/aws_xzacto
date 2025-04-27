@@ -1,175 +1,427 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Pressable, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { generateClient } from 'aws-amplify/api';
-import * as queries from '../graphql/queries';
-import formatMoney from 'accounting-js/lib/formatMoney.js';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator,
+  Alert,
+  Pressable
+} from 'react-native';
+import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatMoney } from 'accounting-js';
+import { dataService } from '../services/dataService';
 import Appbar from '../components/Appbar';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {
-  withAuthenticator,
-  useAuthenticator
-} from '@aws-amplify/ui-react-native';
-export default function HomeScreen({ navigation }) {
-  const userSelector = (context) => [context.user];
+import SignOutButton from '../components/SignOutButton';
+import { generateClient } from 'aws-amplify/api';
+import * as queries from '../graphql/queries';
 
-  const [productCount, setProductCount] = useState(0);
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [salesTotal, setSalesTotal] = useState(0);
-  const [todaySales, setTodaySales] = useState(0);
-  const [transactionCount, setTransactionCount] = useState(0);
-  const [expensesTotal, setExpensesTotal] = useState(0);
-  const [supplierCount, setSupplierCount] = useState(0);
-  const [customerCount, setCustomerCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [storeName, setStoreName] = useState('Your Store');
-  const [topProducts, setTopProducts] = useState([]);
-  const [latestTransactions, setLatestTransactions] = useState([]);
-  const [currentStore, setCurrentStore] = useState(null);
-
+function HomeScreen({ navigation }) {
   const client = generateClient();
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-
-      // Get staff data from session storage
-      const staffJson = await AsyncStorage.getItem('staffData');
-      if (!staffJson) {
-        console.error('No staff data found');
-        setLoading(false);
-        return;
-      }
+  
+  // Redux state selectors
+  const { items: stores = [], loading: storeLoading = false } = useSelector(state => state.store || { items: [], loading: false });
+  const { items: products = [] } = useSelector(state => state.product || { items: [] });
+  const { items: sales = [] } = useSelector(state => state.sales || { items: [] });
+  const { items: expenses = [] } = useSelector(state => state.expenses || { items: [] });
+  const { items: customers = [] } = useSelector(state => state.customers || { items: [] });
+  
+  // Local state variables
+  const [loading, setLoading] = useState(true);
+  const [currentStore, setCurrentStore] = useState(null);
+  const [storeName, setStoreName] = useState('Your Store');
+  const [productCount, setProductCount] = useState(0);
+  const [customerCount, setCustomerCount] = useState(0);
+  const [todaySales, setTodaySales] = useState(0);
+  const [salesTotal, setSalesTotal] = useState(0);
+  const [netProfit, setNetProfit] = useState(0);
+  const [expensesTotal, setExpensesTotal] = useState(0);
+  const [topProducts, setTopProducts] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  
+  // Fetch data when component mounts
+  useEffect(() => {
+    // Immediately fetch data for this component
+    const loadData = async () => {
+      // Force refresh data
+      await dataService.invalidateAllCache(); // Clear cache timestamps to force fresh data
       
-      const staffData = JSON.parse(staffJson);
-      
-      // Get the store data - for simplicity, fetch the first available store
-      let storeId = null;
-      let storeToUse = null;
-      
-      // Fetch stores for this staff
-      const storeResponse = await client.graphql({
-        query: queries.listStores,
-        variables: {}
-      });
-      
-      // Use the first store as the current store
-      const firstStore = storeResponse.data.listStores.items[0];
-      if (!firstStore) {
-        console.error('No stores found for this staff');
-        setLoading(false);
-        return;
-      }
-      
-      storeId = firstStore.id;
-      storeToUse = firstStore;
-      setStoreName(firstStore.name || 'Your Store');
-      
-      // Store the store data for navigation
-      setCurrentStore(storeToUse);
-
-      // Fetch products for this store
-      const { data: productData } = await client.graphql({
-        query: queries.listProducts,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId } 
-          } 
+      // Direct query for ALL products first (same as ProductsScreen)
+      try {
+        console.log('Directly fetching ALL products without filtering first');
+        // Match the simple query approach used in ProductsScreen
+        const productsResult = await client.graphql({
+          query: `query SimpleListProducts {
+            listProducts {
+              items {
+                id
+                name
+                brand
+                stock
+                storeId
+                sprice
+                img
+                isActive
+              }
+            }
+          }`
+        });
+        
+        if (productsResult?.data?.listProducts?.items) {
+          // Get all products first
+          const allProducts = productsResult.data.listProducts.items;
+          console.log(`HomeScreen: Fetched ${allProducts.length} total products`);
+          
+          // Filter for current store and active products only
+          const storeProducts = allProducts.filter(p => 
+            p.storeId === storeToUse.id && 
+            (p.isActive === undefined || p.isActive === true)
+          );
+          
+          console.log(`HomeScreen: After filtering, found ${storeProducts.length} products for store ${storeToUse.id}`);
+          const fetchedProducts = storeProducts;
+          
+          // Immediately set product count instead of waiting for Redux
+          setProductCount(fetchedProducts.length);
+          
+          // Calculate product statistics
+          if (fetchedProducts.length > 0) {
+            // Set top products by value (price * stock)
+            const sortedProducts = [...fetchedProducts]
+              .filter(p => p.stock > 0 && p.sprice > 0)
+              .sort((a, b) => (b.stock * b.sprice) - (a.stock * a.sprice))
+              .slice(0, 5);
+            setTopProducts(sortedProducts);
+            
+            // Calculate low stock count
+            const lowStockThreshold = 5; // Default threshold
+            const lowStockItems = fetchedProducts.filter(p => 
+              p.stock > 0 && p.stock <= lowStockThreshold
+            );
+            setLowStockCount(lowStockItems.length);
+          }
         }
-      });
-      const products = productData.listProducts.items;
-      setProductCount(products.length);
+      } catch (productsError) {
+        console.error('Error directly fetching products:', productsError);
+      }
+      await dataService.fetchSales(true);
       
-      // Check for low stock items (less than 10 units)
-      const lowStockItems = products.filter(product => product.stock < 10);
-      setLowStockCount(lowStockItems.length);
+      // Then call our fetchData function to process the fetched data
+      fetchData();
+    };
+    
+    // Run data loading
+    loadData();
+    
+    // Optional debug logs
+    console.log('Redux state on mount:', {
+      stores: stores.length,
+      products: products.length,
+      sales: sales.length,
+      expenses: expenses.length,
+      customers: customers.length
+    });
+  }, []);
+  
+  // Update data when Redux store changes
+  useEffect(() => {
+    if (currentStore && products.length > 0) {
+      console.log(`Processing ${products.length} products from Redux for store ID: ${currentStore.id}`);
       
-      // Find top 5 products by stock value
-      const topProductsByValue = [...products]
+      // Filter products by current store
+      const storeProducts = products.filter(p => p.storeId === currentStore.id && !p._deleted);
+      console.log(`Found ${storeProducts.length} products for this store after filtering`);
+      setProductCount(storeProducts.length);
+      
+      // Set top products by value (price * stock)
+      const sortedProducts = [...storeProducts]
+        .filter(p => p.stock > 0 && p.sprice > 0)
         .sort((a, b) => (b.stock * b.sprice) - (a.stock * a.sprice))
         .slice(0, 5);
-      setTopProducts(topProductsByValue);
-
-      // Get today's date at midnight for filtering today's transactions
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      setTopProducts(sortedProducts);
       
-      // Fetch all sales transactions
-      const { data: salesData } = await client.graphql({
-        query: queries.listSaleTransactions,
-        variables: { 
-          filter: { 
-            storeID: { eq: storeId } 
-          } 
-        }
-      });
-      const allTransactions = salesData.listSaleTransactions.items;
+      // Calculate low stock count (products with stock below threshold)
+      const lowStockThreshold = 5; // Default threshold, could be configurable per store
+      const lowStockItems = storeProducts.filter(p => p.stock > 0 && p.stock <= lowStockThreshold);
+      setLowStockCount(lowStockItems.length);
+    }
+  }, [products, currentStore]);
+  
+  // Update sales data when Redux store changes
+  useEffect(() => {
+    if (currentStore && sales.length > 0) {
+      // Filter transactions by current store
+      const storeTransactions = sales.filter(t => t.storeId === currentStore.id && !t._deleted);
       
       // Calculate total sales
-      const salesAmount = allTransactions.reduce(
-        (total, sale) => total + sale.total,
-        0
-      );
-      setSalesTotal(salesAmount);
-      setTransactionCount(allTransactions.length);
+      const total = storeTransactions.reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+      setSalesTotal(total);
       
       // Calculate today's sales
-      const todayTransactions = allTransactions.filter(transaction => {
-        const transDate = new Date(transaction.createdAt);
-        return transDate >= today;
-      });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todaySalesTotal = storeTransactions
+        .filter(t => new Date(t.createdAt) >= today)
+        .reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+      setTodaySales(todaySalesTotal);
       
-      const todaySalesAmount = todayTransactions.reduce(
-        (total, sale) => total + sale.total,
-        0
-      );
-      setTodaySales(todaySalesAmount);
-      
-      // Get 5 most recent transactions
-      const recentTransactions = [...allTransactions]
+      // Set recent transactions (last 5)
+      const sortedTransactions = [...storeTransactions]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 5);
-      setLatestTransactions(recentTransactions);
-
-      // Fetch expenses for this store
-      const { data: expensesData } = await client.graphql({
-        query: queries.listExpenses,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId } 
-          } 
-        }
-      });
-      const expensesAmount = expensesData.listExpenses.items.reduce(
-        (total, expense) => total + expense.amount,
-        0
-      );
-      setExpensesTotal(expensesAmount);
-
-      // Fetch suppliers for this store
-      const { data: supplierData } = await client.graphql({
-        query: queries.listSuppliers,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId } 
-          } 
-        }
-      });
-      setSupplierCount(supplierData.listSuppliers.items.length);
+      setRecentTransactions(sortedTransactions);
       
-      // Fetch customers for this store
-      const { data: customerData } = await client.graphql({
-        query: queries.listCustomers,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId } 
-          } 
+      // Calculate net profit if expenses are loaded
+      if (expenses.length > 0) {
+        setNetProfit(total - expensesTotal);
+      }
+    }
+  }, [sales, currentStore, expensesTotal]);
+  
+  // Update expenses when Redux store changes
+  useEffect(() => {
+    if (currentStore && expenses.length > 0) {
+      // Filter expenses by current store
+      const storeExpenses = expenses.filter(e => e.storeId === currentStore.id && !e._deleted);
+      const expTotal = storeExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      setExpensesTotal(expTotal);
+    }
+  }, [expenses, currentStore]);
+  
+  // Update customer count when Redux store changes
+  useEffect(() => {
+    if (currentStore && customers.length > 0) {
+      // Filter customers by current store
+      const storeCustomers = customers.filter(c => c.storeId === currentStore.id && !c._deleted);
+      setCustomerCount(storeCustomers.length);
+    }
+  }, [customers, currentStore]);
+  
+  // Fetch necessary data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // First check if we have staff data in AsyncStorage
+      let staffData = null;
+      let ownerId = null;
+      try {
+        const staffJson = await AsyncStorage.getItem('staffData');
+        if (staffJson) {
+          staffData = JSON.parse(staffJson);
+          ownerId = staffData.ownerId;
+          console.log('Staff data found:', staffData.name, 'Owner ID:', ownerId);
+        } else {
+          console.warn('No staff data available in AsyncStorage, continuing anyway');
+          setLoading(false);
+          return; // Exit early if no staff data is available
         }
+      } catch (staffError) {
+        console.warn('Error reading staff data, continuing anyway:', staffError);
+        setLoading(false);
+        return; // Exit early if staff data cannot be read
+      }
+      
+      // If ownerId is not available, we cannot filter properly
+      if (!ownerId) {
+        console.error('Owner ID is missing in staff data, cannot properly filter data');
+        setLoading(false);
+        return;
+      }
+      
+      // Debug: Show current Redux state
+      console.log('Current Redux state before fetching:', {
+        storesCount: stores.length,
+        productsCount: products.length,
+        salesCount: sales.length,
       });
-      setCustomerCount(customerData.listCustomers.items.length);
+
+      // Get the store data from Redux or fetch directly if needed
+      let storeToUse = null;
+      
+      // Try to get stores from Redux first
+      if (stores && stores.length > 0) {
+        // Filter stores by ownerId
+        const userStores = stores.filter(store => store.ownerId === ownerId);
+        
+        if (userStores.length > 0) {
+          console.log('Using stores from Redux filtered by ownerId:', userStores[0].name);
+          storeToUse = userStores[0];
+        } else {
+          console.log('No stores found in Redux with matching ownerId');
+        }
+      }
+      
+      // If no store was found in Redux, query directly with filter
+      if (!storeToUse) {
+        console.log(`Fetching stores directly for ownerId: ${ownerId}...`);
+        try {
+          const response = await client.graphql({
+            query: queries.listStores,
+            variables: {
+              filter: {
+                ownerId: { eq: ownerId }
+              }
+            }
+          });
+          
+          const fetchedStores = response?.data?.listStores?.items || [];
+          if (fetchedStores.length > 0) {
+            storeToUse = fetchedStores[0];
+            console.log('Store fetched directly with ownerId filter:', storeToUse.name);
+          } else {
+            console.error(`No stores found for ownerId: ${ownerId}`);
+            // Create placeholder store to avoid UI errors
+            storeToUse = { id: 'unknown', name: 'Default Store', ownerId };
+          }
+        } catch (storeError) {
+          console.error('Error fetching stores directly:', storeError);
+          // Create placeholder store to avoid UI errors
+          storeToUse = { id: 'unknown', name: 'Error Store', ownerId };
+        }
+      }
+      
+      setStoreName(storeToUse.name || 'Your Store');
+      setCurrentStore(storeToUse);
+
+      // Directly fetch products if needed
+      if (products.length === 0 && storeToUse.id !== 'unknown') {
+        console.log('Fetching products directly for store:', storeToUse.id, 'and ownerId:', ownerId);
+        try {
+          const response = await client.graphql({
+            query: queries.listProducts,
+            variables: { 
+              filter: { 
+                and: [
+                  { storeId: { eq: storeToUse.id } },
+                  { ownerId: { eq: ownerId } }
+                ]
+              } 
+            }
+          });
+          
+          // Manually process products
+          const fetchedProducts = response?.data?.listProducts?.items || [];
+          console.log(`Fetched ${fetchedProducts.length} products directly`);
+          
+          // Calculate product stats for UI
+          if (fetchedProducts.length > 0) {
+            setProductCount(fetchedProducts.length);
+            
+            // Set top products by value
+            const sortedProducts = [...fetchedProducts]
+              .filter(p => p.stock > 0 && p.sprice > 0)
+              .sort((a, b) => (b.stock * b.sprice) - (a.stock * a.sprice))
+              .slice(0, 5);
+            setTopProducts(sortedProducts);
+            
+            // Calculate low stock count
+            const lowStockThreshold = 5; 
+            const lowStockItems = fetchedProducts.filter(p => 
+              p.stock > 0 && p.stock <= lowStockThreshold
+            );
+            setLowStockCount(lowStockItems.length);
+          }
+        } catch (productsError) {
+          console.error('Error fetching products directly:', productsError);
+        }
+      }
+      
+      // Directly fetch sales if needed
+      if (sales.length === 0 && storeToUse.id !== 'unknown') {
+        console.log('Fetching sales directly for ownerId:', ownerId);
+        try {
+          // Query sales transactions with proper filtering
+          const response = await client.graphql({
+            query: queries.listSaleTransactions,
+            variables: { 
+              filter: { 
+                and: [
+                  { storeId: { eq: storeToUse.id } },
+                  { ownerId: { eq: ownerId } }
+                ]
+              }
+            }
+          });
+          
+          // Process sales - already filtered by GraphQL query
+          let fetchedSales = response?.data?.listSaleTransactions?.items || []; 
+          
+          console.log(`Fetched ${fetchedSales.length} sales for store ${storeToUse.name}`);
+          
+          if (fetchedSales.length > 0) {
+            // Calculate total sales
+            const total = fetchedSales.reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+            setSalesTotal(total);
+            
+            // Calculate today's sales
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todaySalesTotal = fetchedSales
+              .filter(t => new Date(t.createdAt) >= today)
+              .reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+            setTodaySales(todaySalesTotal);
+            
+            // Set recent transactions (last 5)
+            const recentTxns = [...fetchedSales]
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 5);
+            setRecentTransactions(recentTxns);
+          }
+        } catch (salesError) {
+          console.error('Error fetching sales:', salesError);
+        }
+      }
+      
+      // Fetch customers filtered by ownerId
+      if (customers.length === 0 && storeToUse.id !== 'unknown') {
+        console.log('Fetching customers for ownerId:', ownerId);
+        try {
+          const response = await client.graphql({
+            query: queries.listCustomers,
+            variables: { 
+              filter: { 
+                and: [
+                  { storeId: { eq: storeToUse.id } },
+                  { ownerId: { eq: ownerId } }
+                ]
+              } 
+            }
+          });
+          
+          // Extract data with proper null checks
+          const fetchedCustomers = response?.data?.listCustomers?.items || [];
+          console.log(`Fetched ${fetchedCustomers.length} customers for owner ${ownerId}`);
+          setCustomerCount(fetchedCustomers.length);
+        } catch (customerError) {
+          console.error('Error fetching customers:', customerError);
+          setCustomerCount(0);
+        }
+      }
 
     } catch (error) {
       console.error('Error fetching data:', error);
+      
+      // Log more information about the error to help with debugging
+      if (error.message) {
+        console.error('Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
+      }
+      
+      // Ensure the UI is still usable by setting defaults
+      if (!currentStore) setCurrentStore({id: 'unknown', name: 'Store'});
+      if (!productCount) setProductCount(0);
+      if (!customerCount) setCustomerCount(0);
+      if (!expensesTotal) setExpensesTotal(0);
+      if (!salesTotal) setSalesTotal(0);
+      if (!topProducts.length) setTopProducts([]);
+      if (!recentTransactions.length) setRecentTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -235,8 +487,7 @@ export default function HomeScreen({ navigation }) {
     );
   }
 
-  // Calculate business metrics
-  const netProfit = salesTotal - expensesTotal;
+  // Calculate profit margin percentage
   const profitMargin = salesTotal > 0 ? (netProfit / salesTotal) * 100 : 0;
   
   return (
@@ -249,54 +500,17 @@ export default function HomeScreen({ navigation }) {
             onMenuPress={() => console.log("Menu pressed")}
             onSearchPress={() => console.log("Search pressed")}
             onNotificationPress={() => console.log("Notifications pressed")}
-            onProfilePress={() => SignOutButton()}
+            onProfilePress={() => navigation.navigate('Profile')}
+            rightComponent={<SignOutButton 
+              iconProps={{ color: '#fff', size: 22 }}
+              textStyle={{ display: 'none' }}
+              style={{ padding: 0, marginRight: 8 }}
+            />}
           />
         </View>
         
-        {/* Key Metrics Bar */}
-        <View style={styles.infoBar}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Total Sales</Text>
-            <Text style={styles.infoValue}>PHP {formatMoney(salesTotal, { symbol: '', precision: 2 })}</Text>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Net Profit</Text>
-            <Text style={styles.infoValue}>PHP {formatMoney(netProfit, { symbol: '', precision: 2 })}</Text>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Margin</Text>
-            <Text style={styles.infoValue}>{profitMargin.toFixed(1)}%</Text>
-          </View>
-        </View>
-        
         {/* Quick Actions Bar */}
-        <View style={styles.shortcutsBar}>
-          <TouchableOpacity 
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('Inventory')}
-          >
-            <Ionicons name="cube-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>Inventory</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('BillsAndReceipt')}
-          >
-            <Ionicons name="receipt-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>Bills & Receipts</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('SummaryReport')}
-          >
-            <Ionicons name="stats-chart-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>Reports</Text>
-          </TouchableOpacity>
-        </View>
+     
       </View>
       
       <ScrollView style={styles.content}>
@@ -351,7 +565,7 @@ export default function HomeScreen({ navigation }) {
         {/* Recent Transactions */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          {latestTransactions.map((transaction) => (
+          {recentTransactions.map((transaction) => (
             <View key={transaction.id} style={styles.listItem}>
               <Ionicons name="receipt-outline" size={24} color="#3A6EA5" style={styles.listIcon} />
               <View style={styles.listContent}>
@@ -613,3 +827,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+export default HomeScreen;
