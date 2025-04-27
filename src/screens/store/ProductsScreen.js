@@ -17,7 +17,15 @@ const client = generateClient();
 
 const ProductsScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
-  const { currentStore, currentStaff, staffStores, fetchStores } = useStore();
+  // Get store directly from route params if available
+  const storeFromParams = route.params?.store;
+  
+  // Still use StoreContext as fallback
+  const { currentStore: contextStore, currentStaff, staffStores, fetchStores } = useStore();
+  
+  // Use store from params if available, otherwise fall back to context
+  const [activeStore, setActiveStore] = useState(storeFromParams || contextStore);
+  
   const [term, setTerm] = useState('');
   const [categoryName, setCategoryName] = useState('');
   const [products, setProducts] = useState([]);
@@ -57,36 +65,32 @@ const ProductsScreen = ({ navigation, route }) => {
     return () => unsubscribe();
   }, [dispatch]);
 
-  // Initialize store context and fetch data
+  // Initialize data on mount and when store changes
   useEffect(() => {
-    const initializeAndFetch = async () => {
-      try {
-        // First ensure we have the latest store data
-        if (!initialized) {
-          console.log('Fetching stores...');
-          await fetchStores();
-          setInitialized(true);
-        }
+    console.log('Route params changed:', route.params);
+    // Update active store if it comes from navigation params
+    if (route.params?.store) {
+      console.log('Setting active store from navigation params:', route.params.store.name);
+      setActiveStore(route.params.store);
+    }
+  }, [route.params]);
+  
+  // Fetch products when active store changes or on initial load
+  useEffect(() => {
+    if (activeStore?.id) {
+      console.log('Active store changed, fetching products for:', activeStore.name);
+      fetchProducts();
+      dispatch(fetchCategories());
+      setInitialized(true);
+    } else if (!initialized) {
+      // Initialize with whatever store we have
+      console.log('No active store, using fallback initialization');
+      fetchProducts();
+      dispatch(fetchCategories());
+      setInitialized(true);
+    }
+  }, [activeStore, initialized, dispatch]);
 
-        // Wait for store context to be initialized
-        if (!currentStore) {
-          console.log('Waiting for store initialization...');
-          return;
-        }
-
-        console.log('Current store:', currentStore);
-
-        // Fetch categories and products
-        dispatch(fetchCategories());
-        await fetchProducts();
-      } catch (error) {
-        console.error('Error in initialization:', error);
-        setError('Failed to initialize. Please try again.');
-      }
-    };
-
-    initializeAndFetch();
-  }, [dispatch, currentStore, fetchStores, initialized]);
 
 
 
@@ -119,42 +123,105 @@ const ProductsScreen = ({ navigation, route }) => {
   };
 
   const fetchProducts = async () => {
-    if (!currentStore?.id) {
-      console.log('No store selected, skipping product fetch');
-      return;
-    }
-
     setLoading(true);
     setError(null);
+    
+    // Add detailed debugging
+    console.log('Debug - Store state:', { 
+      activeStore: activeStore ? activeStore.name : 'null', 
+      storeId: activeStore?.id || 'missing',
+      fromParams: !!route.params?.store
+    });
+    
     try {
-      console.log('Fetching store products for store ID:', currentStore.id);
-      const result = await client.graphql({
-        query: listProducts,
-        variables: {
-          filter: {
-            storeId: { eq: currentStore.id },
-            isActive: { eq: true }
+      // Simplify to the most direct query possible
+      console.log('Attempting direct query for ALL products without filtering');
+      
+      try {
+        // Use the simplest possible GraphQL query
+        const result = await client.graphql({
+          query: `query SimpleListProducts {
+            listProducts {
+              items {
+                id
+                name
+                brand
+                stock
+                storeId
+                sprice
+                img
+                isActive
+                categoryId
+              }
+            }
+          }`
+        });
+
+        // Check if we got a valid response
+        if (result?.data?.listProducts?.items) {
+          const allProducts = result.data.listProducts.items;
+          console.log(`SUCCESS: Fetched ${allProducts.length} total products with simple query`);
+          
+          // Filter products to only include those belonging to the active store
+          if (activeStore?.id) {
+            const storeProducts = allProducts.filter(product => product.storeId === activeStore.id);
+            console.log(`After filtering: ${storeProducts.length} products belong to store ${activeStore.name} (ID: ${activeStore.id})`);
+            
+            // Debug any mismatched products
+            if (storeProducts.length < allProducts.length) {
+              const mismatchedProducts = allProducts.filter(product => product.storeId !== activeStore.id);
+              console.log('Products with mismatched store IDs:', 
+                mismatchedProducts.map(p => ({ name: p.name, storeId: p.storeId }))
+              );
+            }
+            
+            setProducts(storeProducts);
+          } else {
+            // If no active store, still show all products but with a warning
+            console.warn('No active store selected, showing all products');
+            setProducts(allProducts);
           }
+          
+          setError(null);
+          setLoading(false);
+          return;
+        } else {
+          console.error('Direct query returned invalid structure:', result);
         }
-      });
+      } catch (directQueryError) {
+        console.error('Direct query error:', directQueryError);
+      }
       
-      const productItems = result.data.listProducts.items || [];
-      console.log(`Fetched ${productItems.length} products for store`);
+      // Normal flow with valid activeStore
+      if (activeStore?.id) {
+        console.log('Fetching store products for store ID:', activeStore.id);
+        const result = await client.graphql({
+          query: listProducts,
+          variables: {
+            filter: {
+              storeId: { eq: activeStore.id },
+              isActive: { eq: true }
+            }
+          }
+        });
+        
+        const productItems = result.data.listProducts.items || [];
+        console.log(`Fetched ${productItems.length} products for store`);
       
-      // Split products into regular and warehouse-sourced
-      const regularProducts = productItems.filter(product => !product.warehouseProductId);
-      const warehouseProducts = productItems.filter(product => product.warehouseProductId);
+        // Split products into regular and warehouse-sourced
+        const regularProducts = productItems.filter(product => !product.warehouseProductId);
+        const warehouseProducts = productItems.filter(product => product.warehouseProductId);
       
-      console.log(`Found ${regularProducts.length} regular products and ${warehouseProducts.length} warehouse-sourced products`);
-      
-      if (productItems.length === 0) {
-        console.log('No products found for this store');
-        setProducts([]);
-        setError('No products found for this store. Try requesting items from the warehouse.');
-      } else {
-        // Process all products to get additional details
-        const productsWithDetails = await Promise.all(
-          productItems.map(async (product) => {
+        console.log(`Found ${regularProducts.length} regular products and ${warehouseProducts.length} warehouse-sourced products`);
+        
+        if (productItems.length === 0) {
+          console.log('No products found for this store');
+          setProducts([]);
+          setError('No products found for this store. Try requesting items from the warehouse.');
+        } else {
+          // Process all products to get additional details
+          const productsWithDetails = await Promise.all(
+            productItems.map(async (product) => {
             // Get variants and addons for all products
             const details = await fetchProductDetails(product.id);
             
@@ -196,11 +263,12 @@ const ProductsScreen = ({ navigation, route }) => {
           })
         );
         
-        console.log(`Processed ${productsWithDetails.length} products with details`);
-        setProducts(productsWithDetails);
+          console.log(`Processed ${productsWithDetails.length} products with details`);
+          setProducts(productsWithDetails);
+        }
+        
+        setError(null);
       }
-      
-      setError(null);
     } catch (err) {
       console.error('Error fetching products:', err);
       setError('Failed to fetch products');
@@ -350,12 +418,43 @@ const ProductsScreen = ({ navigation, route }) => {
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => fetchProducts()}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          <Products
-            products={products}
-            navigation={navigation}
-            categories={categories}
-          />
+          <>
+            {/* Debug info for categories */}
+            {categories.length === 0 && (
+              <View style={{ padding: 10, backgroundColor: '#f8d7da', margin: 10, borderRadius: 5 }}>
+                <Text style={{ color: '#721c24' }}>
+                  No categories found. Try adding a category using the button above.
+                </Text>
+              </View>
+            )}
+            
+            {/* Debug info for store */}
+            <View style={{ padding: 10, backgroundColor: '#cce5ff', margin: 10, borderRadius: 5 }}>
+              <Text style={{ color: '#004085' }}>
+                Active Store: {activeStore?.name || 'None'} (ID: {activeStore?.id || 'None'})
+              </Text>
+              <Text style={{ color: '#004085', marginTop: 5 }}>
+                Products: {products.length}, Categories: {categories.length}
+              </Text>
+            </View>
+
+            <Products
+              products={products}
+              navigation={navigation}
+              categories={categories}
+              activeStore={activeStore} // Pass the active store explicitly
+            />
+          </>
         )}
       </View>
     </SafeAreaView>

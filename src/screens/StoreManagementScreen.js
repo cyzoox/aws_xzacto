@@ -1,18 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { TextInput, Button, DataTable, Portal, Modal } from 'react-native-paper';
 import { useSelector, useDispatch } from 'react-redux';
 import Appbar from '../components/Appbar';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { addStore } from '../store/slices/storeSlice';
+import { getCurrentUser } from '@aws-amplify/auth';
 
 export default function StoreManagementScreen({ navigation }) {
   const dispatch = useDispatch();
   const { isOnline, hasPendingChanges, pendingChangesCount } = useNetworkStatus();
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // Get data from Redux store
-  const { items: stores, loading } = useSelector(state => state.store);
-  const { items: staff } = useSelector(state => state.staff);
+  // Get data from Redux store - filtered by current user's ownership
+  const { items: stores, loading } = useSelector(state => {
+    const allStores = state.store.items || [];
+    
+    // Filter stores by current user's ownership
+    return {
+      items: currentUserId
+        ? allStores.filter(store => store.ownerId === currentUserId && !store._deleted)
+        : [],
+      loading: state.store.loading
+    };
+  });
+  
+  // Get data from Redux store with filtering by current user's ID
+  const { items: staff } = useSelector(state => {
+    const allStaff = state.staff.items || [];
+    return {
+      items: currentUserId 
+        ? allStaff.filter(s => s.ownerId === currentUserId && !s._deleted)
+        : []
+    };
+  });
+  
+  // Get the authenticated user ID on component mount
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const authUser = await getCurrentUser();
+        const userId = authUser.userId;
+        console.log('StoreManagementScreen: Current user ID set:', userId);
+        setCurrentUserId(userId);
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        Alert.alert('Error', 'Authentication error. Please restart the app.');
+      }
+    };
+    
+    fetchUserId();
+  }, []);
   
   const [modalVisible, setModalVisible] = useState(false);
   const [newStore, setNewStore] = useState({
@@ -26,12 +64,21 @@ export default function StoreManagementScreen({ navigation }) {
       Alert.alert('Error', 'Store name and location are required');
       return;
     }
+    
+    // Ensure we have a current user ID
+    if (!currentUserId) {
+      Alert.alert('Error', 'Authentication error. Please restart the app.');
+      return;
+    }
 
     // Create store input
     const storeInput = {
       ...newStore,
+      ownerId: currentUserId, // Associate store with the authenticated user
       status: 'ACTIVE'
     };
+    
+    console.log('Creating store with ownerId:', currentUserId);
 
     // Dispatch action to add store
     dispatch(addStore(storeInput));
@@ -87,19 +134,24 @@ export default function StoreManagementScreen({ navigation }) {
 
         <ScrollView>
           <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Name</DataTable.Title>
-              <DataTable.Title>Location</DataTable.Title>
-              <DataTable.Title>Staff Count</DataTable.Title>
+            <DataTable.Header style={styles.tableHeader}>
+              <DataTable.Title style={styles.nameColumn}>Store Name</DataTable.Title>
+              <DataTable.Title style={styles.locationColumn}>Location</DataTable.Title>
+              <DataTable.Title style={styles.statusColumn}>Status</DataTable.Title>
             </DataTable.Header>
 
             {stores.map((store) => {
-              const storeStaff = staff.filter(s => s.storeID === store.id);
               return (
-                <DataTable.Row key={store.id}>
-                  <DataTable.Cell>{store.name}</DataTable.Cell>
-                  <DataTable.Cell>{store.location}</DataTable.Cell>
-                  <DataTable.Cell>{storeStaff.length}</DataTable.Cell>
+                <DataTable.Row key={store.id} style={styles.tableRow}>
+                  <DataTable.Cell style={styles.nameColumn}>
+                    <Text style={styles.storeName}>{store.name}</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell style={styles.locationColumn}>{store.location}</DataTable.Cell>
+                  <DataTable.Cell style={[styles.statusColumn, {justifyContent: 'center', alignItems: 'center'}]}>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusText}>Active</Text>
+                    </View>
+                  </DataTable.Cell>
                 </DataTable.Row>
               );
             })}
@@ -151,47 +203,85 @@ export default function StoreManagementScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 16
   },
   addButton: {
-    marginBottom: 16,
+    margin: 16,
+    backgroundColor: '#2196F3'
   },
   modal: {
     backgroundColor: 'white',
     padding: 20,
     margin: 20,
-    borderRadius: 8,
+    borderRadius: 10,
+    elevation: 5
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 22,
+    fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
+    color: '#333',
+    textAlign: 'center'
   },
   input: {
-    marginBottom: 12,
-  },
-  submitButton: {
-    marginTop: 16,
+    marginBottom: 16,
+    backgroundColor: '#f5f5f5'
   },
   offlineBanner: {
     backgroundColor: '#f8d7da',
     padding: 10,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f5c6cb',
+    borderBottomColor: '#f5c6cb'
   },
   offlineText: {
     color: '#721c24',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   pendingText: {
     color: '#856404',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 4
   },
+  tableHeader: {
+    backgroundColor: '#f2f2f2',
+    paddingVertical: 8
+  },
+  tableRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0'
+  },
+  nameColumn: {
+    flex: 2
+  },
+  locationColumn: {
+    flex: 2
+  },
+  statusColumn: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  storeName: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#2196F3'
+  },
+  statusBadge: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    alignSelf: 'center'
+  },
+  statusText: {
+    color: '#2e7d32',
+    fontSize: 12,
+    fontWeight: '600'
+  }
 });

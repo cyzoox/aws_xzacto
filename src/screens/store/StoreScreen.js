@@ -1,40 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { deleteStore, addStore, setStoreList } from '../../store/slices/storeSlice';
-import { Text, StyleSheet, View, FlatList, Alert, ActivityIndicator, TextInput } from "react-native";
-import { ListItem, Avatar, Badge, Overlay, Button } from "react-native-elements";
+import { deleteStore, setStoreList, setLoading as setStoreLoading } from '../../store/slices/storeSlice';
+import { Text, StyleSheet, View, FlatList, Alert, ActivityIndicator } from "react-native";
+import { ListItem, Badge } from "react-native-elements";
 import { generateClient } from 'aws-amplify/api';
-import { listStores, getStore } from '../../graphql/queries';
+import { listStores } from '../../graphql/queries';
 import Appbar from '../../components/Appbar';
 import colors from '../../themes/colors';
 import { Auth } from 'aws-amplify';
 import Icon from 'react-native-vector-icons/Feather';
-import { useStore } from '../../context/StoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const initialFormState = { 
-  name: '',  
-  location: ''
-};
 const client = generateClient();
 
 const StoreScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const { items: stores } = useSelector(state => state.store);
+  const { items: stores, loading } = useSelector(state => state.store);
   const { items: staff } = useSelector(state => state.staff);
-  const { setCurrentStore } = useStore();
   const [currentUserStores, setCurrentUserStores] = useState([]);
   const [currentUserRole, setCurrentUserRole] = useState(null);
-  const [formState, setFormState] = useState(initialFormState);
-  const [overlayVisible, setOverlayVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [isOnline] = useState(true);
 
   // Fetch initial data when component mounts
   useEffect(() => {
     const initializeData = async () => {
-      setLoading(true);
+      dispatch(setStoreLoading(true));
       try {
         await fetchUserInfo();
         await fetchStores();
@@ -43,14 +33,27 @@ const StoreScreen = ({ navigation }) => {
         console.log('Error initializing data:', err);
         setErrorMessage('Failed to load data. Please try again.');
       } finally {
-        // Make sure loading is set to false to allow rendering
-        setLoading(false);
+        dispatch(setStoreLoading(false));
         console.log('Loading state set to false');
       }
     };
 
     initializeData();
-  }, []);
+  }, [dispatch]);
+
+  // Set the current store in AsyncStorage and Redux
+  const setCurrentStoreHandler = (store) => {
+    try {
+      // Save to AsyncStorage
+      const saveStore = async () => {
+        await AsyncStorage.setItem('currentStoreData', JSON.stringify(store));
+        console.log('Store saved to AsyncStorage:', store.name);
+      };
+      saveStore();
+    } catch (err) {
+      console.log('Error saving store to AsyncStorage:', err);
+    }
+  };
 
   // We're disabling this effect since we're now loading directly from AsyncStorage
   // This was causing a race condition with our direct data fetching
@@ -388,7 +391,7 @@ const StoreScreen = ({ navigation }) => {
       <ListItem 
         containerStyle={[styles.storeCard, isDefault && styles.defaultStore]} 
         onPress={() => {
-          setCurrentStore(item);
+          setCurrentStoreHandler(item);
           navigation.navigate('StoreDashboard', { store: item });
         }}
       >

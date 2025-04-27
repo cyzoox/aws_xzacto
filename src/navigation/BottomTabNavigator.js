@@ -3,9 +3,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { generateClient } from 'aws-amplify/api';
-import * as queries from '../graphql/queries';
+import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Import centralized data service
+import { dataService } from '../services/dataService';
 
 import HomeScreen from '../screens/HomeScreen';
 import StoreScreen from '../screens/store/StoreScreen';
@@ -121,17 +123,18 @@ function StoreStackScreen() {
   );
 }
 
-
 const BottomTabNavigator = () => {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [newTransactions, setNewTransactions] = useState(0);
   const [storeName, setStoreName] = useState('Store');
   
+  // Select data from Redux store
+  const { loading: storeLoading } = useSelector(state => state.store);
+  const sales = useSelector(state => state.sales?.items) || [];
+  
   useEffect(() => {
     const fetchNotificationData = async () => {
-      try {
-        const client = generateClient();
-        
+      try {        
         // Get store information from session
         const sessionData = await AsyncStorage.getItem('staffSession');
         if (!sessionData) return;
@@ -140,46 +143,35 @@ const BottomTabNavigator = () => {
         setStoreName(storeData.name || 'Store');
         const storeId = storeData.id;
         
-        // Fetch pending inventory requests
-        const requestsResult = await client.graphql({
-          query: queries.listInventoryRequests,
-          variables: { 
-            filter: { 
-              storeId: { eq: storeId },
-              status: { eq: 'Pending' }
-            } 
-          }
-        });
+        // Use centralized data service to fetch pending requests
+        const inventoryRequests = await dataService.getPendingInventoryRequests(storeId);
+        setPendingRequests(inventoryRequests.length);
         
-        setPendingRequests(requestsResult.data.listInventoryRequests.items.length);
+        // Get today's transactions from Redux state instead of refetching
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         
-        // Get transactions from today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayTransactions = sales.filter(tx => 
+          tx.storeId === storeId && 
+          tx.createdAt >= todayStart && 
+          !tx._deleted
+        );
         
-        const transactionsResult = await client.graphql({
-          query: queries.listSaleTransactions,
-          variables: { 
-            filter: { 
-              storeID: { eq: storeId },
-              createdAt: { ge: today.toISOString() }
-            } 
-          }
-        });
-        
-        setNewTransactions(transactionsResult.data.listSaleTransactions.items.length);
+        setNewTransactions(todayTransactions.length);
         
       } catch (error) {
         console.error('Error fetching notification data:', error);
       }
     };
     
+    // Initial fetch
     fetchNotificationData();
     
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchNotificationData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    // Set up interval to refresh data every 5 minutes
+    const intervalId = setInterval(fetchNotificationData, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [sales]); // Only re-run when sales data changes
   
   return (
     <Tab.Navigator

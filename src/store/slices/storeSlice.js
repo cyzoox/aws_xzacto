@@ -57,7 +57,8 @@ export const storeSlice = createSlice({
       // Only send required fields to the API
       const createInput = {
         name: action.payload.name,
-        location: action.payload.location
+        location: action.payload.location,
+        ownerId: action.payload.ownerId // Include ownerId when creating store
       };
       
       state.pendingChanges.push({

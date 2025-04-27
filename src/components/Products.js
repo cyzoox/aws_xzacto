@@ -6,8 +6,11 @@ import { useStore } from '../context/StoreContext';
 import SearchBar from './SearchBar';
 import colors from '../themes/colors';
 
-export default function Products({ products, navigation, categories }) {
+export default function Products({ products, navigation, categories, activeStore }) {
+  // Use explicitly passed activeStore instead of context
   const { currentStore } = useStore();
+  // For backward compatibility, use activeStore if provided, otherwise fall back to context
+  const storeToUse = activeStore || currentStore;
   const [filteredProducts, setFilteredProducts] = useState(products);
   const [selectedCategory, setSelectedCategory] = useState(null); // Default to null (All)
   const [searchTerm, setSearchTerm] = useState(''); // Search query
@@ -75,7 +78,7 @@ export default function Products({ products, navigation, categories }) {
 
         {/* Other Category Tabs */}
         {categories
-          .filter(category => category.storeId === currentStore?.id) // Only show categories for current store
+          .filter(category => category.storeId === storeToUse?.id) // Only show categories for active store
           .map((category) => (
             <TouchableOpacity
               key={category.id}

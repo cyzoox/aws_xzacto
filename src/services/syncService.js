@@ -1,4 +1,5 @@
 import { generateClient } from 'aws-amplify/api';
+import { getCurrentUser } from '@aws-amplify/auth';
 import * as queries from '../graphql/queries';
 import * as mutations from '../graphql/mutations';
 import { store } from '../store';
@@ -83,17 +84,33 @@ class SyncService {
       store.dispatch(setStaffLoading(true));
       store.dispatch(setSalesLoading(true));
 
-      // Fetch stores first since staff depends on them
+      // Get the authenticated user ID first
+      const { username: userId } = await getCurrentUser();
+      console.log('Fetching data for user ID:', userId);
+
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Fetch stores that belong to the current user only
       const { data: storeData } = await client.graphql({
-        query: queries.listStores
+        query: queries.listStores,
+        variables: { 
+          filter: { ownerId: { eq: userId } } 
+        }
       });
       store.dispatch(setStoreList(storeData.listStores.items));
+      console.log(`Fetched ${storeData.listStores.items.length} stores for user:`, userId);
 
-      // Then fetch staff
+      // Then fetch staff for the current user only
       const { data: staffData } = await client.graphql({
-        query: queries.listStaff
+        query: queries.listStaff,
+        variables: { 
+          filter: { ownerId: { eq: userId } } 
+        }
       });
       store.dispatch(setStaffList(staffData.listStaff.items));
+      console.log(`Fetched ${staffData.listStaff.items.length} staff members for user:`, userId);
 
       // Finally fetch sales
       const { data: salesData } = await client.graphql({

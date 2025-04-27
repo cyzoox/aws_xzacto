@@ -1,39 +1,95 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Pressable, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RoleBasedHeader } from '../components/RoleBasedHeader';
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import { getCurrentUser } from '@aws-amplify/auth';
 import { syncService } from '../services/syncService';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { addStore } from '../store/slices/storeSlice';
+import { fetchStaff } from '../store/slices/staffSlice';
 
 export default function SuperAdminScreen({ navigation, route }) {
   const { staffData } = route.params;
   const dispatch = useDispatch();
-
-  // Get data from Redux store
-  const { items: stores, loading } = useSelector(state => state.store);
-  const { items: staff } = useSelector(state => state.staff);
-  const { items: sales } = useSelector(state => state.sales) || { items: [] };
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const userIdRef = useRef(null);
 
   // Get network status
   const { isOnline, hasPendingChanges, pendingChangesCount } = useNetworkStatus();
+  
+  // Get only the staff data belonging to the current authenticated user
+  const { items: staff, loading: staffLoading } = useSelector(state => {
+    const allStaff = state.staff.items || [];
+    if (!userIdRef.current) return { items: [], loading: state.staff.loading };
+    
+    return {
+      items: allStaff.filter(s => s.ownerId === userIdRef.current && !s._deleted),
+      loading: state.staff.loading
+    };
+  });
+  
+  // Get stores owned by the current user
+  const { items: stores, loading: storeLoading } = useSelector(state => {
+    const allStores = state.store.items || [];
+    
+    // Filter stores by ownership - only show stores owned by the current user
+    return {
+      items: userIdRef.current
+        ? allStores.filter(store => store.ownerId === userIdRef.current && !store._deleted)
+        : [],
+      loading: state.store.loading
+    };
+  });
+  
+  // Get sales data
+  const { items: sales } = useSelector(state => {
+    const allSales = state.sales?.items || [];
+    return { items: allSales.filter(s => !s._deleted) };
+  });
+
+  // Only run this effect once to initialize the screen
+  useEffect(() => {
+    if (initialized) return;
+    
+    const initializeScreen = async () => {
+      try {
+        setLoading(true);
+        console.log('Initializing SuperAdmin screen');
+        
+        // Get authenticated user ID
+        const authUser = await getCurrentUser();
+        const authUserId = authUser.userId;
+        userIdRef.current = authUserId;
+        console.log('Set authenticated user ID:', authUserId);
+        
+        // Fetch staff for this user specifically
+        console.log('Fetching staff for user:', authUserId);
+        await dispatch(fetchStaff({ ownerId: authUserId }));
+
+        // Fetch initial data
+        console.log('Fetching initial data');
+        await syncService.fetchInitialData();
+        
+        setInitialized(true);
+      } catch (error) {
+        console.error('Error initializing SuperAdmin screen:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initializeScreen();
+  }, [dispatch, initialized]);
+  
+
 
   // Calculated values
   const storeCount = stores.length;
   const totalStaffCount = staff.length;
-  const totalSales = sales.reduce((total, sale) => total + (sale.total || 0), 0);
+  const totalSales = sales.reduce((total, sale) => total + (parseFloat(sale.total) || 0), 0);
 
-  useEffect(() => {
-    // Initial data fetch if not already in Redux store
-    if (stores.length === 0 || staff.length === 0) {
-      syncService.fetchInitialData();
-    }
-  }, [stores.length, staff.length]);
-
-
-
-  if (loading) {
+  if (loading || storeLoading || staffLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
@@ -99,9 +155,15 @@ export default function SuperAdminScreen({ navigation, route }) {
           <TouchableOpacity 
             style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
             onPress={() => {
+              if (!userIdRef.current) {
+                Alert.alert('Error', 'Authentication error. Please restart the app.');
+                return;
+              }
+              
               dispatch(addStore({
                 name: 'Default Store',
                 location: 'Main Branch',
+                ownerId: userIdRef.current // Associate store with the authenticated user
               }));
               Alert.alert(
                 'Success',

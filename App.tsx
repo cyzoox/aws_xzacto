@@ -5,6 +5,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './src/store';
 import { syncService } from './src/services/syncService';
+import { dataService } from './src/services/dataService';
 import {createStackNavigator} from '@react-navigation/stack';
 import {
   withAuthenticator,
@@ -24,8 +25,21 @@ const Stack = createStackNavigator();
 
 const App = () => {
   useEffect(() => {
-    // Initialize sync service
+    // Initialize services
     syncService.init();
+    
+    // Pre-fetch core data for better performance and offline capability
+    const initializeData = async () => {
+      try {
+        await dataService.fetchInitialData();
+        console.log('Initial data fetching complete');
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      }
+    };
+    
+    initializeData();
+    
     return () => syncService.destroy();
   }, []);
 

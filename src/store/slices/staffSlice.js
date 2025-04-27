@@ -1,365 +1,177 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { client } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
 
 // Async thunks
-export const createInitialSuperAdmin = createAsyncThunk(
-  'staff/createInitialSuperAdmin',
-  async ({ ownerId }) => {
-    const response = await client.graphql({
-      query: createStaff,
-      variables: {
-        input: {
-          name: 'Super Admin',
-          password: '00000', // Default PIN as per auth flow
-          role: ['SuperAdmin'], // Schema requires array of roles
-          log_status: 'INACTIVE',
-          device_id: '',
-          device_name: '',
-          ownerId // Associate with authenticated user
-        }
-      }
-    });
-    return response.data.createStaff;
-  }
-);
-
-
-export const fetchStaff = createAsyncThunk(
-  'staff/fetchStaff',
-  async ({ ownerId }) => {
-    // Fetch staff by ownerId
-    const response = await client.graphql({
-      query: listStaffs,
-      variables: {
-        filter: {
-          ownerId: { eq: ownerId }
-        }
-      }
-    });
-
-    return response.data.listStaffs.items;
-  }
-);
-
-export const connectStaffToStores = createAsyncThunk(
-  'staff/connectToStores',
-  async ({ staffId, storeIds }) => {
-    const results = await Promise.all(
-      storeIds.map(async (storeId) => {
-        try {
-          const response = await client.graphql({
-            query: createStaffStore,
-            variables: {
-              input: {
-                staffId,
-                storeId,
-              },
-            },
-          });
-
-          const connection = response.data.createStaffStore;
-          return { 
-            success: true, 
-            storeId,
-            store: connection.store,
-            staff: connection.staff
-          };
-        } catch (error) {
-          console.error('Error connecting staff to store:', error);
-          return { success: false, storeId, error };
-        }
-      }),
-    );
-
-    const failedConnections = results.filter(r => !r.success);
-    if (failedConnections.length > 0) {
-      console.error('Failed to connect staff to some stores:', failedConnections);
-    }
-
-    return { staffId, results };
-  },
-);
+const client = generateClient();
 
 // GraphQL queries and mutations
-const listStaffs = /* GraphQL */ `
-  query ListStaffs($filter: ModelStaffFilterInput) {
-    listStaffs(filter: $filter) {
-      items {
-        id
-        name
-        password
-        role
-        log_status
-        device_id
-        device_name
-        ownerId
-        stores {
-          items {
-            store {
-              id
-              name
-              location
-            }
-          }
-        }
-        _deleted
-      }
-    }
-  }
-`;
-
-const listStores = /* GraphQL */ `
-  query ListStores {
-    listStores {
-      items {
-        id
-        name
-        location
-        _deleted
-      }
-    }
-  }
-`;
-
-const createStaffStore = /* GraphQL */ `
-  mutation CreateStaffStore($input: CreateStaffStoreInput!) {
-    createStaffStore(input: $input) {
-      id
-      staffId
-      storeId
-      staff {
-        id
-        name
-        role
-        password
-        log_status
-        device_id
-        device_name
-        ownerId
-      }
-      store {
-        id
-        name
-        location
-      }
-    }
-  }
-`;
-
-const deleteStaffStore = /* GraphQL */ `
-  mutation DeleteStaffStore($input: DeleteStaffStoreInput!) {
-    deleteStaffStore(input: $input) {
-      id
-      staffId
-      storeId
-    }
-  }
-`;
-
-const createStaff = /* GraphQL */ `
-  mutation CreateStaff($input: CreateStaffInput!) {
-    createStaff(input: $input) {
-      id
-      name
-      password
-      role
-      log_status
-      device_id
-      device_name
-      ownerId
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-const updateStaff = /* GraphQL */ `
-  mutation UpdateStaff($input: UpdateStaffInput!) {
-    updateStaff(input: $input) {
-      id
-      name
-      role
-      password
-      log_status
-      device_id
-      device_name
-      ownerId
-      stores {
-        items {
-          store {
-            id
-            name
-            location
-          }
-        }
-      }
-    }
-  }
-`;
+import * as mutations from '../../graphql/mutations';
+import * as queries from '../../graphql/queries';
 
 const initialState = {
-  items: [], // Staff will be fetched from the server
+  items: [], // Staff data
   loading: false,
   error: null,
   lastSync: new Date().toISOString(),
   pendingChanges: [] // For offline changes that need to be synced
 };
 
-// Helper function to determine app route based on role
-const getAppRouteForRole = (role) => {
-  if (!role) return null;
-  if (role === 'SuperAdmin' || role === 'Admin') return 'MainApp';
-  if (role === 'Cashier') return 'CashierApp';
-  if (role === 'Warehouse') return 'WarehouseApp';
-  return null;
-};
+// Create initial SuperAdmin account
+export const createInitialSuperAdmin = createAsyncThunk(
+  'staff/createInitialSuperAdmin',
+  async ({ ownerId }) => {
+    try {
+      const response = await client.graphql({
+        query: mutations.createStaff,
+        variables: {
+          input: {
+            name: 'Super Admin',
+            password: '00000',
+            role: ['SuperAdmin'],
+            log_status: 'INACTIVE',
+            device_id: '',
+            device_name: '',
+            ownerId
+          }
+        }
+      });
 
+      return response.data.createStaff;
+    } catch (error) {
+      console.error('Error creating SuperAdmin:', error);
+      throw error;
+    }
+  }
+);
+
+// Fetch staff by owner ID
+export const fetchStaff = createAsyncThunk(
+  'staff/fetchStaff',
+  async ({ ownerId }) => {
+    try {
+      console.log('Fetching staff for ownerId:', ownerId);
+      const response = await client.graphql({
+        query: queries.listStaff,
+        variables: {
+          filter: {
+            ownerId: { eq: ownerId }
+          }
+        }
+      });
+
+      return response.data.listStaff.items;
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      throw error;
+    }
+  }
+);
+
+// Connect staff to stores
+export const connectStaffToStores = createAsyncThunk(
+  'staff/connectStaffToStores',
+  async ({ staffId, storeIds }, { dispatch }) => {
+    try {
+      console.log('Connecting staff', staffId, 'to stores:', storeIds);
+      
+      // Create connections in API
+      const results = [];
+      
+      for (const storeId of storeIds) {
+        try {
+          const response = await client.graphql({
+            query: mutations.createStaffStore,
+            variables: { 
+              input: {
+                staffId,
+                storeId
+              }
+            }
+          });
+          
+          results.push({ 
+            success: true, 
+            store: { id: storeId }
+          });
+        } catch (err) {
+          console.error(`Failed to connect staff ${staffId} to store ${storeId}:`, err);
+          results.push({ success: false, storeId, error: err.message });
+        }
+      }
+      
+      // Return both staffId and results for the reducer
+      return { staffId, results };
+    } catch (error) {
+      console.error('Error connecting staff to stores:', error);
+      throw error;
+    }
+  }
+);
+
+// Staff slice
 export const staffSlice = createSlice({
   name: 'staff',
   initialState,
   reducers: {
-
     setStaffList: (state, action) => {
       state.items = action.payload;
       state.lastSync = new Date().toISOString();
-      
-      // Update current role if available
-      const currentStaff = action.payload.find(s => !s._deleted);
-      if (currentStaff) {
-        state.currentRole = currentStaff.role[0];
-        state.initialized = true;
-        state.appRoute = getAppRouteForRole(currentStaff.role[0]);
-      }
     },
+    
     addStaffMember: (state, action) => {
-      // Validate required fields as per schema
-      if (!action.payload.name?.trim()) {
-        console.error('Staff name is required');
-        return state;
-      }
-
-      if (!action.payload.role) {
-        console.error('Staff role is required');
-        return state;
-      }
-
-
-
-      // Create staff with required fields
+      // Create staff with all required fields
+      // Use the ID from the payload if provided, otherwise generate one
+      const staffId = action.payload.id || Date.now().toString();
+      
       const newStaff = {
-        id: Date.now().toString(),
-        name: action.payload.name.trim(),
-        password: '00000', // Default PIN as per auth flow
+        id: staffId,
+        name: action.payload.name,
+        password: action.payload.password || '00000',
         role: Array.isArray(action.payload.role) ? action.payload.role : [action.payload.role],
-        log_status: 'INACTIVE',
-        device_id: '',
-        device_name: '',
+        log_status: action.payload.log_status || 'INACTIVE',
+        device_id: action.payload.device_id || '',
+        device_name: action.payload.device_name || '',
         ownerId: action.payload.ownerId,
+        // Initialize empty stores array
+        stores: { items: [] },
         _status: 'pending_create',
         _lastChangedAt: new Date().toISOString(),
         _deleted: false
       };
-
+      
+      // Only modify state, don't return anything
       state.items.push(newStaff);
-
-      // Only send required fields
-      const createInput = {
-        name: newStaff.name,
-        password: '00000', // Default PIN
-        role: newStaff.role,
-        log_status: 'INACTIVE',
-        device_id: '',
-        device_name: '',
-        ownerId: action.payload.ownerId
-      };
-
-
-
-      state.pendingChanges.push({
-        type: 'CREATE',
-        data: createInput,
-        localId: newStaff.id, // Keep track of local ID for sync
-        timestamp: new Date().toISOString(),
-      });
-      return state;
     },
+    
     updateStaffMember: (state, action) => {
       const { id, ...changes } = action.payload;
-      const staff = state.items.find(item => item.id === id);
+      const index = state.items.findIndex(item => item.id === id);
       
-      if (staff) {
-        // Validate required fields as per schema
-        if (changes.name !== undefined && !changes.name?.trim()) {
-          console.error('Staff name is required');
-          return;
-        }
-
-        if (changes.role !== undefined && !changes.role) {
-          console.error('Staff role is required');
-          return;
-        }
-
-        if (changes.stores !== undefined && !changes.stores?.length) {
-          console.error('At least one store assignment is required');
-          return;
-        }
-
-        // Create updated staff for local state
-        const updatedStaff = {
-          ...staff,
+      if (index !== -1) {
+        state.items[index] = {
+          ...state.items[index],
           ...changes,
-          // Ensure role is always an array
-          role: changes.role ? (Array.isArray(changes.role) ? changes.role : [changes.role]) : staff.role,
-          // Keep existing password if not provided
-          password: changes.password || staff.password,
           _status: 'pending_update',
-          _lastChangedAt: new Date().toISOString(),
+          _lastChangedAt: new Date().toISOString()
         };
-
-        // Update local state
-        const index = state.items.findIndex(item => item.id === id);
-        state.items[index] = updatedStaff;
-
-
-
-        // Only send required fields
-        const updateInput = {
-          id,
-          name: updatedStaff.name,
-          password: updatedStaff.password,
-          role: updatedStaff.role,
-          log_status: updatedStaff.log_status,
-          device_id: updatedStaff.device_id,
-          device_name: updatedStaff.device_name,
-          ownerId: updatedStaff.ownerId
-        };
-
-        state.pendingChanges.push({
-          type: 'UPDATE',
-          data: updateInput,
-          timestamp: new Date().toISOString(),
-        });
       }
     },
-    setLoading: (state, action) => {
-      state.loading = action.payload;
+    
+    updateStaffStores: (state, action) => {
+      const { staffId, stores } = action.payload;
+      const staffIndex = state.items.findIndex(item => item.id === staffId);
+      
+      if (staffIndex !== -1) {
+        // Update or initialize stores property on the staff
+        state.items[staffIndex].stores = stores;
+        console.log(`Updated local staff store connections for staff ID: ${staffId}`);
+      }
     },
-    setError: (state, action) => {
-      state.error = action.payload;
-    },
-    clearPendingChanges: (state) => {
-      state.pendingChanges = [];
-    },
-    clearAll: (state) => {
-      state.items = [];
-      state.pendingChanges = [];
-      state.lastSync = null;
-      state.error = null;
-    },
+    
     syncComplete: (state, action) => {
-      // Update local IDs with server IDs after sync
       const { localId, serverId } = action.payload;
       const index = state.items.findIndex(item => item.id === localId);
+      
       if (index !== -1) {
         state.items[index].id = serverId;
         state.items[index]._status = 'synced';
@@ -371,7 +183,7 @@ export const staffSlice = createSlice({
       
       if (staff) {
         // Cannot delete SuperAdmin as per authentication flow
-        if (staff.role.includes('SuperAdmin')) {
+        if (staff.role && Array.isArray(staff.role) && staff.role.includes('SuperAdmin')) {
           state.error = 'Cannot delete SuperAdmin account';
           return;
         }
