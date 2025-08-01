@@ -17,6 +17,7 @@ import Modal from 'react-native-modal';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import { listCategories, listCartItems, listProducts, listVariants, listAddons } from '../graphql/queries';
 import { createCartItem, updateCartItem } from '../graphql/mutations';
+import { calculateFinalPrice, formatPrice, getProductPriceDisplay } from '../utils/priceCalculations';
 
 
 const windowWidth = Dimensions.get('window').width;
@@ -85,11 +86,18 @@ export default function ProductsCashier({
   
   useEffect(() => {
     let filtered = products;
-  
+    
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter(
-        (product) => product.category?.toLowerCase() === selectedCategory.toLowerCase()
-      );
+      // Find the category object that matches the selected category name
+      const matchingCategory = category.find(c => c.name === selectedCategory);
+      
+      if (matchingCategory) {
+        // Filter products by categoryId (this is the correct relation field)
+        filtered = filtered.filter(product => product.categoryId === matchingCategory.id);
+        console.log(`Filtering by category: ${selectedCategory} (ID: ${matchingCategory.id}), found ${filtered.length} products`);
+      } else {
+        console.log(`No matching category found for: ${selectedCategory}`);
+      }
     }
     
     if (searchTerm) {
@@ -99,7 +107,7 @@ export default function ProductsCashier({
     }
   
     setFilteredProducts(filtered);
-  }, [products, selectedCategory, searchTerm]); // React to changes in these values
+  }, [products, selectedCategory, searchTerm, category]);
 
   const fetchCategories = async () => {
    try{
@@ -108,6 +116,7 @@ export default function ProductsCashier({
         variables: { filter: { storeId: { eq: staffData.store_id } } }
     });
     const categoriesList = result.data.listCategories.items;
+    console.log('Categories fetched:', categoriesList.map(c => ({ id: c.id, name: c.name })));
     setCategories(categoriesList);
   }catch (err) {
     console.log('Error fetching category:', err);
@@ -191,13 +200,17 @@ const fetchProducts = async () => {
     });
     
     const productsList = result.data?.listProducts?.items ?? [];
-    console.log('Products from query:', productsList);
+    
+    // Log product and category relationship
+    console.log('Products category mapping:', productsList.slice(0, 5).map(p => ({
+      name: p.name,
+      categoryId: p.categoryId
+    })));
     
     // Fetch variants and addons for each product
     const productsWithExtras = await Promise.all(
       productsList.map(async (product) => {
         const details = await fetchProductDetails(product.id);
-        console.log(`Product ${product.name} details:`, details);
         
         return {
           ...product,
@@ -283,31 +296,47 @@ const fetchProducts = async () => {
       return;
     }
 
-    // Check if we have enough stock
-    const cartItem = cart.find((cartItem) => cartItem.productId === item.id);
+    // Get selected variant and addon objects (if any)
+    const selectedVariant = selectedVariantId && selectedProduct?.variants?.items
+      ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
+      : null;
+      
+    const selectedAddon = selectedAddonId && selectedProduct?.addons?.items
+      ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+      : null;
+
+    // Check if this exact product+variant+addon combination exists in cart
+    const cartItem = cart.find(cartItem => 
+      cartItem.productId === item.id && 
+      // For variants: Check if IDs match or both are missing
+      ((selectedVariant && cartItem.variantData && 
+        JSON.parse(cartItem.variantData).id === selectedVariant.id) || 
+       (!selectedVariant && !cartItem.variantData)) &&
+      // For addons: Check if IDs match or both are missing
+      ((selectedAddon && cartItem.addonData && 
+        JSON.parse(cartItem.addonData).id === selectedAddon.id) ||
+       (!selectedAddon && !cartItem.addonData))
+    );
+
+    // Check if enough stock
     const currentQty = cartItem?.quantity || 0;
     if (currentQty + 1 > item.stock) {
       alert('Not enough stock available');
       return;
     }
 
-    // Use the pre-calculated price if available, otherwise calculate it
-    let totalPrice = item.calculatedPrice || item.sprice;
+    // Calculate the final price using our utility function
+    // We need to create arrays for the selectedVariant and selectedAddon to match our utility function
+    const selectedVariantArray = selectedVariantId && selectedProduct ? 
+      [selectedProduct.variants.items.find(v => v.id === selectedVariantId)].filter(Boolean) : 
+      [];
     
-    // If we don't have a pre-calculated price but we have selections, calculate it
-    if (!item.calculatedPrice) {
-      if (item.selectedVariants && item.selectedVariants.length > 0) {
-        item.selectedVariants.forEach(variant => {
-          if (variant && variant.price) totalPrice += variant.price;
-        });
-      }
-      
-      if (item.selectedAddons && item.selectedAddons.length > 0) {
-        item.selectedAddons.forEach(addon => {
-          if (addon && addon.price) totalPrice += addon.price;
-        });
-      }
-    }
+    const selectedAddonArray = selectedAddonId && selectedProduct ? 
+      [selectedProduct.addons.items.find(a => a.id === selectedAddonId)].filter(Boolean) : 
+      [];
+
+    // Now calculate the price with the correct variant and addon data
+    const totalPrice = calculateFinalPrice(item, selectedVariantArray, selectedAddonArray);
     
     console.log(`Adding product ${item.name} to cart with price ${totalPrice}:`, {
       hasSelections: !!(item.selectedVariants || item.selectedAddons),
@@ -325,7 +354,8 @@ const fetchProducts = async () => {
       );
       setCart(updatedCart);
     } else {
-      // Create new item in local state
+      // We already have selectedVariant and selectedAddon from above
+      // Create new item in local state with variant and addon details
       const newCartItem = {
         id: `temp-${Date.now()}`, // Temporary ID for optimistic update
         name: item.name,
@@ -338,6 +368,16 @@ const fetchProducts = async () => {
         unit: item.unit || 'PCS',
         storeId: item.storeId,
         quantity: 1,
+        
+        // Store variant and addon data directly in AWSJSON
+        variantData: selectedVariant ? JSON.stringify(selectedVariant) : null,
+        addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+        // Add direct references for UI rendering (single objects, not arrays)
+        selectedVariant: selectedVariant,
+        selectedAddon: selectedAddon,
+        // Legacy field for backward compatibility
+        addon: selectedVariant ? selectedVariant.name : (selectedAddon ? selectedAddon.name : null),
+        
         pending: true // Flag to identify optimistic updates
       };
       setCart(prevCart => [...prevCart, newCartItem]);
@@ -346,7 +386,7 @@ const fetchProducts = async () => {
     // Now sync with the backend
     try {
       if (cartItem) {
-        // Update existing item in backend
+        // Update existing item in backend (same product + variant + addon combination)
         await client.graphql({
           query: updateCartItem,
           variables: {
@@ -357,7 +397,17 @@ const fetchProducts = async () => {
           },
         });
       } else {
-        // Create new item in backend
+        // This is a new product
+        // Get selected variant and addon objects (if any)
+        const selectedVariant = selectedVariantId && selectedProduct?.variants?.items
+          ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
+          : null;
+          
+        const selectedAddon = selectedAddonId && selectedProduct?.addons?.items
+          ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+          : null;
+
+        // Create new item in backend with variant and addon details
         const newItem = {
           name: item.name,
           brand: item.brand,
@@ -368,7 +418,14 @@ const fetchProducts = async () => {
           category: item.category,
           unit: item.unit || 'PCS',
           storeId: item.storeId,
-          quantity: 1
+          quantity: 1,
+          
+          // Store variant and addon data as serialized JSON strings for AWSJSON
+          // Note: Even though the field is AWSJSON type, we need to pass it as a string
+          variantData: selectedVariant ? JSON.stringify(selectedVariant) : null,
+          addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+          // Legacy field for backward compatibility
+          addon: selectedVariant ? selectedVariant.name : (selectedAddon ? selectedAddon.name : null)
         };
 
         await client.graphql({
@@ -428,6 +485,7 @@ const fetchProducts = async () => {
 
 
   const onTabChange = sterm => {
+    console.log('Changing category to:', sterm);
     setSelectedCategory(sterm);
   };
 
@@ -551,30 +609,24 @@ const fetchProducts = async () => {
   };
 
   const renderVariantModal = () => {
+    // Don't render if no selected product
     if (!selectedProduct) return null;
-
-    console.log('Rendering variant modal for:', selectedProduct.name);
-    console.log('Variants available:', selectedProduct.variants);
-    console.log('Addons available:', selectedProduct.addons);
-
-    // Calculate total price including base price, selected variants and addons
-    let totalPrice = selectedProduct.sprice || 0;
     
-    // Add selected variant price
-    if (selectedVariantId && selectedProduct.variants?.items) {
-      const selectedVariant = selectedProduct.variants.items.find(v => v.id === selectedVariantId);
-      if (selectedVariant) {
-        totalPrice += parseFloat(selectedVariant.price) || 0;
-      }
-    }
+    // Get selected variant and addon objects
+    const selectedVariant = selectedVariantId && selectedProduct.variants?.items
+      ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
+      : null;
+      
+    const selectedAddon = selectedAddonId && selectedProduct.addons?.items
+      ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+      : null;
     
-    // Add selected addon price
-    if (selectedAddonId && selectedProduct.addons?.items) {
-      const selectedAddon = selectedProduct.addons.items.find(a => a.id === selectedAddonId);
-      if (selectedAddon) {
-        totalPrice += parseFloat(selectedAddon.price) || 0;
-      }
-    };
+    // Calculate total price using our utility
+    const totalPrice = calculateFinalPrice(
+      selectedProduct,
+      selectedVariant ? [selectedVariant] : [],
+      selectedAddon ? [selectedAddon] : []
+    );
 
     return (
       <Modal
@@ -621,7 +673,7 @@ const fetchProducts = async () => {
                       </Text>
                     </View>
                     <Text style={[styles.optionPrice, selectedVariantId === variant.id && {color: '#000'}]}>
-                      {formatMoney(parseFloat(variant.price) || 0, {symbol: '₱', precision: 2})}
+                      {formatPrice(parseFloat(variant.price) || 0)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -650,7 +702,7 @@ const fetchProducts = async () => {
                       </Text>
                     </View>
                     <Text style={[styles.optionPrice, selectedAddonId === addon.id && {color: '#000'}]}>
-                      {formatMoney(parseFloat(addon.price) || 0, {symbol: '₱', precision: 2})}
+                      {formatPrice(parseFloat(addon.price) || 0)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -660,7 +712,7 @@ const fetchProducts = async () => {
             <View style={styles.totalSection}>
               <Text style={styles.totalLabel}>Total Price:</Text>
               <Text style={styles.totalPrice}>
-                {formatMoney(totalPrice, {symbol: '₱', precision: 2})}
+                {formatPrice(totalPrice)}
               </Text>
             </View>
           </ScrollView>
@@ -803,7 +855,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: colors.white,
-    height: Dimensions.get('window').height * 0.20, 
+    height: Dimensions.get('window').height * 0.22, 
     shadowColor: '#EBECF0',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.89,
@@ -813,11 +865,12 @@ const styles = StyleSheet.create({
   },
   itemImage: {
     width: '100%',
-    height: 130,
-    resizeMode: 'cover'
+    height: 100,
+    resizeMode: 'contain'
   },
   itemContent: {
-    padding: 12
+    padding: 8,
+    width: '100%'
   },
   itemName: {
     fontSize: 15,

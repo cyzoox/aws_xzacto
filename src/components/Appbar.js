@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Appbar = ({ title, onMenuPress, onSearchPress, onNotificationPress, onProfilePress }) => {
+const Appbar = ({ title, subtitle, onBack, onMenuPress, onSearchPress, onNotificationPress, onProfilePress }) => {
   const navigation = useNavigation();
   
   const handleLogout = async () => {
@@ -40,22 +40,31 @@ const Appbar = ({ title, onMenuPress, onSearchPress, onNotificationPress, onProf
   };
   return (
     <View style={styles.appbar}>
-      {/* Left: Menu Icon */}
-      <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
-        <Icon name="menu" size={28} color="#fff" />
-      </TouchableOpacity>
-      
-      {/* Center: Title */}
-      <Text style={styles.title}>{title}</Text>
+      {/* Left Icon */}
+      {onBack ? (
+        <TouchableOpacity onPress={onBack} style={styles.iconButton}>
+          <Icon name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
+          <Icon name="menu" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Center: Title and Subtitle */}
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>{title}</Text>
+        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      </View>
       
       {/* Right: Action Icons */}
       <View style={styles.actions}>
-        <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
+        {/* <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
           <Icon name="search-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
+        </TouchableOpacity> */}
+        {/* <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
           <Icon name="notifications-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity onPress={onProfilePress} style={styles.iconButton}>
           <Icon name="person-outline" size={24} color="#fff" />
         </TouchableOpacity>
@@ -76,12 +85,21 @@ const styles = StyleSheet.create({
     height: 56,
     paddingHorizontal: 16,
   },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10, // Add some padding
+  },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#e0e0e0', // Lighter color for subtitle
+    marginTop: 2,
   },
   actions: {
     flexDirection: 'row',

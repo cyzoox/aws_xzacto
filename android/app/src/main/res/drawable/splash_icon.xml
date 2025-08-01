@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    
+    <!-- X -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M55,40 L85,40 L100,65 L115,40 L145,40 L115,85 L145,130 L115,130 L100,105 L85,130 L55,130 L85,85 z" />
+    
+    <!-- ZACTO text -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M65,140 L135,140 L135,150 L65,180 L135,180 L135,190 L55,190 L55,180 L125,150 L65,150 z" />
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M145,140 L155,140 A10,10 0 0 1 165,150 L165,180 A10,10 0 0 1 155,190 L145,190 L145,140 z" />
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M170,140 L200,140 L200,150 L180,150 L180,155 L195,155 L195,165 L180,165 L180,180 L200,180 L200,190 L170,190 z" />
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M0,140 L15,140 L30,170 L30,140 L40,140 L40,190 L25,190 L10,160 L10,190 L0,190 z" />
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M45,140 L50,140 A10,10 0 0 1 60,150 L60,180 A10,10 0 0 1 50,190 L45,190 z" />
+</vector>

@@ -17,7 +17,7 @@ import colors from '../../themes/colors';
 import { generateClient } from 'aws-amplify/api';
 import { getCurrentUser } from '@aws-amplify/auth';
 import { createStaff, createStaffStore } from '../../graphql/mutations';
-import { listStaff } from '../../graphql/queries';
+import { listStaff, listStaffStores } from '../../graphql/queries';
 import * as queries from '../../graphql/queries';
 
 
@@ -57,26 +57,61 @@ const StaffsScreen = ({navigation, route}) => {
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      // Simply fetch all cashier staff for now
-      console.log('Fetching cashier staff');
+      if (!STORE || !STORE.id) {
+        console.log('No store ID available to filter staff');
+        return;
+      }
+      
+      console.log(`Fetching cashiers for store: ${STORE.id}`);
+      
+      // First approach: Using StaffStore connections to find staff assigned to this store
+      const staffStoreResult = await client.graphql({
+        query: listStaffStores,
+        variables: { 
+          filter: { 
+            storeId: { eq: STORE.id } 
+          }
+        }
+      });
+      
+      // Get the staff IDs related to this store
+      const staffIds = staffStoreResult.data.listStaffStores.items.map(item => item.staffId);
+      console.log(`Found ${staffIds.length} staff associations for this store`);
+      
+      if (staffIds.length === 0) {
+        console.log('No staff found for this store');
+        setStaffs([]);
+        return;
+      }
+      
+      // Get each cashier one by one since 'in' operator isn't supported
+      console.log('Fetching cashier info for each staff ID...');
+      let cashierStaff = [];
+      
+      // For simplicity, fetch all cashiers first, then filter by our staffIds
       const result = await client.graphql({
         query: listStaff,
         variables: { 
           filter: { 
-            role: { contains: "Cashier" } // Only get cashiers
+            role: { contains: "Cashier" }
           } 
         }
       });
       
-      const staffList = result.data.listStaff.items;
-      console.log('Fetched cashiers:', staffList.length);
+      // Filter the cashiers that belong to this store
+      if (result.data.listStaff.items) {
+        cashierStaff = result.data.listStaff.items.filter(staff => 
+          staffIds.includes(staff.id)
+        );
+      }
       
-      // For now, just show all cashiers - we'll filter by store later
-      setStaffs(staffList);
+      console.log(`Found ${cashierStaff.length} cashiers for this store`);
+      setStaffs(cashierStaff);
       
     } catch (error) {
       console.error('Error fetching staff:', error);
-      alert('Failed to load cashiers');
+      // Use a more descriptive error message
+      console.log('Failed to load cashiers for this store:', error.message);
     } finally {
       setLoading(false);
     }

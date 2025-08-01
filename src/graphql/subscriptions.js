@@ -8,6 +8,7 @@ export const onCreateStaff = /* GraphQL */ `
       name
       password
       ownerId
+      accountId
       role
       log_status
       device_id
@@ -22,6 +23,19 @@ export const onCreateStaff = /* GraphQL */ `
       }
       cartItems {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -37,6 +51,7 @@ export const onUpdateStaff = /* GraphQL */ `
       name
       password
       ownerId
+      accountId
       role
       log_status
       device_id
@@ -51,6 +66,19 @@ export const onUpdateStaff = /* GraphQL */ `
       }
       cartItems {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -66,6 +94,7 @@ export const onDeleteStaff = /* GraphQL */ `
       name
       password
       ownerId
+      accountId
       role
       log_status
       device_id
@@ -80,6 +109,19 @@ export const onDeleteStaff = /* GraphQL */ `
       }
       cartItems {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -99,6 +141,7 @@ export const onCreateCategory = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -124,6 +167,7 @@ export const onUpdateCategory = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -149,6 +193,7 @@ export const onDeleteCategory = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -310,6 +355,7 @@ export const onCreateProduct = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -391,6 +437,7 @@ export const onUpdateProduct = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -472,6 +519,7 @@ export const onDeleteProduct = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -530,6 +578,7 @@ export const onCreateStore = /* GraphQL */ `
       name
       location
       ownerId
+      accountId
       products {
         nextToken
         __typename
@@ -564,6 +613,19 @@ export const onCreateStore = /* GraphQL */ `
       }
       inventoryRequests {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -579,6 +641,7 @@ export const onUpdateStore = /* GraphQL */ `
       name
       location
       ownerId
+      accountId
       products {
         nextToken
         __typename
@@ -613,6 +676,19 @@ export const onUpdateStore = /* GraphQL */ `
       }
       inventoryRequests {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -628,6 +704,7 @@ export const onDeleteStore = /* GraphQL */ `
       name
       location
       ownerId
+      accountId
       products {
         nextToken
         __typename
@@ -662,6 +739,19 @@ export const onDeleteStore = /* GraphQL */ `
       }
       inventoryRequests {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -684,9 +774,11 @@ export const onCreateSaleTransaction = /* GraphQL */ `
       staffName
       storeID
       customerID
+      ownerId
       status
       payment_status
       cash_received
+      paymentMethod
       change
       notes
       staff {
@@ -694,6 +786,7 @@ export const onCreateSaleTransaction = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -707,6 +800,7 @@ export const onCreateSaleTransaction = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -717,7 +811,11 @@ export const onCreateSaleTransaction = /* GraphQL */ `
         email
         phone
         storeId
+        ownerId
         points
+        creditBalance
+        allowCredit
+        creditLimit
         createdAt
         updatedAt
         __typename
@@ -746,9 +844,11 @@ export const onUpdateSaleTransaction = /* GraphQL */ `
       staffName
       storeID
       customerID
+      ownerId
       status
       payment_status
       cash_received
+      paymentMethod
       change
       notes
       staff {
@@ -756,6 +856,7 @@ export const onUpdateSaleTransaction = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -769,6 +870,7 @@ export const onUpdateSaleTransaction = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -779,7 +881,11 @@ export const onUpdateSaleTransaction = /* GraphQL */ `
         email
         phone
         storeId
+        ownerId
         points
+        creditBalance
+        allowCredit
+        creditLimit
         createdAt
         updatedAt
         __typename
@@ -808,9 +914,11 @@ export const onDeleteSaleTransaction = /* GraphQL */ `
       staffName
       storeID
       customerID
+      ownerId
       status
       payment_status
       cash_received
+      paymentMethod
       change
       notes
       staff {
@@ -818,6 +926,7 @@ export const onDeleteSaleTransaction = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -831,6 +940,7 @@ export const onDeleteSaleTransaction = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -841,7 +951,11 @@ export const onDeleteSaleTransaction = /* GraphQL */ `
         email
         phone
         storeId
+        ownerId
         points
+        creditBalance
+        allowCredit
+        creditLimit
         createdAt
         updatedAt
         __typename
@@ -868,6 +982,7 @@ export const onCreateSale = /* GraphQL */ `
       discount
       total
       status
+      ownerId
       product {
         id
         name
@@ -897,9 +1012,11 @@ export const onCreateSale = /* GraphQL */ `
         staffName
         storeID
         customerID
+        ownerId
         status
         payment_status
         cash_received
+        paymentMethod
         change
         notes
         createdAt
@@ -907,6 +1024,8 @@ export const onCreateSale = /* GraphQL */ `
         __typename
       }
       void_reason
+      variantData
+      addonData
       createdAt
       updatedAt
       __typename
@@ -925,6 +1044,7 @@ export const onUpdateSale = /* GraphQL */ `
       discount
       total
       status
+      ownerId
       product {
         id
         name
@@ -954,9 +1074,11 @@ export const onUpdateSale = /* GraphQL */ `
         staffName
         storeID
         customerID
+        ownerId
         status
         payment_status
         cash_received
+        paymentMethod
         change
         notes
         createdAt
@@ -964,6 +1086,8 @@ export const onUpdateSale = /* GraphQL */ `
         __typename
       }
       void_reason
+      variantData
+      addonData
       createdAt
       updatedAt
       __typename
@@ -982,6 +1106,7 @@ export const onDeleteSale = /* GraphQL */ `
       discount
       total
       status
+      ownerId
       product {
         id
         name
@@ -1011,9 +1136,11 @@ export const onDeleteSale = /* GraphQL */ `
         staffName
         storeID
         customerID
+        ownerId
         status
         payment_status
         cash_received
+        paymentMethod
         change
         notes
         createdAt
@@ -1021,7 +1148,105 @@ export const onDeleteSale = /* GraphQL */ `
         __typename
       }
       void_reason
+      variantData
+      addonData
       createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateCreditTransaction = /* GraphQL */ `
+  subscription OnCreateCreditTransaction(
+    $filter: ModelSubscriptionCreditTransactionFilterInput
+  ) {
+    onCreateCreditTransaction(filter: $filter) {
+      id
+      customerID
+      amount
+      type
+      remarks
+      createdAt
+      addedBy
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        ownerId
+        points
+        creditBalance
+        allowCredit
+        creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCreditTransaction = /* GraphQL */ `
+  subscription OnUpdateCreditTransaction(
+    $filter: ModelSubscriptionCreditTransactionFilterInput
+  ) {
+    onUpdateCreditTransaction(filter: $filter) {
+      id
+      customerID
+      amount
+      type
+      remarks
+      createdAt
+      addedBy
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        ownerId
+        points
+        creditBalance
+        allowCredit
+        creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCreditTransaction = /* GraphQL */ `
+  subscription OnDeleteCreditTransaction(
+    $filter: ModelSubscriptionCreditTransactionFilterInput
+  ) {
+    onDeleteCreditTransaction(filter: $filter) {
+      id
+      customerID
+      amount
+      type
+      remarks
+      createdAt
+      addedBy
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        ownerId
+        points
+        creditBalance
+        allowCredit
+        creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
       updatedAt
       __typename
     }
@@ -1227,7 +1452,11 @@ export const onCreateCustomer = /* GraphQL */ `
       email
       phone
       storeId
+      ownerId
       points
+      creditBalance
+      allowCredit
+      creditLimit
       purchases {
         nextToken
         __typename
@@ -1237,8 +1466,13 @@ export const onCreateCustomer = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
+        __typename
+      }
+      creditTransactions {
+        nextToken
         __typename
       }
       createdAt
@@ -1255,7 +1489,11 @@ export const onUpdateCustomer = /* GraphQL */ `
       email
       phone
       storeId
+      ownerId
       points
+      creditBalance
+      allowCredit
+      creditLimit
       purchases {
         nextToken
         __typename
@@ -1265,8 +1503,13 @@ export const onUpdateCustomer = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
+        __typename
+      }
+      creditTransactions {
+        nextToken
         __typename
       }
       createdAt
@@ -1283,7 +1526,11 @@ export const onDeleteCustomer = /* GraphQL */ `
       email
       phone
       storeId
+      ownerId
       points
+      creditBalance
+      allowCredit
+      creditLimit
       purchases {
         nextToken
         __typename
@@ -1293,8 +1540,13 @@ export const onDeleteCustomer = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
+        __typename
+      }
+      creditTransactions {
+        nextToken
         __typename
       }
       createdAt
@@ -1320,6 +1572,7 @@ export const onCreateSupplier = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1347,6 +1600,7 @@ export const onUpdateSupplier = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1374,6 +1628,7 @@ export const onDeleteSupplier = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1394,6 +1649,7 @@ export const onCreateExpense = /* GraphQL */ `
       storeId
       staffId
       staffName
+      ownerId
       category
       notes
       store {
@@ -1401,6 +1657,7 @@ export const onCreateExpense = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1421,6 +1678,7 @@ export const onUpdateExpense = /* GraphQL */ `
       storeId
       staffId
       staffName
+      ownerId
       category
       notes
       store {
@@ -1428,6 +1686,7 @@ export const onUpdateExpense = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1448,6 +1707,7 @@ export const onDeleteExpense = /* GraphQL */ `
       storeId
       staffId
       staffName
+      ownerId
       category
       notes
       store {
@@ -1455,6 +1715,7 @@ export const onDeleteExpense = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1479,11 +1740,15 @@ export const onCreateCartItem = /* GraphQL */ `
       unit
       storeId
       quantity
+      variantData
+      addonData
+      addon
       store {
         id
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1512,6 +1777,7 @@ export const onCreateCartItem = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1540,11 +1806,15 @@ export const onUpdateCartItem = /* GraphQL */ `
       unit
       storeId
       quantity
+      variantData
+      addonData
+      addon
       store {
         id
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1573,6 +1843,7 @@ export const onUpdateCartItem = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1601,11 +1872,15 @@ export const onDeleteCartItem = /* GraphQL */ `
       unit
       storeId
       quantity
+      variantData
+      addonData
+      addon
       store {
         id
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1634,6 +1909,7 @@ export const onDeleteCartItem = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1660,6 +1936,7 @@ export const onCreateInventoryRequest = /* GraphQL */ `
       fulfillmentDate
       requestedBy
       processedBy
+      ownerId
       priority
       notes
       store {
@@ -1667,6 +1944,7 @@ export const onCreateInventoryRequest = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1693,6 +1971,7 @@ export const onUpdateInventoryRequest = /* GraphQL */ `
       fulfillmentDate
       requestedBy
       processedBy
+      ownerId
       priority
       notes
       store {
@@ -1700,6 +1979,7 @@ export const onUpdateInventoryRequest = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1726,6 +2006,7 @@ export const onDeleteInventoryRequest = /* GraphQL */ `
       fulfillmentDate
       requestedBy
       processedBy
+      ownerId
       priority
       notes
       store {
@@ -1733,6 +2014,7 @@ export const onDeleteInventoryRequest = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1766,6 +2048,7 @@ export const onCreateRequestItem = /* GraphQL */ `
         fulfillmentDate
         requestedBy
         processedBy
+        ownerId
         priority
         notes
         createdAt
@@ -1822,6 +2105,7 @@ export const onUpdateRequestItem = /* GraphQL */ `
         fulfillmentDate
         requestedBy
         processedBy
+        ownerId
         priority
         notes
         createdAt
@@ -1878,6 +2162,7 @@ export const onDeleteRequestItem = /* GraphQL */ `
         fulfillmentDate
         requestedBy
         processedBy
+        ownerId
         priority
         notes
         createdAt
@@ -1915,6 +2200,303 @@ export const onDeleteRequestItem = /* GraphQL */ `
     }
   }
 `;
+export const onCreateSubscriptionPlan = /* GraphQL */ `
+  subscription OnCreateSubscriptionPlan(
+    $filter: ModelSubscriptionSubscriptionPlanFilterInput
+  ) {
+    onCreateSubscriptionPlan(filter: $filter) {
+      id
+      name
+      description
+      price
+      interval
+      storeLimit
+      staffPerStoreLimit
+      adminPerStoreLimit
+      features
+      isActive
+      accounts {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSubscriptionPlan = /* GraphQL */ `
+  subscription OnUpdateSubscriptionPlan(
+    $filter: ModelSubscriptionSubscriptionPlanFilterInput
+  ) {
+    onUpdateSubscriptionPlan(filter: $filter) {
+      id
+      name
+      description
+      price
+      interval
+      storeLimit
+      staffPerStoreLimit
+      adminPerStoreLimit
+      features
+      isActive
+      accounts {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSubscriptionPlan = /* GraphQL */ `
+  subscription OnDeleteSubscriptionPlan(
+    $filter: ModelSubscriptionSubscriptionPlanFilterInput
+  ) {
+    onDeleteSubscriptionPlan(filter: $filter) {
+      id
+      name
+      description
+      price
+      interval
+      storeLimit
+      staffPerStoreLimit
+      adminPerStoreLimit
+      features
+      isActive
+      accounts {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateAccount = /* GraphQL */ `
+  subscription OnCreateAccount($filter: ModelSubscriptionAccountFilterInput) {
+    onCreateAccount(filter: $filter) {
+      id
+      ownerId
+      ownerEmail
+      subscriptionPlanId
+      subscriptionStatus
+      subscriptionStartDate
+      subscriptionEndDate
+      lastModifiedBy
+      stores {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      subscriptionPlan {
+        id
+        name
+        description
+        price
+        interval
+        storeLimit
+        staffPerStoreLimit
+        adminPerStoreLimit
+        features
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      subscriptionHistory {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateAccount = /* GraphQL */ `
+  subscription OnUpdateAccount($filter: ModelSubscriptionAccountFilterInput) {
+    onUpdateAccount(filter: $filter) {
+      id
+      ownerId
+      ownerEmail
+      subscriptionPlanId
+      subscriptionStatus
+      subscriptionStartDate
+      subscriptionEndDate
+      lastModifiedBy
+      stores {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      subscriptionPlan {
+        id
+        name
+        description
+        price
+        interval
+        storeLimit
+        staffPerStoreLimit
+        adminPerStoreLimit
+        features
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      subscriptionHistory {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteAccount = /* GraphQL */ `
+  subscription OnDeleteAccount($filter: ModelSubscriptionAccountFilterInput) {
+    onDeleteAccount(filter: $filter) {
+      id
+      ownerId
+      ownerEmail
+      subscriptionPlanId
+      subscriptionStatus
+      subscriptionStartDate
+      subscriptionEndDate
+      lastModifiedBy
+      stores {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      subscriptionPlan {
+        id
+        name
+        description
+        price
+        interval
+        storeLimit
+        staffPerStoreLimit
+        adminPerStoreLimit
+        features
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      subscriptionHistory {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateSubscriptionHistory = /* GraphQL */ `
+  subscription OnCreateSubscriptionHistory(
+    $filter: ModelSubscriptionSubscriptionHistoryFilterInput
+  ) {
+    onCreateSubscriptionHistory(filter: $filter) {
+      id
+      accountId
+      changeDate
+      changedBy
+      previousPlanId
+      newPlanId
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSubscriptionHistory = /* GraphQL */ `
+  subscription OnUpdateSubscriptionHistory(
+    $filter: ModelSubscriptionSubscriptionHistoryFilterInput
+  ) {
+    onUpdateSubscriptionHistory(filter: $filter) {
+      id
+      accountId
+      changeDate
+      changedBy
+      previousPlanId
+      newPlanId
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSubscriptionHistory = /* GraphQL */ `
+  subscription OnDeleteSubscriptionHistory(
+    $filter: ModelSubscriptionSubscriptionHistoryFilterInput
+  ) {
+    onDeleteSubscriptionHistory(filter: $filter) {
+      id
+      accountId
+      changeDate
+      changedBy
+      previousPlanId
+      newPlanId
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateStaffStore = /* GraphQL */ `
   subscription OnCreateStaffStore(
     $filter: ModelSubscriptionStaffStoreFilterInput
@@ -1928,6 +2510,7 @@ export const onCreateStaffStore = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1941,6 +2524,7 @@ export const onCreateStaffStore = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -1964,6 +2548,7 @@ export const onUpdateStaffStore = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1977,6 +2562,7 @@ export const onUpdateStaffStore = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -2000,6 +2586,7 @@ export const onDeleteStaffStore = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -2013,6 +2600,7 @@ export const onDeleteStaffStore = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename

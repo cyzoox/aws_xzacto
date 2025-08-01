@@ -7,6 +7,7 @@ const client = generateClient();
 // GraphQL queries and mutations
 import * as mutations from '../../graphql/mutations';
 import * as queries from '../../graphql/queries';
+import { listStaffWithStores } from '../../graphql/custom-queries';
 
 const initialState = {
   items: [], // Staff data
@@ -49,9 +50,9 @@ export const fetchStaff = createAsyncThunk(
   'staff/fetchStaff',
   async ({ ownerId }) => {
     try {
-      console.log('Fetching staff for ownerId:', ownerId);
+      console.log('Fetching staff with stores for ownerId:', ownerId);
       const response = await client.graphql({
-        query: queries.listStaff,
+        query: listStaffWithStores,
         variables: {
           filter: {
             ownerId: { eq: ownerId }
@@ -59,9 +60,21 @@ export const fetchStaff = createAsyncThunk(
         }
       });
 
+      // Log the fetched staff data with their store relationships
+      console.log('Staff with store relationships:', 
+        response.data.listStaff.items.map(staff => ({
+          id: staff.id,
+          name: staff.name,
+          stores: staff.stores?.items?.map(connection => ({
+            id: connection.store?.id,
+            name: connection.store?.name
+          }))
+        }))
+      );
+
       return response.data.listStaff.items;
     } catch (error) {
-      console.error('Error fetching staff:', error);
+      console.error('Error fetching staff with stores:', error);
       throw error;
     }
   }
@@ -179,31 +192,23 @@ export const staffSlice = createSlice({
     },
     deleteStaffMember: (state, action) => {
       const { id } = action.payload;
-      const staff = state.items.find(item => item.id === id);
+      const staffToDelete = state.items.find(s => s.id === id);
       
-      if (staff) {
-        // Cannot delete SuperAdmin as per authentication flow
-        if (staff.role && Array.isArray(staff.role) && staff.role.includes('SuperAdmin')) {
-          state.error = 'Cannot delete SuperAdmin account';
-          return;
-        }
-        if (staff.role.includes('SuperAdmin')) {
-          console.error('Cannot delete SuperAdmin staff');
+      if (staffToDelete) {
+        if (Array.isArray(staffToDelete.role) && staffToDelete.role.includes('SuperAdmin')) {
+          // Prevent deletion of SuperAdmin
           return state;
         }
-
-        // Mark for deletion in local state
-        const index = state.items.findIndex(item => item.id === id);
-        state.items[index] = {
-          ...staff,
-          _status: 'pending_delete',
-          _deleted: true,
-          _lastChangedAt: new Date().toISOString(),
-          stores: { items: [] }, // Clear store connections as per schema
-          log_status: 'INACTIVE', // Update status as per schema
-          device_id: '', // Clear device info
-          device_name: '',
-        };
+        
+        // Mark as deleted (soft delete)
+        staffToDelete._deleted = true;
+        staffToDelete._status = 'pending_delete';
+        staffToDelete._lastChangedAt = new Date().toISOString();
+        
+        // Also update other required fields
+        staffToDelete.log_status = 'INACTIVE'; // Update status as per schema
+        staffToDelete.device_id = ''; // Clear device info
+        staffToDelete.device_name = '';
 
         // Add to pending changes for sync
         state.pendingChanges.push({
@@ -218,6 +223,21 @@ export const staffSlice = createSlice({
         return state;
       }
       return state;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action) => {
+      state.error = action.payload;
+    },
+    clearPendingChanges: (state) => {
+      state.pendingChanges = [];
+    },
+    clearAll: (state) => {
+      state.items = [];
+      state.pendingChanges = [];
+      state.error = null;
+      state.loading = false;
     }
   },
   extraReducers: (builder) => {

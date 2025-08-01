@@ -2,15 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { TextInput, Button, DataTable, Portal, Modal } from 'react-native-paper';
 import { useSelector, useDispatch } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Appbar from '../components/Appbar';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { addStore } from '../store/slices/storeSlice';
+import { addStore, fetchStores } from '../store/slices/storeSlice';
 import { getCurrentUser } from '@aws-amplify/auth';
 
 export default function StoreManagementScreen({ navigation }) {
   const dispatch = useDispatch();
   const { isOnline, hasPendingChanges, pendingChangesCount } = useNetworkStatus();
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [subscriptionLimits, setSubscriptionLimits] = useState({
+    storeLimit: 0,
+    staffPerStoreLimit: 0,
+    adminPerStoreLimit: 0,
+    subscriptionStatus: 'NONE',
+    planName: ''
+  });
 
   // Get data from Redux store - filtered by current user's ownership
   const { items: stores, loading } = useSelector(state => {
@@ -35,21 +43,36 @@ export default function StoreManagementScreen({ navigation }) {
     };
   });
   
-  // Get the authenticated user ID on component mount
+  // Get the authenticated user ID and subscription limits on component mount
   useEffect(() => {
-    const fetchUserId = async () => {
+    const initialize = async () => {
       try {
+        // Get authenticated user ID
         const authUser = await getCurrentUser();
         const userId = authUser.userId;
         console.log('StoreManagementScreen: Current user ID set:', userId);
         setCurrentUserId(userId);
+        
+        // Fetch stores using the fetchStores action
+        dispatch(fetchStores({ ownerId: userId }));
+        console.log('Dispatched fetchStores action for user:', userId);
+        
+        // Get subscription limits from AsyncStorage
+        const limitsData = await AsyncStorage.getItem('subscriptionLimits');
+        if (limitsData) {
+          const limits = JSON.parse(limitsData);
+          console.log('Retrieved subscription limits:', limits);
+          setSubscriptionLimits(limits);
+        } else {
+          console.log('No subscription limits found in AsyncStorage');
+        }
       } catch (error) {
-        console.error('Error getting current user:', error);
+        console.error('Error initializing store management screen:', error);
         Alert.alert('Error', 'Authentication error. Please restart the app.');
       }
     };
     
-    fetchUserId();
+    initialize();
   }, []);
   
   const [modalVisible, setModalVisible] = useState(false);
@@ -58,7 +81,7 @@ export default function StoreManagementScreen({ navigation }) {
     location: '',
   });
 
-  const handleAddStore = () => {
+  const handleAddStore = async () => {
     // Validate required fields
     if (!newStore.name || !newStore.location) {
       Alert.alert('Error', 'Store name and location are required');
@@ -71,6 +94,58 @@ export default function StoreManagementScreen({ navigation }) {
       return;
     }
 
+    // Fetch the latest subscription limits from AsyncStorage
+    // This ensures we have the most up-to-date limits
+    let currentLimit = 0;
+    let currentPlanName = '';
+    
+    try {
+      const freshLimitsData = await AsyncStorage.getItem('subscriptionLimits');
+      if (freshLimitsData) {
+        const freshLimits = JSON.parse(freshLimitsData);
+        console.log('Fetched fresh subscription limits:', freshLimits);
+        
+        // Update state for future use
+        setSubscriptionLimits(freshLimits);
+        
+        // Extract values for immediate use
+        currentLimit = freshLimits.storeLimit || 0;
+        currentPlanName = freshLimits.planName || '';
+      }
+    } catch (error) {
+      console.error('Error fetching fresh subscription limits:', error);
+    }
+    
+    // Check against subscription store limit
+    const currentStoreCount = stores.length;
+    
+    console.log('DEBUG - Current store count:', currentStoreCount);
+    console.log('DEBUG - Store limit:', currentLimit);
+    console.log('DEBUG - Plan name:', currentPlanName);
+    console.log('DEBUG - Fresh limits used:', { currentLimit, currentPlanName });
+    console.log('DEBUG - Is condition met?', currentLimit > 0 && currentStoreCount >= currentLimit);
+    console.log('DEBUG - Part 1:', currentLimit > 0);
+    console.log('DEBUG - Part 2:', currentStoreCount >= currentLimit);
+    console.log('DEBUG - Stores array:', JSON.stringify(stores));
+    
+    // Only apply limit if it's a positive number and we've reached or exceeded the limit
+    // If limit is 0 or negative, it means unlimited
+    if (currentLimit > 0 && currentStoreCount >= currentLimit) {
+      // Show upgrade alert if limit reached
+      Alert.alert(
+        'Store Limit Reached',
+        `Your ${currentPlanName || 'current'} plan allows a maximum of ${currentLimit} stores. Please upgrade your subscription to add more stores.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade Subscription', 
+            onPress: () => navigation.navigate('Subscription', { staffData: staff[0] })
+          }
+        ]
+      );
+      return;
+    }
+
     // Create store input
     const storeInput = {
       ...newStore,
@@ -78,7 +153,7 @@ export default function StoreManagementScreen({ navigation }) {
       status: 'ACTIVE'
     };
     
-    console.log('Creating store with ownerId:', currentUserId);
+    console.log(`Creating store with ownerId: ${currentUserId} (${currentStoreCount + 1}/${currentLimit > 0 ? currentLimit : '∞'} stores)`);
 
     // Dispatch action to add store
     dispatch(addStore(storeInput));
@@ -111,7 +186,8 @@ export default function StoreManagementScreen({ navigation }) {
     <View style={styles.container}>
       <Appbar
         title="Store Management"
-        onMenuPress={() => navigation.openDrawer()}
+        subtitle={hasPendingChanges ? `${pendingChangesCount} pending changes` : ''}
+        onBack={() => navigation.goBack()}
       />
       
       {!isOnline && (

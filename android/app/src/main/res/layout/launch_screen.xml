@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/splashscreen_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center">
+        
+        <!-- X Logo -->
+        <TextView
+            android:id="@+id/splash_logo_x"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="X"
+            android:textColor="@color/primary"
+            android:textSize="90sp"
+            android:textStyle="bold" />
+            
+        <!-- ZACTO Text -->
+        <TextView
+            android:id="@+id/splash_logo_zacto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ZACTO"
+            android:textColor="@color/primary"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:layout_marginTop="-15dp" />
+            
+        <!-- POS SYSTEM Text -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="POS SYSTEM"
+            android:textColor="#555555"
+            android:textSize="14sp"
+            android:layout_marginTop="10dp" />
+    </LinearLayout>
+</RelativeLayout>

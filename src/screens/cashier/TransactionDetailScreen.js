@@ -276,44 +276,89 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     }
   };
 
-  const renderItem = ({item}) => (
-    <View style={styles.itemContainer}>
-      <View style={styles.itemDetails}>
-        <View style={styles.itemTextContainer}>
-          <Text style={styles.quantityText}>{item.quantity}</Text>
+  const renderItem = ({item}) => {
+    // Parse variant and addon data if available
+    let variantInfo = null;
+    let addonInfo = [];
+    
+    if (item.variantData) {
+      try {
+        variantInfo = JSON.parse(item.variantData);
+      } catch (e) {
+        console.error("Error parsing variant data:", e);
+      }
+    }
+    
+    if (item.addonData) {
+      try {
+        const parsed = JSON.parse(item.addonData);
+        addonInfo = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        console.error("Error parsing addon data:", e);
+      }
+    }
+    
+    return (
+      <View style={styles.itemContainer}>
+        <View style={styles.itemDetails}>
+          <View style={styles.itemTextContainer}>
+            <Text style={styles.quantityText}>{item.quantity}</Text>
+          </View>
+          <View style={styles.itemTextContainer}>
+            <Text style={styles.productNameText}>
+              {item.productName || 'Unknown Product'}
+            </Text>
+            {/* Display base price */}
+            <Text style={styles.priceText}>
+              @ {formatMoney(item.price, {symbol: '₱', precision: 2})}
+            </Text>
+            
+            {/* Display variant if available */}
+            {variantInfo && (
+              <Text style={styles.variantText}>
+                Variant: {variantInfo.name || 'Unknown'}
+                {variantInfo.price ? ` (+${formatMoney(variantInfo.price, {symbol: '₱', precision: 2})})` : ''}
+              </Text>
+            )}
+            
+            {/* Display addons if available */}
+            {addonInfo.length > 0 && (
+              <View style={styles.addonContainer}>
+                <Text style={styles.addonHeader}>Add-ons:</Text>
+                {addonInfo.map((addon, index) => (
+                  <Text key={index} style={styles.addonText}>
+                    • {addon.name || 'Unknown addon'}
+                    {addon.price ? ` (+${formatMoney(addon.price, {symbol: '₱', precision: 2})})` : ''}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
-        <View style={styles.itemTextContainer}>
-          <Text style={styles.productNameText}>
-            {item.productName || 'Unknown Product'}
-          </Text>
-          <Text style={styles.priceText}>
-            @ {formatMoney(item.price, {symbol: '₱', precision: 2})}
-          </Text>
-        </View>
+        <Text style={styles.itemPrice}>
+          {formatMoney(item.total, {
+            symbol: '₱',
+            precision: 2,
+          })}
+        </Text>
+        {item.status !== 'Voided' && (
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedItem(item);
+              alertVisible(true);
+            }}
+            style={styles.voidButton}>
+            <Text style={styles.voidButtonText}>Void</Text>
+          </TouchableOpacity>
+        )}
+        {item.status === 'Voided' && (
+          <View style={styles.voidedIndicator}>
+            <Text style={styles.voidedText}>Voided</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.itemPrice}>
-        {formatMoney(item.total, {
-          symbol: '₱',
-          precision: 2,
-        })}
-      </Text>
-      {item.status !== 'Voided' && (
-        <TouchableOpacity
-          onPress={() => {
-            setSelectedItem(item);
-            alertVisible(true);
-          }}
-          style={styles.voidButton}>
-          <Text style={styles.voidButtonText}>Void</Text>
-        </TouchableOpacity>
-      )}
-      {item.status === 'Voided' && (
-        <View style={styles.voidedIndicator}>
-          <Text style={styles.voidedText}>Voided</Text>
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   const calculateTotal = () => {
     let total = 0;
@@ -630,6 +675,25 @@ const styles = StyleSheet.create({
     color: colors.charcoalGrey,
     fontSize: 12,
     fontWeight: '500',
+  },
+  variantText: {
+    fontSize: 12,
+    color: colors.accent,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  addonContainer: {
+    marginTop: 2,
+  },
+  addonHeader: {
+    fontSize: 12,
+    color: colors.accent,
+    fontWeight: '500',
+  },
+  addonText: {
+    fontSize: 11,
+    color: colors.charcoalGrey,
+    marginLeft: 5,
   },
   listItemContent: {
     flexDirection: 'row',

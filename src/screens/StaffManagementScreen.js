@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Alert, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import { TextInput, Button, DataTable, Portal, Modal, List, IconButton, Menu, Text, Checkbox } from 'react-native-paper';
 import { generateClient } from 'aws-amplify/api';
 import { useSelector, useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Appbar from '../components/Appbar';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { addStaffMember, updateStaffMember, deleteStaffMember, connectStaffToStores, fetchStaff } from '../store/slices/staffSlice';
+import { addStaffMember, updateStaffMember, deleteStaffMember, connectStaffToStores, fetchStaff, syncComplete } from '../store/slices/staffSlice';
+import { selectStaffByOwner } from '../store/selectors/staffSelectors';
+import { fetchStores } from '../store/slices/storeSlice';
 import { getCurrentUser } from '@aws-amplify/auth';
 import * as mutations from '../graphql/mutations';
+import * as queries from '../graphql/queries';
 
 function StaffManagementScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -17,16 +20,20 @@ function StaffManagementScreen({ navigation }) {
 
   // Get current user ID for filtering
   const [currentUserId, setCurrentUserId] = useState(null);
+  
+  // State for subscription limits
+  const [subscriptionLimits, setSubscriptionLimits] = useState({
+    storeLimit: 0,
+    staffPerStoreLimit: 0,
+    adminPerStoreLimit: 0,
+    subscriptionStatus: 'NONE',
+    planName: ''
+  });
 
   // Get data from Redux store with filtering by current user's ID
-  const { items: staff } = useSelector(state => {
-    const allStaff = state.staff.items || [];
-    return { 
-      items: currentUserId 
-        ? allStaff.filter(s => s.ownerId === currentUserId && !s._deleted)
-        : []
-    };
-  });
+  const staff = useSelector(state => selectStaffByOwner(state, currentUserId));
+
+  
 
   // Get all stores for the current user - simpler approach that doesn't rely on staff-store relationship
   const { items: stores } = useSelector(state => {
@@ -40,9 +47,11 @@ function StaffManagementScreen({ navigation }) {
   });
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [error, setError] = useState(null);
   const [menuVisibleMap, setMenuVisibleMap] = useState({});
   const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [storeSelectionVisible, setStoreSelectionVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Helper function to toggle menu visibility for a specific staff member
   const toggleMenu = (staffId) => {
@@ -70,27 +79,27 @@ function StaffManagementScreen({ navigation }) {
     stores: [], // Will be populated based on role
   });
 
-  // Load existing staff data when editing
-  useEffect(() => {
-    if (selectedStaffId) {
-      const staffMember = staff.find(s => s.id === selectedStaffId);
-      if (staffMember) {
-        setNewStaff({
-          name: staffMember.name,
-          role: Array.isArray(staffMember.role) ? staffMember.role[0] : staffMember.role, // Use first role as we only support single role
-          stores: staffMember.stores?.items?.map(s => s.store?.id) || [],
-        });
-      }
-    }
-  }, [selectedStaffId, staff]);
+  // Memoized handler for editing a staff member
+  const handleEdit = useCallback((staffMember) => {
+    if (!staffMember) return;
 
-  // Get only stores owned by the current user for selection
-  const availableStores = useSelector(state => {
-    // Filter stores by current user's ownership and non-deleted status
-    return currentUserId 
-      ? state.store.items.filter(store => store.ownerId === currentUserId && !store._deleted) || []
-      : [];
-  });
+    const staffStores = staffMember.stores?.items?.map(s => s.store?.id).filter(Boolean) || [];
+    const roleDisplay = Array.isArray(staffMember.role) ? staffMember.role[0] : 'Cashier';
+
+    setNewStaff({
+      name: staffMember.name,
+      role: roleDisplay,
+      stores: staffStores,
+    });
+
+    setSelectedStaffId(staffMember.id);
+    setModalVisible(true);
+    closeAllMenus();
+  }, []); // No dependencies, it will use the latest staffMember passed to it
+
+  // Use the already fetched stores for selection
+  // This ensures we're consistent with what's shown in the UI
+  const availableStores = stores;
   
   // Hardcoded store assignments - this is a temporary solution to make it work quickly
   // Based on the user's preference to keep things simple
@@ -105,198 +114,332 @@ function StaffManagementScreen({ navigation }) {
 
   // Get current user's role from staff list
   const currentUser = staff.find(s => s.role && Array.isArray(s.role) && s.role.includes('SuperAdmin'));
-  const isSuperAdmin = currentUser?.role?.includes('SuperAdmin');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  // Fetch staff data with ownerId on mount
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
+        // This should only run once to get the current user's ID
         const authUser = await getCurrentUser();
         const userId = authUser.userId;
-        
-        // Store the current user ID in state for later use
         setCurrentUserId(userId);
         console.log('Current user ID set:', userId);
-        
-        // Fetch staff data
-        dispatch(fetchStaff({ ownerId: userId }));
+
+        const staffSession = await AsyncStorage.getItem('staffSession');
+        if (staffSession) {
+          const sessionData = JSON.parse(staffSession);
+          setIsSuperAdmin(sessionData.role?.includes('SuperAdmin') || false);
+        }
+
+        const limitsData = await AsyncStorage.getItem('subscriptionLimits');
+        if (limitsData) {
+          const limits = JSON.parse(limitsData);
+          console.log('Retrieved subscription limits:', limits);
+          setSubscriptionLimits(limits);
+        } else {
+          console.log('No subscription limits found in AsyncStorage');
+        }
       } catch (error) {
-        console.error('Error fetching staff:', error);
-        Alert.alert('Error', 'Failed to load staff');
+        console.error('Error initializing staff management screen:', error);
       }
     };
-    
+
     fetchInitialData();
-  }, [dispatch]);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
-  const handleAddStaff = async () => {
-    // Only SuperAdmin can manage staff
-    if (!isSuperAdmin) {
-      Alert.alert('Error', 'Only SuperAdmin can manage staff');
-      return;
+  // Fetch staff and store data when user ID is available
+  useEffect(() => {
+    if (currentUserId) {
+      dispatch(fetchStaff({ ownerId: currentUserId }));
+      
+      // Explicitly fetch stores
+      dispatch(fetchStores({ ownerId: currentUserId }));
+      console.log('Fetching stores for user:', currentUserId);
     }
+  }, [currentUserId, dispatch]);
 
-    // Prevent editing SuperAdmin
-    if (selectedStaffId) {
-      const staffMember = staff.find(s => s.id === selectedStaffId);
-      if (staffMember?.role?.includes('SuperAdmin')) {
-        Alert.alert('Error', 'Cannot modify SuperAdmin account');
-        return;
-      }
-    }
-
-    // Validate required fields as per schema
-    if (!newStaff.name?.trim()) {
-      Alert.alert('Error', 'Staff name is required');
-      return;
-    }
-
-    if (!newStaff.role) {
-      Alert.alert('Error', 'Staff role is required');
-      return;
-    }
-
-    // Store is required for Admin and Cashier roles, but not for Warehouse or SuperAdmin
-    if ((newStaff.role === 'Admin' || newStaff.role === 'Cashier') && !newStaff.stores?.length) {
-      Alert.alert('Error', 'Please select at least one store');
-      return;
-    }
-
-    // Enforce Cashier single store restriction - take only the first store if multiple are selected
-    if (newStaff.role === 'Cashier' && newStaff.stores.length > 1) {
-      console.log('Limiting Cashier to single store - using only first store selected');
-      newStaff.stores = [newStaff.stores[0]]; // Take only the first selected store
-    }
-    
-    // For SuperAdmin and Warehouse roles, we'll use default stores
-    if (newStaff.role === 'SuperAdmin' || newStaff.role === 'Warehouse') {
-      // Assign all available stores to SuperAdmin, and just the first one to Warehouse
-      if (newStaff.role === 'SuperAdmin') {
-        newStaff.stores = availableStores.map(store => store.id);
-        console.log('SuperAdmin assigned to all stores:', newStaff.stores);
-      } else {
-        // For Warehouse, use just the first store
-        newStaff.stores = availableStores.length > 0 ? [availableStores[0].id] : [];
-        console.log('Warehouse assigned to first store:', newStaff.stores);
-      }
-    }
-
+  // Function to sync staff data to server in the background
+  const syncStaffToServer = async (staffId, staffData, storeIds) => {
     try {
-      // Check if we have a current user ID
-      if (!currentUserId) {
-        console.error('No owner ID available for staff creation');
-        Alert.alert('Authentication Error', 'Could not retrieve your user ID. Please sign out and sign in again before adding staff.');
+      console.log(`Syncing staff ${staffId} to server...`);
+      
+      // Check if this is a local ID (starts with 'local_')
+      const isLocalId = staffId.toString().startsWith('local_');
+      
+      if (isLocalId) {
+        // Create new staff in database
+        const response = await client.graphql({
+          query: mutations.createStaff,
+          variables: { input: staffData }
+        });
+        
+        // Get the server-assigned ID
+        const serverStaffId = response.data.createStaff.id;
+        console.log(`Staff created on server with ID: ${serverStaffId}`);
+        
+        // Update Redux with the new server ID
+        dispatch(syncComplete({
+          localId: staffId,
+          serverId: serverStaffId
+        }));
+        
+        // Use the server ID for store connections
+        staffId = serverStaffId;
+      } else {
+        // Update existing staff in database
+        await client.graphql({
+          query: mutations.updateStaff,
+          variables: { input: { id: staffId, ...staffData } }
+        });
+        console.log(`Staff ${staffId} updated on server`);
+      }
+      
+      // Connect staff to stores if needed
+      if (storeIds && storeIds.length > 0) {
+        // First get existing connections to delete them
+        const existingConnections = await client.graphql({
+          query: queries.listStaffStores,
+          variables: { filter: { staffId: { eq: staffId } } }
+        });
+        
+        // Delete existing connections
+        for (const connection of existingConnections.data.listStaffStores.items) {
+          await client.graphql({
+            query: mutations.deleteStaffStore,
+            variables: { input: { id: connection.id } }
+          });
+        }
+        
+        // Create new connections
+        for (const storeId of storeIds) {
+          await client.graphql({
+            query: mutations.createStaffStore,
+            variables: { input: { staffId, storeId } }
+          });
+        }
+        
+        console.log(`Staff ${staffId} store connections synced to server`);
+      }
+      
+      // Mark staff as synced in Redux
+      dispatch(updateStaffMember({
+        id: staffId,
+        _status: 'synced',
+        _lastChangedAt: new Date().toISOString()
+      }));
+      
+      console.log(`Staff ${staffId} sync completed`);
+    } catch (error) {
+      console.error(`Error syncing staff ${staffId} to server:`, error);
+      // Keep the pending status to retry later
+    }
+  };
+  
+  const handleAddStaff = async () => {
+    try {
+      // Validate staff name is not empty
+      if (!newStaff.name.trim()) {
+        Alert.alert('Error', 'Staff name cannot be empty');
         return;
       }
       
-      const staffInput = {
-        name: newStaff.name.trim(),
-        password: '00000', // Default PIN
-        role: [newStaff.role], // Schema requires array
-        log_status: 'INACTIVE',
-        device_id: '',
-        device_name: '',
-        ownerId: currentUserId // Include ownerId from authenticated user
-      };
-      
-      console.log('Creating staff with ownerId:', currentUserId);
-
-      if (selectedStaffId) {
-        // Update existing staff
-        dispatch(updateStaffMember({
-          id: selectedStaffId,
-          ...staffInput
-        }));
-
-        // Update store connections if not warehouse role
-        if (newStaff.role !== 'Warehouse' && newStaff.stores.length > 0) {
-          dispatch(connectStaffToStores({
-            staffId: selectedStaffId,
-            storeIds: newStaff.stores
-          }));
-        }
-      } else {
-        // Create new staff and save to the database before connecting to stores
-        console.log('Creating new staff member with stores:', newStaff.stores);
+      // Check for duplicate staff names when creating new staff
+      if (!selectedStaffId) {
+        const isDuplicate = staff.some(
+          s => s.name.toLowerCase() === newStaff.name.trim().toLowerCase() && !s._deleted
+        );
         
-        try {
-          // First create the staff directly in GraphQL
-          const response = await client.graphql({
-            query: mutations.createStaff,
-            variables: {
-              input: {
-                name: staffInput.name,
-                password: staffInput.password,
-                role: staffInput.role,
-                log_status: staffInput.log_status,
-                device_id: staffInput.device_id,
-                device_name: staffInput.device_name,
-                ownerId: staffInput.ownerId
-              }
-            }
-          });
+        if (isDuplicate) {
+          Alert.alert('Error', 'A staff member with this name already exists. Please use a different name.');
+          return;
+        }
+      }
+      
+      // Verify store selection exists in available stores (quick validation)
+      if (newStaff.stores.length > 0) {
+        const validStoreIds = availableStores.map(store => store.id);
+        const invalidStores = newStaff.stores.filter(id => !validStoreIds.includes(id));
+        
+        if (invalidStores.length > 0) {
+          Alert.alert('Error', 'Some selected stores are invalid. Please try again.');
+          return;
+        }
+      }
+      
+      // Only check subscription limits for new staff (not edits)
+      if (!selectedStaffId) {
+        // Get subscription limits directly from AsyncStorage for latest values
+        const limitsData = await AsyncStorage.getItem('subscriptionLimits');
+        if (limitsData) {
+          const currentLimits = JSON.parse(limitsData);
+          const { staffPerStoreLimit, adminPerStoreLimit, planName } = currentLimits;
           
-          // Get the actual ID from the database response
-          const newStaffId = response.data.createStaff.id;
-          console.log('Staff created in database with ID:', newStaffId);
-          
-          // Add to Redux state
-          dispatch(addStaffMember({
-            ...staffInput,
-            id: newStaffId
-          }));
-          
-          // Only connect to stores after the staff is confirmed created in database
-          if (newStaff.stores.length > 0) {
-            console.log(`Connecting new staff ${newStaffId} to stores:`, newStaff.stores);
+          // Skip limit check if no limits are defined
+          if (staffPerStoreLimit > 0 || adminPerStoreLimit > 0) {
+            // Build efficient maps of staff and admin assignments to stores
+            const storeStaffMap = {};
+            const storeAdminMap = {};
             
-            // Wait a brief moment to ensure the staff record is available
-            setTimeout(async () => {
-              for (const storeId of newStaff.stores) {
-                try {
-                  await client.graphql({
-                    query: mutations.createStaffStore,
-                    variables: { 
-                      input: {
-                        staffId: newStaffId,
-                        storeId
-                      }
-                    }
-                  });
-                  console.log(`Successfully connected staff ${newStaffId} to store ${storeId}`);
-                } catch (err) {
-                  console.error(`Failed to connect staff to store: ${err.message}`);
+            // Initialize count maps
+            availableStores.forEach(store => {
+              storeStaffMap[store.id] = 0;
+              storeAdminMap[store.id] = 0;
+            });
+            
+            // Count in a single efficient pass
+            staff.forEach(s => {
+              if (s.role?.includes('SuperAdmin') || s._deleted) return;
+              
+              const isAdmin = s.role?.includes('Admin');
+              
+              if (s.stores?.items?.length > 0) {
+                s.stores.items.forEach(connection => {
+                  const storeId = connection.store?.id || connection.storeId;
+                  if (!storeId) return;
+                  
+                  // Increment staff count
+                  if (storeStaffMap[storeId] !== undefined) {
+                    storeStaffMap[storeId]++;
+                  }
+                  
+                  // Increment admin count if staff is admin
+                  if (isAdmin && storeAdminMap[storeId] !== undefined) {
+                    storeAdminMap[storeId]++;
+                  }
+                });
+              }
+            });
+            
+            // Check limits for target stores
+            for (const storeId of newStaff.stores) {
+              // Admin limit check
+              if (adminPerStoreLimit > 0 && newStaff.role === 'Admin') {
+                if (storeAdminMap[storeId] >= adminPerStoreLimit) {
+                  Alert.alert(
+                    'Admin Limit Reached',
+                    `Your ${planName} plan allows a maximum of ${adminPerStoreLimit} admins per store.`,
+                    [{ text: 'OK' }, { text: 'Upgrade Subscription', onPress: () => navigation.navigate('Subscription') }]
+                  );
+                  return;
                 }
               }
-            }, 1000);
-          } else {
-            console.log('No stores to connect for this staff');
+              
+              // Staff limit check for all roles
+              if (staffPerStoreLimit > 0) {
+                if (storeStaffMap[storeId] >= staffPerStoreLimit) {
+                  Alert.alert(
+                    'Staff Limit Reached',
+                    `Your ${planName} plan allows a maximum of ${staffPerStoreLimit} staff members per store.`,
+                    [{ text: 'OK' }, { text: 'Upgrade Subscription', onPress: () => navigation.navigate('Subscription') }]
+                  );
+                  return;
+                }
+              }
+            }
           }
-        } catch (error) {
-          console.error('Error creating staff:', error);
-          Alert.alert('Error', 'Failed to create staff member. Please try again.');
         }
       }
-
+      
+      // Start the loading indicator
+      setIsSaving(true);
+      
+      // Prepare staff data
+      const staffData = {
+        name: newStaff.name.trim(),
+        role: Array.isArray(newStaff.role) ? newStaff.role : [newStaff.role],
+        ownerId: currentUserId,
+        password: selectedStaffId ? undefined : '00000', // Default password for new staff
+        log_status: 'INACTIVE',
+        device_id: '',
+        device_name: ''
+      };
+      
+      // Generate a local ID for new staff with a prefix to identify local IDs
+      const tempId = selectedStaffId || `local_${Date.now()}`;
+      
+      if (selectedStaffId) {
+        // Update existing staff in Redux first (offline-first approach)
+        dispatch(updateStaffMember({
+          id: selectedStaffId,
+          ...staffData,
+          _status: 'pending_update'
+        }));
+        
+        // Connect to selected stores locally first
+        if (newStaff.stores.length > 0) {
+          // Create local store connections
+          const storeItems = newStaff.stores.map(storeId => {
+            const store = availableStores.find(s => s.id === storeId);
+            return {
+              store: { 
+                id: storeId,
+                name: store?.name || 'Unknown Store'
+              }
+            };
+          });
+          
+          // Update staff with store connections locally
+          dispatch(updateStaffMember({
+            id: selectedStaffId,
+            stores: { items: storeItems }
+          }));
+        }
+        
+        // Sync with server if online
+        if (isOnline) {
+          syncStaffToServer(selectedStaffId, staffData, newStaff.stores);
+        }
+      } else {
+        // Create staff locally first (offline-first approach)
+        dispatch(addStaffMember({
+          ...staffData,
+          id: tempId,
+          _status: 'pending_create'
+        }));
+        
+        // Connect to stores locally if needed
+        if (newStaff.stores.length > 0) {
+          // Create local store connections
+          const storeItems = newStaff.stores.map(storeId => {
+            const store = availableStores.find(s => s.id === storeId);
+            return {
+              store: { 
+                id: storeId,
+                name: store?.name || 'Unknown Store'
+              }
+            };
+          });
+          
+          // Update the newly added staff with store connections
+          dispatch(updateStaffMember({
+            id: tempId,
+            stores: { items: storeItems }
+          }));
+        }
+        
+        // Sync with server if online
+        if (isOnline) {
+          syncStaffToServer(tempId, staffData, newStaff.stores);
+        }
+      }
+      
       // Reset form and close modal
-      setNewStaff({
-        name: '',
-        role: '',
-        stores: []
-      });
+      setNewStaff({ name: '', role: '', stores: [] });
+      setSelectedStaffId(null);
       setModalVisible(false);
-      setStoreSelectionVisible(false);
-
-      // Show success message
+      
+      // Show success message with offline-first context
       Alert.alert(
-        'Success',
-        isOnline ? 
-          `Staff member ${selectedStaffId ? 'updated' : 'added'} successfully` : 
-          `Staff member will be ${selectedStaffId ? 'updated' : 'added'} when online`
+        'Success', 
+        isOnline 
+          ? `Staff member ${selectedStaffId ? 'updated' : 'added'} successfully and syncing in background` 
+          : `Staff member ${selectedStaffId ? 'updated' : 'added'} locally and will sync when online`
       );
     } catch (error) {
       console.error('Error saving staff:', error);
-      Alert.alert('Error', 'Failed to save staff');
+      Alert.alert('Error', 'Failed to save staff. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -307,8 +450,9 @@ function StaffManagementScreen({ navigation }) {
         subtitle={hasPendingChanges ? `${pendingChangesCount} pending changes` : ''}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView horizontal style={styles.content}>
-        <DataTable>
+      <ScrollView style={styles.content} nestedScrollEnabled={true}>
+        <ScrollView horizontal nestedScrollEnabled={true} persistentScrollbar={true}>
+          <DataTable>
           <DataTable.Header style={styles.tableHeader}>
             <DataTable.Title style={[styles.nameColumn, {padding: 8}]}>Name</DataTable.Title>
             <DataTable.Title style={[styles.roleColumn, {padding: 8}]}>Role</DataTable.Title>
@@ -369,7 +513,10 @@ styles.otherRole]}>
 <View style={styles.storeCell}>
 {staffStores.length > 0 ? (
 staffStores.map((s, index) => {
-const storeName = availableStores.find(st => st.id === s.store?.id)?.name || 'Unknown';
+// Use the store name directly from the relation instead of looking it up
+const storeName = s.store?.name || 'Unknown';
+const storeId = s.store?.id;
+console.log(`Displaying store for ${staffMember.name}: ID=${storeId}, Name=${storeName}`);
 return (
 <View key={index} style={styles.storeBadge}>
 <Text style={styles.storeBadgeText}>{storeName}</Text>
@@ -411,18 +558,8 @@ Last: {staffMember._lastChangedAt ? new Date(staffMember._lastChangedAt).toLocal
   )}
 >
 <Menu.Item
-onPress={() => {
-// Load staff data for editing
-setNewStaff({
-  name: staffMember.name,
-  role: roleDisplay,
-  stores: staffStores.map(s => s.store?.id).filter(Boolean)
-});
-setSelectedStaffId(staffMember.id);
-closeAllMenus();
-setModalVisible(true);
-}}
-title="Edit"
+  onPress={() => handleEdit(staffMember)}
+  title="Edit"
 />
 
 <Menu.Item
@@ -461,10 +598,9 @@ titleStyle={{ color: 'red' }}
 </DataTable.Row>
 );
 })}
-</DataTable>
-</ScrollView>
-                        
-                        
+          </DataTable>
+        </ScrollView>
+      </ScrollView>
 
         <Button
           mode="contained"
@@ -496,7 +632,13 @@ titleStyle={{ color: 'red' }}
             contentContainerStyle={styles.modalWrapper}
           >
             <View style={styles.modalContainer}>
-              <ScrollView style={styles.modalContent}>
+              <ScrollView 
+                style={styles.modalContent} 
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                persistentScrollbar={true}
+                contentContainerStyle={{ paddingBottom: 40 }}
+              >
                 <View style={styles.modalInner}>
                   <Text style={styles.modalTitle}>
                     {selectedStaffId ? 'Edit Staff' : 'Add Staff'}
@@ -569,43 +711,67 @@ titleStyle={{ color: 'red' }}
                         </Button>
                         
                         {storeSelectionVisible && (
-                          <View style={styles.storeList}>
-                            <ScrollView>
-                              {availableStores.map(store => (
-                                <List.Item
-                                  key={store.id}
-                                  title={store.name}
-                                  description={store.location}
-                                  style={styles.storeListItem}
-                                  left={props => (
-                                    <Checkbox
-                                      status={newStaff.stores.includes(store.id) ? 'checked' : 'unchecked'}
-                                      onPress={() => {
-                                        let updatedStores = [...newStaff.stores];
-                                        
-                                        if (updatedStores.includes(store.id)) {
-                                          // Remove store
-                                          updatedStores = updatedStores.filter(id => id !== store.id);
+                          <View style={styles.storeSelectionContainer}>
+                            <Text style={styles.scrollIndicator}>All Available Stores ({availableStores.length})</Text>
+                            {availableStores.length === 0 && (
+                              <Text style={styles.noStoresMessage}>Loading stores or no stores available</Text>
+                            )}
+                            
+                            {availableStores.length > 0 ? (
+                              <FlatList
+                                data={availableStores}
+                                keyExtractor={(item) => item.id}
+                                style={styles.storeList}
+                                nestedScrollEnabled={true}
+                                scrollEnabled={true}
+                                showsVerticalScrollIndicator={true}
+                                renderItem={({item: store}) => (
+                                  <TouchableOpacity 
+                                    style={styles.storeListItem}
+                                    onPress={() => {
+                                      let updatedStores = [...newStaff.stores];
+                                      console.log(`Store ${store.name} (ID: ${store.id}) selected/deselected`);
+                                      console.log('Current selections:', updatedStores);
+                                      
+                                      if (updatedStores.includes(store.id)) {
+                                        // Remove store
+                                        updatedStores = updatedStores.filter(id => id !== store.id);
+                                        console.log(`Removed store ${store.name} from selection`);
+                                      } else {
+                                        // Add store - but enforce single store for Cashier role
+                                        if (newStaff.role === 'Cashier') {
+                                          // For Cashier, always replace existing selection
+                                          updatedStores = [store.id]; // Only one store allowed
+                                          console.log(`Cashier role: Set store to only ${store.name} (ID: ${store.id})`);
                                         } else {
-                                          // Add store - but enforce single store for Cashier role
-                                          if (newStaff.role === 'Cashier') {
-                                            // For Cashier, always replace existing selection
-                                            updatedStores = [store.id]; // Only one store allowed
-                                            console.log('Cashier store set to:', store.id);
-                                          } else {
-                                            // For Admin, append to existing selection
-                                            updatedStores.push(store.id);
-                                            console.log('Admin store added:', store.id);
-                                          }
+                                          // For Admin, allow multiple stores
+                                          updatedStores.push(store.id);
+                                          console.log(`Admin role: Added store ${store.name} (ID: ${store.id})`);
                                         }
-                                        
-                                        setNewStaff({ ...newStaff, stores: updatedStores });
-                                      }}
-                                    />
-                                  )}
-                                />
-                              ))}
-                            </ScrollView>
+                                      }
+                                      
+                                      // Show feedback about current selection
+                                      console.log('Updated store selections:', updatedStores);
+                                      
+                                      setNewStaff({
+                                        ...newStaff,
+                                        stores: updatedStores
+                                      });
+                                    }}
+                                  >
+                                    <View style={styles.storeItemRow}>
+                                      <Checkbox
+                                        status={newStaff.stores.includes(store.id) ? 'checked' : 'unchecked'}
+                                      />
+                                      <View style={styles.storeItemInfo}>
+                                        <Text style={styles.storeItemName}>{store.name}</Text>
+                                        <Text style={styles.storeItemLocation}>{store.location}</Text>
+                                      </View>
+                                    </View>
+                                  </TouchableOpacity>
+                                )}
+                              />
+                            ) : null}
                           </View>
                         )}
                       </>
@@ -622,29 +788,27 @@ titleStyle={{ color: 'red' }}
                   </View>
 
                   {/* Action Buttons */}
-                  <View style={styles.modalActions}>
-                    <Button
-                      mode="outlined"
+                  <View style={styles.buttonRow}>
+                    <Button 
+                      mode="outlined" 
                       onPress={() => {
                         setModalVisible(false);
                         setSelectedStaffId(null);
-                        setNewStaff({
-                          name: '',
-                          role: '',
-                          stores: []
-                        });
-                      }}
-                      style={[styles.actionButton, styles.cancelButton]}
+                        setNewStaff({ name: '', role: '', stores: [] });
+                      }} 
+                      style={styles.cancelButton}
+                      disabled={isSaving}
                     >
                       Cancel
                     </Button>
-                    <Button
-                      mode="contained"
-                      onPress={handleAddStaff}
+                    <Button 
+                      mode="contained" 
+                      onPress={handleAddStaff} 
                       style={[styles.actionButton, styles.submitButton]}
-                      disabled={!newStaff.name || !newStaff.role || ((newStaff.role === 'Admin' || newStaff.role === 'Cashier') && newStaff.stores.length === 0)}
+                      disabled={isSaving || !newStaff.name || !newStaff.role || ((newStaff.role === 'Admin' || newStaff.role === 'Cashier') && newStaff.stores.length === 0)}
+                      loading={isSaving}
                     >
-                      {selectedStaffId ? 'Save Changes' : 'Add Staff'}
+                      {isSaving ? 'Saving...' : (selectedStaffId ? 'Save Changes' : 'Add Staff')}
                     </Button>
                   </View>
                 </View>
@@ -661,17 +825,11 @@ titleStyle={{ color: 'red' }}
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
     padding: 16,
-    marginBottom: 16
-  },
-  addButton: {
-    margin: 16,
-    backgroundColor: '#2196F3',
-    borderRadius: 28,
     paddingVertical: 8,
     elevation: 3
   },
@@ -691,15 +849,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     borderRadius: 12,
-    maxHeight: '90%',
-    minHeight: 500,
+    maxHeight: '85%', // Slightly smaller to ensure it fits on screen
     elevation: 5,
-    overflow: 'hidden',
-    position: 'relative'
+    overflow: 'hidden'
   },
   modalContent: {
-    flex: 1,
-    maxHeight: '100%'
+    flexGrow: 1
   },
   modalInner: {
     padding: 24,
@@ -879,18 +1034,51 @@ const styles = StyleSheet.create({
     letterSpacing: 0.25
   },
   storeList: {
-    maxHeight: 150,
+    maxHeight: 250,
+    backgroundColor: '#ffffff'
+  },
+  storeSelectionContainer: {
+    marginTop: 12,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 8,
-    marginTop: 8,
-    backgroundColor: '#f8f8f8',
-    padding: 4
+    overflow: 'hidden'
+  },
+  scrollIndicator: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0'
   },
   storeListItem: {
-    borderRadius: 4,
-    marginVertical: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
     backgroundColor: '#fff'
+  },
+  storeItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  storeItemInfo: {
+    marginLeft: 8,
+    flex: 1
+  },
+  storeItemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333'
+  },
+  storeItemLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2
   },
   modalActions: {
     flexDirection: 'row',

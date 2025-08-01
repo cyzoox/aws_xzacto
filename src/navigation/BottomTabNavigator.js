@@ -15,7 +15,7 @@ import StoreDashboard from '../screens/store/StoreDashboard';
 import ProductsScreen from '../screens/store/ProductsScreen';
 import Supplier from '../screens/store/SupplierScreen';
 import StaffsScreen from '../screens/store/StaffScreen';
-import CustomerScreen from '../screens/store/CustomerScreen';
+import CustomerScreen from '../screens/customer/CustomerScreen';
 import ExpensesScreen from '../screens/store/ExpensesScreen';
 import StoreSettings from '../screens/store/StoreSettings';
 import DeliveryRequestScreen from '../screens/store/DeliveryRequestScreen';
@@ -30,6 +30,24 @@ import BillsAndReceipt from '../screens/store/BillsAndReceipt';
 
 const Tab = createBottomTabNavigator();
 const StoreStack = createStackNavigator();
+const HomeStack = createStackNavigator();
+
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator>
+      <HomeStack.Screen
+        name="HomeScreen"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="CustomerScreen"
+        component={CustomerScreen}
+        options={{ headerShown: false }}
+      />
+    </HomeStack.Navigator>
+  );
+}
 
 function StoreStackScreen() {
   return (
@@ -127,6 +145,7 @@ const BottomTabNavigator = () => {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [newTransactions, setNewTransactions] = useState(0);
   const [storeName, setStoreName] = useState('Store');
+  const [homeName, setHomeName] = useState('Home');
   
   // Select data from Redux store
   const { loading: storeLoading } = useSelector(state => state.store);
@@ -139,7 +158,13 @@ const BottomTabNavigator = () => {
         const sessionData = await AsyncStorage.getItem('staffSession');
         if (!sessionData) return;
         
-        const { storeData } = JSON.parse(sessionData);
+        const parsedData = JSON.parse(sessionData);
+        if (!parsedData.storeData) {
+          console.log('Store data not found in session');
+          return;
+        }
+        
+        const { storeData } = parsedData;
         setStoreName(storeData.name || 'Store');
         const storeId = storeData.id;
         
@@ -175,8 +200,8 @@ const BottomTabNavigator = () => {
   
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+      screenOptions={({route}) => ({
+        tabBarIcon: ({focused, color, size}) => {
           let iconName;
 
           if (route.name === 'Home') {
@@ -189,28 +214,27 @@ const BottomTabNavigator = () => {
         },
         tabBarActiveTintColor: '#3A6EA5',
         tabBarInactiveTintColor: 'gray',
-        tabBarStyle: { height: 60, paddingBottom: 5 },
-        tabBarLabelStyle: { fontSize: 12 }
-      })}
-    >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
-        options={{ 
+        tabBarStyle: {height: 60, paddingBottom: 5},
+        tabBarLabelStyle: {fontSize: 12},
+      })}>
+      <Tab.Screen
+        name="Home"
+        component={HomeStackScreen}
+        options={{
+          tabBarLabel: homeName,
           headerShown: false,
-          tabBarLabel: 'Dashboard',
-          tabBarBadge: newTransactions > 0 ? newTransactions : null,
-          tabBarBadgeStyle: { backgroundColor: '#28a745' }
+          tabBarBadge: pendingRequests > 0 ? pendingRequests : null,
+          tabBarBadgeStyle: {backgroundColor: '#dc3545'},
         }}
       />
-      <Tab.Screen 
-        name="Stores" 
-        component={StoreStackScreen} 
-        options={{ 
+      <Tab.Screen
+        name="Stores"
+        component={StoreStackScreen}
+        options={{
           headerShown: false,
           tabBarLabel: storeName,
           tabBarBadge: pendingRequests > 0 ? pendingRequests : null,
-          tabBarBadgeStyle: { backgroundColor: '#dc3545' }
+          tabBarBadgeStyle: {backgroundColor: '#dc3545'},
         }}
       />
     </Tab.Navigator>

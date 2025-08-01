@@ -7,13 +7,16 @@ import {
   StyleSheet,
   Text,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {generateClient} from 'aws-amplify/api';
 import {listStaff} from '../graphql/queries';
 import { authService } from '../services/authService';
 import { getCurrentUser } from '@aws-amplify/auth';
-import { createStaff } from '../graphql/mutations';
+import { createStaff, createAccount } from '../graphql/mutations';
+import { listSubscriptionPlans } from '../graphql/queries';
 
 const client = generateClient();
 
@@ -22,7 +25,10 @@ const RoleSelectionScreen = ({navigation}) => {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(true);
   const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
-  const [userId, setUserId] = useState(null);
+ 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminPin, setNewAdminPin] = useState('');
   
   // Check for existing login session and SuperAdmin on component mount
   useEffect(() => {
@@ -46,7 +52,7 @@ const RoleSelectionScreen = ({navigation}) => {
           
           switch (primaryRole) {
             case 'SuperAdmin':
-              navigation.replace('SuperAdminScreen', {staffData});
+              navigation.replace('SuperAdmin', {staffData});
               break;
             case 'Admin':
               navigation.replace('MainApp', {staffData});
@@ -70,7 +76,7 @@ const RoleSelectionScreen = ({navigation}) => {
           const authUserId = authUser.userId;
           
           if (isMounted) {
-            setUserId(authUserId);
+            // setUserId(authUserId);
             
             // Check if there's a SuperAdmin for this user
             await checkForSuperAdmin(authUserId);
@@ -93,15 +99,15 @@ const RoleSelectionScreen = ({navigation}) => {
   }, [navigation]);
   
   // Function to check if SuperAdmin exists for the authenticated user
-  const checkForSuperAdmin = async (ownerId) => {
-    if (!ownerId) {
+  const checkForSuperAdmin = async authUserId => {
+    if (!authUserId) {
       console.error('No ownerId provided to checkForSuperAdmin');
       return false;
     }
-    
+
     try {
-      console.log('Checking for SuperAdmin with ownerId:', ownerId);
-      
+      console.log('Checking for SuperAdmin with ownerId:', authUserId);
+
       // Query staff with SuperAdmin role for this owner
       const response = await client.graphql({
         query: `
@@ -117,20 +123,21 @@ const RoleSelectionScreen = ({navigation}) => {
         `,
         variables: {
           filter: {
-            ownerId: { eq: ownerId },
-            role: { contains: 'SuperAdmin' }
-          }
-        }
+            ownerId: {eq: authUserId},
+            role: {contains: 'SuperAdmin'},
+          },
+        },
       });
-      
+
       console.log('SuperAdmin check response:', response);
       const superAdmins = response.data?.listStaff?.items || [];
-      
+
       // Set state based on whether SuperAdmin exists
       const exists = superAdmins.length > 0;
+      console.log(exists);
       setHasSuperAdmin(exists);
       console.log('SuperAdmin exists:', exists);
-      
+
       return exists;
     } catch (error) {
       console.error('Error checking for SuperAdmin:', error);
@@ -139,11 +146,13 @@ const RoleSelectionScreen = ({navigation}) => {
   };
   
   // Function to create a new SuperAdmin account
-  const createSuperAdmin = async () => {
+  const createSuperAdmin = async (adminName, adminPin) => {
+     const authUser = await getCurrentUser();
+     const authUserId = authUser.userId;
     try {
       setLoading(true);
       
-      if (!userId) {
+      if (!authUserId) {
         Alert.alert('Error', 'Authentication error. Please restart the app.');
         setLoading(false);
         return;
@@ -151,40 +160,86 @@ const RoleSelectionScreen = ({navigation}) => {
       
       // Check if a SuperAdmin already exists before creating a new one
       // This prevents potential race conditions
-      const exists = await checkForSuperAdmin(userId);
+      const exists = await checkForSuperAdmin(authUserId);
       if (exists) {
         console.log('SuperAdmin already exists, skipping creation');
         setLoading(false);
         return;
       }
       
-      // Create SuperAdmin staff with default PIN
-      const response = await client.graphql({
+      // Get user's email for the account
+      const authUser = await getCurrentUser();
+      const userEmail = authUser.signInDetails?.loginId || '';
+      console.log('Creating account for user with email:', userEmail);
+      
+      // Get the free subscription plan as default
+      let freePlan = null;
+      try {
+        const plansResponse = await client.graphql({
+          query: listSubscriptionPlans,
+          variables: {
+            filter: { name: { eq: "Free" } }
+          }
+        });
+        
+        const plans = plansResponse.data.listSubscriptionPlans.items;
+        if (plans && plans.length > 0) {
+          freePlan = plans[0];
+          console.log('Found free plan:', freePlan.id);
+        } else {
+          console.log('No free plan found, creating account without subscription plan');
+        }
+      } catch (planError) {
+        console.error('Error fetching subscription plans:', planError);
+      }
+      
+      // Create account first
+      const accountResponse = await client.graphql({
+        query: createAccount,
+        variables: {
+          input: {
+            ownerId: authUserId,
+            ownerEmail: userEmail,
+            subscriptionPlanId: freePlan?.id || null,
+            subscriptionStatus: freePlan ? 'ACTIVE' : 'NONE',
+            subscriptionStartDate: freePlan ? new Date().toISOString() : null,
+            subscriptionEndDate: null, // Free plan doesn't expire
+            lastModifiedBy: 'SYSTEM',
+          },
+        },
+      });
+      
+      const newAccount = accountResponse.data.createAccount;
+      console.log('Account created:', newAccount.id);
+      
+      // Create SuperAdmin staff with custom name and PIN
+      const staffResponse = await client.graphql({
         query: createStaff,
         variables: {
           input: {
-            name: 'Super Admin',
-            password: '00000', // Default PIN as per auth flow
+            name: adminName || 'Super Admin',
+            password: adminPin || '00000', // Use custom PIN or default if not provided
             role: ['SuperAdmin'], // Schema requires array of roles
             log_status: 'INACTIVE',
             device_id: '',
             device_name: '',
-            ownerId: userId // Associate with authenticated user
-          }
-        }
+            ownerId: authUserId, // Associate with authenticated user
+            accountId: newAccount.id, // Link to the newly created account
+          },
+        },
       });
       
-      console.log('SuperAdmin created:', response.data.createStaff);
+      console.log('SuperAdmin created:', staffResponse.data.createStaff);
       
       // Set the staff data for login
-      const staffData = response.data.createStaff;
+      const staffData = staffResponse.data.createStaff;
       
       // Save login session using authService
       await authService.saveLoginSession(staffData);
       console.log('Staff login session saved for new SuperAdmin');
       
       // Navigate to SuperAdmin screen
-      navigation.replace('SuperAdminScreen', {staffData});
+      navigation.replace('SuperAdmin', {staffData});
     } catch (error) {
       console.error('Error creating SuperAdmin:', error);
       Alert.alert('Error', 'Failed to create SuperAdmin account. Please try again.');
@@ -212,12 +267,14 @@ const RoleSelectionScreen = ({navigation}) => {
                 id
                 name
                 password
+                ownerId
                 role
                 stores {
                   items {
                     store {
                       id
                       name
+                      ownerId
                     }
                   }
                 }
@@ -269,7 +326,9 @@ const RoleSelectionScreen = ({navigation}) => {
       // Set staff data with store ID if available
       const staffData = {
         ...staff,
-        store_id: stores.length > 0 ? stores[0].store.id : null // null for warehouse roles with no stores
+        store_id: stores.length > 0 ? stores[0].store.id : null, // null for warehouse roles with no stores
+        // Ensure ownerId is available in staffData - use store's ownerId if staff doesn't have one
+        ownerId: staff.ownerId || (stores.length > 0 && stores[0].store.ownerId) || null
       };
 
       console.log('Staff data:', staffData);
@@ -281,7 +340,7 @@ const RoleSelectionScreen = ({navigation}) => {
       // Navigate based on role
       switch (primaryRole) {
         case 'SuperAdmin':
-          navigation.replace('SuperAdminScreen', {staffData});
+          navigation.replace('SuperAdmin', {staffData});
           break;
         case 'Admin':
           navigation.replace('MainApp', {staffData});
@@ -315,6 +374,70 @@ const RoleSelectionScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Staff Login</Text>
+      
+      {/* Modal for SuperAdmin creation */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Create SuperAdmin Account</Text>
+            
+            <TextInput
+              value={newAdminName}
+              onChangeText={setNewAdminName}
+              placeholder="Username"
+              style={styles.modalInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            
+            <TextInput
+              value={newAdminPin}
+              onChangeText={setNewAdminPin}
+              placeholder="PIN (5 digits)"
+              secureTextEntry
+              style={styles.modalInput}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+            
+            <View style={styles.modalButtonContainer}>
+              <Pressable
+                style={[styles.button, styles.buttonCancel]}
+                onPress={() => {
+                  setModalVisible(false);
+                  setNewAdminName('');
+                  setNewAdminPin('');
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </Pressable>
+              
+              <Pressable
+                style={[styles.button, styles.createButton]}
+                onPress={() => {
+                  if (!newAdminName.trim()) {
+                    Alert.alert('Error', 'Please enter a valid username');
+                    return;
+                  }
+                  if (!newAdminPin.trim() || newAdminPin.length < 5) {
+                    Alert.alert('Error', 'Please enter a 5-digit PIN');
+                    return;
+                  }
+                  setModalVisible(false);
+                  createSuperAdmin(newAdminName, newAdminPin);
+                }}
+              >
+                <Text style={styles.buttonText}>Create</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       
       {hasSuperAdmin ? (
         // Normal login form if SuperAdmin exists
@@ -354,7 +477,7 @@ const RoleSelectionScreen = ({navigation}) => {
             No SuperAdmin account found. You need to create a SuperAdmin account to proceed.
           </Text>
           <TouchableOpacity
-            onPress={createSuperAdmin}
+            onPress={() => setModalVisible(true)}
             disabled={loading}
             style={[styles.button, styles.createButton, loading && styles.buttonDisabled]}>
             {loading ? (
@@ -375,6 +498,52 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
     backgroundColor: '#fff',
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalView: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  modalInput: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    marginVertical: 10,
+    paddingHorizontal: 15,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 20,
+  },
+  buttonCancel: {
+    backgroundColor: '#6c757d',
+    flex: 1,
+    marginRight: 10,
   },
   title: {
     fontSize: 24,

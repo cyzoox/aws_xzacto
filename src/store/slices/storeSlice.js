@@ -1,4 +1,32 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { generateClient } from 'aws-amplify/api';
+import * as queries from '../../graphql/queries';
+
+// Async thunks
+const client = generateClient();
+
+// Fetch stores by owner ID
+export const fetchStores = createAsyncThunk(
+  'store/fetchStores',
+  async ({ ownerId }) => {
+    try {
+      console.log('Fetching stores for ownerId:', ownerId);
+      const response = await client.graphql({
+        query: queries.listStores,
+        variables: {
+          filter: {
+            ownerId: { eq: ownerId }
+          }
+        }
+      });
+
+      return response.data.listStores.items;
+    } catch (error) {
+      console.error('Error fetching stores:', error);
+      throw error;
+    }
+  }
+);
 
 const initialState = {
   items: [
@@ -151,6 +179,23 @@ export const storeSlice = createSlice({
         state.items[index]._status = 'synced';
       }
     }
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch stores
+      .addCase(fetchStores.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchStores.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+        state.lastSync = new Date().toISOString();
+      })
+      .addCase(fetchStores.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      });
   },
 });
 

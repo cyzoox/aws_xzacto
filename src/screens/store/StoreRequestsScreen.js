@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text, Card, Title, Paragraph, Button, Chip, Divider } from 'react-native-paper';
-import Appbar from '../../components/Appbar';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useStore } from '../../context/StoreContext';
 import colors from '../../themes/colors';
 import { generateClient } from 'aws-amplify/api';
@@ -243,48 +243,34 @@ const StoreRequestsScreen = ({ navigation, route }) => {
   
   return (
     <View style={styles.container}>
-      <Appbar
-        title="My Requests"
-        subtitle={currentStore?.name || 'Store'}
-        onBackPress={() => navigation.goBack()}
-      />
-      
+      {/* Simple header with only back button */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Inventory Requests</Text>
+        <View style={{width: 40}} /> {/* Empty view for balance */}
+      </View>
+
       <View style={styles.content}>
         <View style={styles.filterContainer}>
           <Text style={styles.filterLabel}>Filter</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
-            <Chip
-              selected={selectedFilter === 'ALL'}
-              onPress={() => setSelectedFilter('ALL')}
-              style={[styles.filterChip, selectedFilter === 'ALL' && styles.selectedChip]}
-            >
-              All
-            </Chip>
-            <Chip
-              selected={selectedFilter === 'PENDING'}
-              onPress={() => setSelectedFilter('PENDING')}
-              style={[styles.filterChip, selectedFilter === 'PENDING' && styles.selectedChip]}
-            >
-              Pending
-            </Chip>
-            <Chip
-              selected={selectedFilter === 'PARTIALLY_FULFILLED'}
-              onPress={() => setSelectedFilter('PARTIALLY_FULFILLED')}
-              style={[styles.filterChip, selectedFilter === 'PARTIALLY_FULFILLED' && styles.selectedChip]}
-            >
-              Partially Fulfilled
-            </Chip>
-            <Chip
-              selected={selectedFilter === 'COMPLETED'}
-              onPress={() => setSelectedFilter('COMPLETED')}
-              style={[styles.filterChip, selectedFilter === 'COMPLETED' && styles.selectedChip]}
-            >
-              Completed
-            </Chip>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+            {['ALL', 'PENDING', 'APPROVED', 'PARTIAL', 'FULFILLED', 'REJECTED'].map(filter => (
+              <Chip
+                selected={selectedFilter === filter}
+                style={[styles.filterChip, selectedFilter === filter && styles.selectedChip]}
+                key={filter}
+                onPress={() => setSelectedFilter(filter)}
+              >
+                <Text style={{color: selectedFilter === filter ? 'white' : '#444'}}>
+                  {filter}
+                </Text>
+              </Chip>
+            ))}
           </ScrollView>
         </View>
         
@@ -307,7 +293,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                 onPress={fetchRequests}
                 style={styles.createButton}
               >
-                Try Again
+                <Text style={{color: 'white'}}>Try Again</Text>
               </Button>
             </View>
           ) : filteredRequests.length > 0 ? (
@@ -316,13 +302,13 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                 <Card.Content>
                   <View style={styles.cardHeader}>
                     <View>
-                      <Title>Order #{request.id.slice(-6)} {getPriorityIcon(request.priority)}</Title>
+                      <Title>{getPriorityIcon(request.priority)} Order #{request.id.slice(-6)}</Title>
                       <Paragraph>Requested on {formatDate(request.createdAt)}</Paragraph>
                     </View>
                     <Chip 
                       style={[styles.statusChip, { backgroundColor: getStatusColor(request.status) }]}
                     >
-                      {request.status}
+                      <Text style={{color: 'white'}}>{request.status}</Text>
                     </Chip>
                   </View>
                   
@@ -344,7 +330,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                               size="small" 
                               style={[styles.statusChip, getItemStatusStyle(item.status)]}
                             >
-                              {formatItemStatus(item.status)}
+                              <Text>{formatItemStatus(item.status)}</Text>
                             </Chip>
                           </View>
                         </View>
@@ -364,7 +350,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                         console.log('Cancel request', request.id);
                       }}
                     >
-                      Cancel Request
+                      <Text>Cancel Request</Text>
                     </Button>
                   )}
                   
@@ -373,10 +359,11 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                     onPress={() => {
                       // Navigate to request details
                       console.log('View details', request.id);
+                      navigation.navigate('RequestDetail', { requestId: request.id });
                     }}
                     style={styles.detailsButton}
                   >
-                    View Details
+                    <Text style={{color: 'white'}}>View Details</Text>
                   </Button>
                 </Card.Actions>
               </Card>
@@ -392,7 +379,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
                 })}
                 style={styles.createButton}
               >
-                Create New Request
+                <Text style={{color: 'white'}}>Create New Request</Text>
               </Button>
             </View>
           )}
@@ -406,8 +393,9 @@ const StoreRequestsScreen = ({ navigation, route }) => {
             storeName: currentStore?.name 
           })}
           style={styles.fab}
+          labelStyle={{color: 'white'}}
         >
-          New Request
+          <Text style={{color: 'white'}}>New Request</Text>
         </Button>
       </View>
     </View>
@@ -418,6 +406,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    elevation: 4,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
   },
   content: {
     flex: 1,

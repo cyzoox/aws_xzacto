@@ -82,7 +82,7 @@ const App = () => {
                 <Stack.Screen
                   name="WarehouseApp"
                   component={WarehouseNavigator}
-                  initialParams={{ staffData: null }} 
+                  initialParams={{ staffData: null }}
                   options={{ headerShown: false }}
                 />
               </Stack.Navigator>

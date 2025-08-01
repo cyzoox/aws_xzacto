@@ -6,6 +6,7 @@ type Staff @model @auth(rules: [{ allow: public }]) {
   name: String!
   password: String!
   ownerId: ID
+  accountId: ID
   role: [String!]!
   log_status: String
   device_id: String
@@ -13,6 +14,7 @@ type Staff @model @auth(rules: [{ allow: public }]) {
   stores: [Store] @manyToMany(relationName: "StaffStore")
   transactions: [SaleTransaction] @hasMany(fields: ["id"])
   cartItems: [CartItem] @hasMany(fields: ["id"])
+  account: Account @belongsTo(fields: ["accountId"])
 }
 
 type Category @model @auth(rules: [{ allow: public }]) {
@@ -77,6 +79,7 @@ type Store @model @auth(rules: [{ allow: public }]) {
   name: String!
   location: String!
   ownerId: ID
+  accountId: ID
   products: [Product] @hasMany(fields: ["id"])
   categories: [Category] @hasMany(fields: ["id"])
   staff: [Staff] @manyToMany(relationName: "StaffStore")
@@ -86,6 +89,7 @@ type Store @model @auth(rules: [{ allow: public }]) {
   suppliers: [Supplier] @hasMany(fields: ["id"])
   cartItems: [CartItem] @hasMany(fields: ["id"])
   inventoryRequests: [InventoryRequest] @hasMany(fields: ["id"])
+  account: Account @belongsTo(fields: ["accountId"])
 }
 
 type SaleTransaction @model @auth(rules: [{ allow: public }]) {
@@ -98,9 +102,11 @@ type SaleTransaction @model @auth(rules: [{ allow: public }]) {
   staffName: String
   storeID: ID!
   customerID: ID
+  ownerId: ID
   status: String
   payment_status: String
   cash_received: Float
+  paymentMethod: String
   change: Float
   notes: String
   staff: Staff @belongsTo(fields: ["staffID"])
@@ -119,10 +125,25 @@ type Sale @model @auth(rules: [{ allow: public }]) {
   discount: Float
   total: Float!
   status: String!
+  ownerId: ID
   product: Product @belongsTo(fields: ["productID"])
   transaction: SaleTransaction @belongsTo(fields: ["transactionID"])
   void_reason: String
+  variantData: AWSJSON
+  addonData: AWSJSON
 }
+
+type CreditTransaction @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  customerID: ID!
+  amount: Float!
+  type: String
+  remarks: String
+  createdAt: AWSDateTime
+  addedBy: String # Optional - name or ID of staff who added credit
+  customer: Customer @belongsTo(fields: ["customerID"])
+}
+
 
 type Addon @model @auth(rules: [{ allow: public }]) {
   id: ID!
@@ -140,15 +161,20 @@ type Variant @model @auth(rules: [{ allow: public }]) {
   product: Product @belongsTo(fields: ["productId"])
 }
 
-type Customer @model @auth(rules: [{ allow: public }]) {
+type Customer @model @auth(rules: [{allow: public}]) {
   id: ID!
   name: String!
   email: AWSEmail
   phone: AWSPhone
   storeId: ID!
+  ownerId: ID
   points: Float
+  creditBalance: Float      # Prepaid credits
+  allowCredit: Boolean    # Can they use postpaid credit?
+  creditLimit: Float
   purchases: [SaleTransaction] @hasMany(fields: ["id"])
   store: Store @belongsTo(fields: ["storeId"])
+  creditTransactions: [CreditTransaction] @hasMany(fields: ["id"])
 }
 
 type Supplier @model @auth(rules: [{ allow: public }]) {
@@ -169,6 +195,7 @@ type Expense @model @auth(rules: [{ allow: public }]) {
   storeId: ID!
   staffId: ID
   staffName: String
+  ownerId: ID
   category: String
   notes: String
   store: Store @belongsTo(fields: ["storeId"])
@@ -186,6 +213,14 @@ type CartItem @model @auth(rules: [{ allow: public }]) {
   unit: String
   storeId: ID!
   quantity: Int!
+  
+  # Using AWSJSON for variant and addon data
+  variantData: AWSJSON
+  addonData: AWSJSON
+  
+  # Legacy field for backward compatibility
+  addon: String
+  
   store: Store @belongsTo(fields: ["storeId"])
   product: Product @belongsTo(fields: ["productId"])
   staff: Staff @belongsTo(fields: ["cashierId"])
@@ -199,6 +234,7 @@ type InventoryRequest @model @auth(rules: [{ allow: public }]) {
   fulfillmentDate: AWSDateTime
   requestedBy: ID!
   processedBy: ID
+  ownerId: ID
   priority: String!
   notes: String
   store: Store @belongsTo(fields: ["storeId"])
@@ -214,4 +250,46 @@ type RequestItem @model @auth(rules: [{ allow: public }]) {
   status: String!
   inventoryRequest: InventoryRequest @belongsTo(fields: ["requestId"])
   warehouseProduct: WarehouseProduct @belongsTo(fields: ["warehouseProductId"])
+}
+
+# Subscription plan type to track subscription details
+type SubscriptionPlan @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  description: String
+  price: Float!
+  interval: String!  # monthly, yearly, etc.
+  storeLimit: Int!   # maximum number of stores allowed
+  staffPerStoreLimit: Int! # maximum staff per store
+  adminPerStoreLimit: Int! # maximum admins per store
+  features: [String]  # array of enabled features
+  isActive: Boolean!
+  accounts: [Account] @hasMany(fields: ["id"])
+}
+
+# Account type to track subscription and ownership
+type Account @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  ownerId: ID!       # links to the Auth user ID
+  ownerEmail: String!
+  subscriptionPlanId: ID!
+  subscriptionStatus: String! # active, canceled, trial, etc.
+  subscriptionStartDate: AWSDateTime!
+  subscriptionEndDate: AWSDateTime
+  lastModifiedBy: String     # tracks which user modified the subscription
+  stores: [Store] @hasMany(fields: ["id"])
+  staff: [Staff] @hasMany(fields: ["id"])
+  subscriptionPlan: SubscriptionPlan @belongsTo(fields: ["subscriptionPlanId"])
+  subscriptionHistory: [SubscriptionHistory] @hasMany(fields: ["id"])
+}
+
+# Add a type for subscription change history
+type SubscriptionHistory @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  accountId: ID!
+  changeDate: AWSDateTime!
+  changedBy: String!   # staff ID who made the change
+  previousPlanId: ID
+  newPlanId: ID!
+  account: Account @belongsTo(fields: ["accountId"])
 }

@@ -18,10 +18,18 @@ import colors from '../themes/colors';
 
 const INITIAL_ROWS = 5; // Initial number of empty rows
 
-const BatchAddScreen = ({ navigation }) => {
+const BatchAddScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const { items: categories } = useSelector(state => state.categories);
-  const { currentStore } = useStore();
+  
+  // Get store directly from route params if available
+  const storeFromParams = route.params?.store;
+  
+  // Still use StoreContext as fallback
+  const { currentStore: contextStore } = useStore();
+  
+  // Use store from params if available, otherwise fall back to context
+  const currentStore = storeFromParams || contextStore;
 
   // State for products table with initial empty rows
   const [products, setProducts] = useState(Array(INITIAL_ROWS).fill().map(() => ({
@@ -55,7 +63,7 @@ const BatchAddScreen = ({ navigation }) => {
   // Load categories on mount
   useEffect(() => {
     if (currentStore?.id) {
-      dispatch(fetchCategories());
+      dispatch(fetchCategories(currentStore.id));
     }
   }, [dispatch, currentStore?.id]);
 
@@ -87,6 +95,11 @@ const BatchAddScreen = ({ navigation }) => {
 
   // Save all valid products
   const saveProducts = async () => {
+    // Check if store is available
+    if (!currentStore?.id) {
+      Alert.alert('Error', 'Store information is missing. Cannot save products.');
+      return;
+    }
     // Filter out empty rows and validate
     const validProducts = products.filter(product => 
       product.name && 
@@ -121,7 +134,7 @@ const BatchAddScreen = ({ navigation }) => {
             stock: parseFloat(product.stock),
             categoryId: product.category,
             sku: product.sku || '',
-            storeId: currentStore.id,
+            storeId: currentStore?.id || '',
             isActive: true
           },
           variants: [],
@@ -339,25 +352,28 @@ const BatchAddScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   cellInput: {
-    height: 40,
+    height: 42,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
-    paddingHorizontal: 8,
+    borderRadius: 6,
+    paddingHorizontal: 12,
     backgroundColor: '#fff',
+    marginVertical: 2,
   },
   categoryPicker: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 4,
   },
   categoryChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
     backgroundColor: '#f0f0f0',
-    marginRight: 4,
-    marginBottom: 4,
+    marginRight: 6,
+    marginBottom: 6,
   },
   selectedCategoryChip: {
     backgroundColor: colors.primary,
@@ -365,6 +381,7 @@ const styles = StyleSheet.create({
   categoryChipText: {
     fontSize: 12,
     color: '#666',
+    fontWeight: '500',
   },
   selectedCategoryChipText: {
     color: '#fff',
@@ -372,8 +389,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 16,
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 8,
   },
   footer: {
     padding: 16,
@@ -383,16 +402,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 16,
   },
   content: {
     flex: 1,
     padding: 16,
+    paddingBottom: 24,
   },
   form: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 20,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   input: {
     backgroundColor: '#fff',
@@ -430,16 +456,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   cell: {
-    minWidth: 120,
+    minWidth: 130,
     justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   footer: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    marginTop: 8,
   },
   saveButton: {
-    marginTop: 8,
+    marginTop: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
 });
 

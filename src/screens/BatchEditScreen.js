@@ -18,8 +18,23 @@ import colors from '../themes/colors';
 
 const client = generateClient();
 
-const BatchEditScreen = ({ navigation }) => {
-  const { currentStore } = useStore();
+const BatchEditScreen = ({ navigation, route }) => {
+  // Get store directly from route params if available
+  const storeFromParams = route.params?.store;
+  
+  // Still use StoreContext as fallback
+  const { currentStore: contextStore } = useStore();
+  
+  // Use store from params if available, otherwise fall back to context
+  const currentStore = storeFromParams || contextStore;
+  
+  // Debug info
+  console.log('BatchEdit - Store info:', {
+    fromParams: !!storeFromParams,
+    storeId: currentStore?.id || 'missing',
+    storeName: currentStore?.name || 'unknown'
+  });
+  
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +51,7 @@ const BatchEditScreen = ({ navigation }) => {
   const [newAddon, setNewAddon] = useState({ name: '', price: '' });
   const [productVariants, setProductVariants] = useState({});
   const [productAddons, setProductAddons] = useState({});
+  const [error, setError] = useState(null);
 
 
   // Columns to show in the table
@@ -52,23 +68,50 @@ const BatchEditScreen = ({ navigation }) => {
   ];
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, [currentStore]);
+    if (currentStore?.id) {
+      fetchProducts();
+      fetchCategories();
+    } else {
+      setError('No store selected. Please select a store first.');
+      setLoading(false);
+    }
+  }, [currentStore?.id]);
 
   const fetchProducts = async () => {
-    if (!currentStore?.id) return;
+    if (!currentStore?.id) {
+      setError('No store selected. Please select a store first.');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
-      // First get list of products
+      // Use direct query syntax for more reliable results
       console.log('Fetching products for store:', currentStore.id);
       const listResult = await client.graphql({
-        query: listProducts,
-        variables: {
-          filter: {
-            storeId: { eq: currentStore.id }
+        query: `query GetProductsByStore($storeId: ID!) {
+          listProducts(filter: {storeId: {eq: $storeId}}) {
+            items {
+              id
+              name
+              brand
+              sku
+              stock
+              storeId
+              sprice
+              oprice
+              img
+              isActive
+              categoryId
+              description
+              subcategory
+              createdAt
+              updatedAt
+            }
           }
+        }`,
+        variables: {
+          storeId: currentStore.id
         }
       });
 
@@ -212,10 +255,12 @@ const BatchEditScreen = ({ navigation }) => {
           }
         }
       });
-
-      setCategories(result.data?.listCategories?.items ?? []);
+      const fetchedCategories = result.data.listCategories.items || [];
+      console.log(`Fetched ${fetchedCategories.length} categories for store ${currentStore.id}`);
+      setCategories(fetchedCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      Alert.alert('Error', 'Failed to fetch categories');
     }
   };
 
@@ -250,7 +295,7 @@ const BatchEditScreen = ({ navigation }) => {
   const saveChanges = async () => {
     const errors = validateChanges();
     if (errors.length > 0) {
-      Alert.alert('Validation Error', errors.join('\\n'));
+      Alert.alert('Validation Error', errors.join('\n'));
       return;
     }
 
@@ -359,26 +404,6 @@ const BatchEditScreen = ({ navigation }) => {
       />
     );
   };
-
-  useEffect(() => {
-    console.log('productVariants state updated:', productVariants);
-    if (productVariants && selectedProduct?.id) {
-      const variants = productVariants[selectedProduct.id] || [];
-      variants.forEach(variant => {
-        if (variant.productId !== selectedProduct.id) {
-          console.error('Variant productId mismatch:', {
-            variantId: variant.id,
-            variantProductId: variant.productId,
-            selectedProductId: selectedProduct.id
-          });
-        }
-      });
-    }
-  }, [productVariants, selectedProduct]);
-
-  useEffect(() => {
-    console.log('productAddons state updated:', productAddons);
-  }, [productAddons]);
 
   const renderVariantsSection = () => {
     if (!selectedProduct) return null;
@@ -710,16 +735,44 @@ const BatchEditScreen = ({ navigation }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 16 }}>Loading products...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Button 
+          mode="contained" 
+          onPress={() => fetchProducts()}
+          style={{ marginTop: 16 }}
+        >
+          Retry
+        </Button>
+      </View>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No products found for this store</Text>
+        <Text style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>Try adding some products first</Text>
+        <Button 
+          mode="contained" 
+          onPress={() => navigation.navigate('CreateProduct', { store: currentStore })}
+        >
+          Add Products
+        </Button>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Appbar
-        title="Batch Edit Products"
-        onBackPress={() => navigation.goBack()}
-      />
+      <Appbar title="Batch Edit Products" onBack={() => navigation.goBack()} />
 
       <View style={styles.content}>
         {renderVariantsModal()}
@@ -744,7 +797,6 @@ const BatchEditScreen = ({ navigation }) => {
                 .map(product => (
                   <DataTable.Row key={product.id}>
                     {columns.map(column => {
-                      // Custom rendering for each column type
                       if (column.key === 'name') {
                         return (
                           <DataTable.Cell key={column.key} style={styles.cell}>
@@ -916,6 +968,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 16,
   },
   content: {
     flex: 1,
@@ -930,21 +983,25 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
+    color: colors.primary,
+    paddingLeft: 4,
   },
   cell: {
-    paddingHorizontal: 8,
-    minWidth: 120,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 130,
     justifyContent: 'center',
   },
   cellInput: {
-    height: 40,
+    height: 42,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
-    paddingHorizontal: 8,
+    borderRadius: 6,
+    paddingHorizontal: 12,
     backgroundColor: '#fff',
-    width: '100%'
+    width: '100%',
+    marginVertical: 2,
   },
   input: {
     backgroundColor: '#fff',
@@ -1262,12 +1319,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    marginTop: 8,
   },
   saveButton: {
-    marginTop: 8,
+    marginTop: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
 });
 

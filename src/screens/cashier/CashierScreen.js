@@ -65,19 +65,32 @@ const CashierScreen = ({ navigation, route }) => {
   };
 
   const fetchList = async () => {
+    console.log(`Fetching cart items for store ${staffData.store_id}, cashier ${staffData.id}`);
     try {
+      // Add a controller to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const result = await client.graphql({
         query: listCartItems,
         variables: { 
           filter: { 
             storeId: { eq: staffData.store_id },
             cashierId: { eq: staffData.id }
-          } 
+          },
+          limit: 100 // Make sure we get all items
         },
+        abortSignal: controller.signal
       });
-      setCart(result.data.listCartItems.items);
+      
+      clearTimeout(timeoutId);
+      
+      const cartItems = result.data.listCartItems.items;
+      console.log(`Found ${cartItems.length} cart items in database`);
+      setCart(cartItems);
     } catch (err) {
       console.log('Error fetching cart items:', err.message);
+      // Don't clear cart on error - keep previous state
     }
   };
 
@@ -105,8 +118,14 @@ const CashierScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (route.params?.refreshCart) {
-      console.log('Refreshing cart due to refreshCart flag');
-      fetchList();
+      console.log('Refreshing cart due to refreshCart flag, timestamp:', route.params?.timestamp);
+      // Immediately show empty cart for better perceived performance
+      setCart([]);
+      
+      // Add a small delay to ensure database operations complete
+      setTimeout(() => {
+        fetchList();
+      }, 500);
     }
   }, [route.params?.refreshCart, route.params?.timestamp]);
 
@@ -172,6 +191,7 @@ const CashierScreen = ({ navigation, route }) => {
               cart={cart}
               setCart={setCart}
               onCartUpdate={fetchList}
+              onDismiss={() => setModalVisible(false)}
             />
             <Spacer>
               <View style={styles.payButtonContainer}>

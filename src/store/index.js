@@ -4,12 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import staffReducer from './slices/staffSlice';
 import storeReducer from './slices/storeSlice';
 import salesReducer from './slices/salesSlice';
+import subscriptionReducer from './slices/subscriptionSlice';
 
 // Root reducer combining all slices
 const rootReducer = combineReducers({
   staff: staffReducer,
   store: storeReducer,
   sales: salesReducer,
+  subscription: subscriptionReducer,
 });
 
 // Persist configuration
@@ -17,7 +19,8 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   // Add blacklist/whitelist if needed
-  blacklist: ['_persist'] // Don't persist the persist state itself
+  blacklist: ['_persist'], // Don't persist the persist state itself
+  whitelist: ['staff', 'store', 'sales', 'subscription'] // Persist these reducers
 };
 
 // Create persisted reducer

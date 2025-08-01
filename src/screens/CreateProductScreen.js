@@ -38,7 +38,17 @@ const CreateProductScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const {loading: reduxLoading, error: reduxError} = useSelector(state => state.products);
   const { items: categories } = useSelector(state => state.categories);
-  const { currentStore, currentStaff, staffStores, fetchStores } = useStore();
+  
+  // Get store directly from route params if available
+  const storeFromParams = route.params?.store;
+  
+  // Still use StoreContext as fallback
+  const { currentStore: contextStore, currentStaff, staffStores, fetchStores } = useStore();
+  
+  // Use store from params if available, otherwise fall back to context
+  const currentStore = storeFromParams || contextStore;
+  
+  const { loading: storeLoading } = useSelector(state => state.store) || { loading: false };
 
   // Form state
   const [isLoading, setIsLoading] = useState(false);
@@ -82,14 +92,14 @@ const CreateProductScreen = ({ navigation, route }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        if (!initialized) {
-          await fetchStores();
-          setInitialized(true);
-        }
-
         if (currentStore?.id) {
-          dispatch(fetchCategories());
+          // Pass the store ID when fetching categories
+          console.log('Fetching categories for store:', currentStore.id);
+          dispatch(fetchCategories(currentStore.id));
+        } else {
+          console.log('No store ID available, cannot fetch categories');
         }
+        setInitialized(true);
       } catch (error) {
         console.error('Error in initialization:', error);
         Alert.alert('Error', 'Failed to initialize. Please try again.');
@@ -97,7 +107,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     };
 
     initialize();
-  }, [currentStore?.id, dispatch, fetchStores, initialized]);
+  }, [currentStore?.id, dispatch]);
 
   // Subscribe to network changes
   useEffect(() => {
@@ -139,13 +149,12 @@ const CreateProductScreen = ({ navigation, route }) => {
     } else if (parseFloat(formState.stock) < 0) {
       errors.stock = 'Stock cannot be negative';
     }
-
+    
     // Category validation
     if (!formState.category) {
-      errors.category = 'Please select a category';
+      errors.category = 'Category is required';
     }
 
-    // Store validation
     if (!currentStore?.id) {
       errors.store = 'Store information is missing';
     }
@@ -185,47 +194,63 @@ const CreateProductScreen = ({ navigation, route }) => {
 
   // Handle form submission
   const handleSubmit = async () => {
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      setActiveSection('basic'); // Switch to basic section to show errors
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      if (!validateForm()) return;
-
-      setIsLoading(true);
-
+      // Log store information for debugging
+      console.log('Creating product for store:', currentStore?.name, 'with ID:', currentStore?.id);
+      
       // Upload image if exists
-      let imageUrl = null;
+      let imageKey = null;
       if (formState.image) {
-        imageUrl = await uploadImage();
+        imageKey = await uploadImage(formState.image);
       }
 
-      // Create product with proper schema fields
+      // Structure product data to match API requirements
       const productData = {
+        // Main product must be nested under 'product' key to match productSlice expectations
         product: {
           name: formState.name,
           brand: formState.brand || '',
           description: formState.description || '',
-          oprice: parseFloat(formState.oprice || '0'),
-          sprice: parseFloat(formState.sprice || '0'),
-          stock: parseFloat(formState.stock || '0'),
-          categoryId: formState.category,
+          oprice: parseFloat(formState.oprice),
+          sprice: parseFloat(formState.sprice),
+          stock: parseInt(formState.stock, 10),
+          categoryId: formState.category || '',
           subcategory: formState.subcategory || '',
           sku: formState.sku || '',
-          img: imageUrl,
-          storeId: currentStore.id,
+          img: imageKey || '',
+          storeId: currentStore?.id || '',  // Link to store
           isActive: true
         },
+        // Prepare variants array with proper structure
         variants: formState.variants.map(variant => ({
           name: variant.name,
           price: parseFloat(variant.price),
           productId: '' // Will be set after product creation
         })),
+        // Prepare addons array with proper structure
         addons: formState.addons.map(addon => ({
           name: addon.name,
           price: parseFloat(addon.price),
           productId: '' // Will be set after product creation
         }))
       };
-
+      
+      console.log('Creating product with data:', JSON.stringify(productData, null, 2));
       await dispatch(createProductWithDetails(productData));
-      navigation.goBack();
+
+      Alert.alert(
+        'Success',
+        'Product created successfully',
+        [{text: 'OK', onPress: () => navigation.goBack()}]
+      );
     } catch (error) {
       console.error('Error creating product:', error);
       Alert.alert('Error', 'Failed to create product. Please try again.');
@@ -502,6 +527,42 @@ const CreateProductScreen = ({ navigation, route }) => {
     </View>
   );
 
+  // Show loading indicator when categories are still loading
+  if (reduxLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Appbar
+          title="Create Product"
+          onBack={() => navigation.goBack()}
+        />
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading product form...</Text>
+      </View>
+    );
+  }
+
+  // Show debug info about store
+  console.log('CreateProduct using store:', currentStore?.name, 'id:', currentStore?.id);
+  
+  // Simplified error handling - only show error if we can't continue
+  if (!currentStore?.id) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Appbar
+          title="Create Product"
+          onBack={() => navigation.goBack()}
+        />
+        <Text style={styles.errorText}>No store information available.</Text>
+        <Button 
+          mode="outlined" 
+          onPress={() => navigation.goBack()}
+        >
+          Go Back
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Appbar
@@ -551,6 +612,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   content: {
     flex: 1,

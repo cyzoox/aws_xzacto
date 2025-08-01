@@ -66,6 +66,8 @@ const TransactionScreen = ({ navigation, route }) => {
         variables: {
           filter: {
             storeID: { eq: staffData.store_id },
+            // If you want to filter by owner as well, uncomment the line below
+            // ownerId: { eq: staffData.ownerId }
           },
         },
       });
@@ -206,6 +208,7 @@ const TransactionScreen = ({ navigation, route }) => {
             id: selectedTransaction.id,
             status: 'Voided',
             notes: `Voided: ${voidReason}`,
+            ownerId: selectedTransaction.ownerId || staffData.ownerId || null
           }
         }
       });

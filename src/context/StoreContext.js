@@ -79,6 +79,8 @@ export const StoreProvider = ({ children }) => {
           console.log('No authenticated user found');
           return;
         }
+        
+        console.log('Found authenticated user:', user.username);
 
         // Create default store and SuperAdmin staff if no staff exists
         const staffList = await client.graphql({
@@ -156,7 +158,40 @@ export const StoreProvider = ({ children }) => {
           variables: { id: user.username }
         });
 
-        const staff = staffData.data.getStaff;
+        let staff = staffData.data.getStaff;
+        
+        // If no staff found, check if we already created one during this session
+        if (!staff) {
+          console.log('No staff record found initially for user:', user.username);
+          
+          // Look for staff in the staff table regardless of ID match (maybe created with different ID)
+          try {
+            const allStaffData = await client.graphql({
+              query: `query ListStaff {
+                listStaff {
+                  items {
+                    id
+                    name
+                    role
+                  }
+                }
+              }`
+            });
+            
+            // Check if any staff might be for the current user (by name)
+            const possibleStaff = allStaffData.data.listStaff.items.find(
+              s => s.name === user.username || s.id === user.username
+            );
+            
+            if (possibleStaff) {
+              console.log('Found possible matching staff:', possibleStaff);
+              staff = possibleStaff;
+            }
+          } catch (err) {
+            console.log('Error checking for existing staff:', err);
+          }
+        }
+        
         if (staff) {
           console.log('Staff found:', staff);
           if (!isMounted) return;
@@ -219,6 +254,79 @@ export const StoreProvider = ({ children }) => {
           }
         } else {
           console.log('No staff record found for user:', user.username);
+          
+          // Create default store and staff for this user
+          try {
+            console.log('Creating default store and staff for new user');
+            
+            // Create default store
+            const defaultStore = {
+              name: 'Default Store',
+              location: 'Main Branch',
+              ownerId: user.username
+            };
+
+            const storeResult = await client.graphql({
+              query: `mutation CreateStore($input: CreateStoreInput!) {
+                createStore(input: $input) {
+                  id
+                  name
+                  location
+                  ownerId
+                }
+              }`,
+              variables: { input: defaultStore }
+            });
+            
+            console.log('Created default store:', storeResult.data.createStore);
+
+            // Create SuperAdmin staff
+            const defaultStaff = {
+              id: user.username,
+              name: user.username,
+              role: 'SuperAdmin',
+              password: '00000'
+            };
+
+            const staffResult = await client.graphql({
+              query: `mutation CreateStaff($input: CreateStaffInput!) {
+                createStaff(input: $input) {
+                  id
+                  name
+                  role
+                }
+              }`,
+              variables: { input: defaultStaff }
+            });
+            
+            console.log('Created staff record:', staffResult.data.createStaff);
+
+            // Create StaffStore relationship
+            await client.graphql({
+              query: `mutation CreateStaffStore($input: CreateStaffStoreInput!) {
+                createStaffStore(input: $input) {
+                  id
+                  staffId
+                  storeId
+                }
+              }`,
+              variables: {
+                input: {
+                  staffId: staffResult.data.createStaff.id,
+                  storeId: storeResult.data.createStore.id
+                }
+              }
+            });
+            
+            console.log('Created staff-store relationship');
+            
+            // Reinitialize context with newly created data
+            setCurrentStaff(staffResult.data.createStaff);
+            await fetchStores();
+            
+          } catch (err) {
+            console.error('Error creating default store and staff:', err);
+          }
         }
       } catch (err) {
         console.error('Error initializing data:', err);

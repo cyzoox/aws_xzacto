@@ -80,13 +80,15 @@ const ProductsScreen = ({ navigation, route }) => {
     if (activeStore?.id) {
       console.log('Active store changed, fetching products for:', activeStore.name);
       fetchProducts();
-      dispatch(fetchCategories());
+      // Pass storeId when fetching categories
+      dispatch(fetchCategories(activeStore.id));
       setInitialized(true);
     } else if (!initialized) {
       // Initialize with whatever store we have
       console.log('No active store, using fallback initialization');
       fetchProducts();
-      dispatch(fetchCategories());
+      // No store ID, so categories might not be filtered correctly
+      dispatch(fetchCategories(null));
       setInitialized(true);
     }
   }, [activeStore, initialized, dispatch]);
@@ -130,8 +132,14 @@ const ProductsScreen = ({ navigation, route }) => {
     console.log('Debug - Store state:', { 
       activeStore: activeStore ? activeStore.name : 'null', 
       storeId: activeStore?.id || 'missing',
+      storeIdValue: activeStore?.id, // Log the exact value for comparison
       fromParams: !!route.params?.store
     });
+    
+    // Check if the ID matches the one you're having trouble with
+    if (activeStore?.id === 'f497bddc-b993-41b0-93e4-671804dbacbb') {
+      console.log('📊 MATCHING STORE ID DETECTED - Special handling for problematic store ID');
+    }
     
     try {
       // Simplify to the most direct query possible
@@ -195,13 +203,33 @@ const ProductsScreen = ({ navigation, route }) => {
       // Normal flow with valid activeStore
       if (activeStore?.id) {
         console.log('Fetching store products for store ID:', activeStore.id);
+        
+        // Use a more direct and simpler query with explicit filter
         const result = await client.graphql({
-          query: listProducts,
-          variables: {
-            filter: {
-              storeId: { eq: activeStore.id },
-              isActive: { eq: true }
+          query: `query GetProductsByStore($storeId: ID!) {
+            listProducts(filter: {storeId: {eq: $storeId}}) {
+              items {
+                id
+                name
+                brand
+                stock
+                storeId
+                sprice
+                oprice
+                img
+                isActive
+                categoryId
+                subcategory
+                sku
+                description
+                warehouseProductId
+                createdAt
+                updatedAt
+              }
             }
+          }`,
+          variables: {
+            storeId: activeStore.id
           }
         });
         
@@ -283,7 +311,7 @@ const ProductsScreen = ({ navigation, route }) => {
       return;
     }
 
-    if (!currentStore?.id) {
+    if (!activeStore?.id) {
       Alert.alert('Error', 'Store information is missing');
       return;
     }
@@ -291,8 +319,10 @@ const ProductsScreen = ({ navigation, route }) => {
     try {
       const newCategory = {
         name: categoryName.trim(),
-        storeId: currentStore.id
+        storeId: activeStore.id
       };
+      
+      console.log('Creating category for store:', activeStore.name, 'with ID:', activeStore.id);
 
       await dispatch(createCategoryWithDetails(newCategory));
       setCategoryName('');
@@ -323,7 +353,7 @@ const ProductsScreen = ({ navigation, route }) => {
         <View style={styles.deck}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('CreateProduct')}>
+            onPress={() => navigation.navigate('CreateProduct', { store: activeStore })}>
             <Image
               source={require('../../../assets/add_product.png')}
               style={styles.actionIcon}
@@ -333,7 +363,7 @@ const ProductsScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('BatchEdit')}>
+            onPress={() => navigation.navigate('BatchEdit', { store: activeStore })}>
             <Image
               source={require('../../../assets/edit.png')}
               style={styles.actionIcon}
@@ -341,7 +371,7 @@ const ProductsScreen = ({ navigation, route }) => {
             <Text style={styles.actionText}>Batch Edit</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.actionButton}
             onPress={() =>
               navigation.navigate('DeliveryRequest', {
@@ -354,7 +384,7 @@ const ProductsScreen = ({ navigation, route }) => {
               style={styles.actionIcon}
             />
             <Text style={styles.actionText}>Request Stock</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={styles.actionButton}
@@ -392,7 +422,7 @@ const ProductsScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('BatchAdd')}>
+            onPress={() => navigation.navigate('BatchAdd', { store: activeStore })}>
             <Image
               source={require('../../../assets/batch_add.png')}
               style={styles.actionIcon}

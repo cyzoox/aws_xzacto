@@ -13,13 +13,21 @@ const OFFLINE_ACTIONS = 'offline_category_actions';
 // Async thunks
 export const fetchCategories = createAsyncThunk(
   'categories/fetchCategories',
-  async (_, { rejectWithValue }) => {
+  async (storeId, { rejectWithValue }) => {
     try {
+      // If storeId is provided, filter categories by store
+      const variables = storeId ? {
+        filter: { storeId: { eq: storeId } }
+      } : undefined;
+      
       const result = await client.graphql({
-        query: listCategories
+        query: listCategories,
+        variables
       });
+      
       return result.data.listCategories.items;
     } catch (error) {
+      console.error('Error fetching categories:', error);
       return rejectWithValue(error.message);
     }
   }

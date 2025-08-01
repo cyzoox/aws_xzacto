@@ -1,51 +1,67 @@
-import React, {useState} from 'react';
-import {Overlay, Input, Button} from 'react-native-elements';
-import {TouchableOpacity, View, Text} from 'react-native';
+import React, { useState } from 'react';
+import { Overlay, Button } from 'react-native-elements';
+import { TouchableOpacity, View, Text, ScrollView } from 'react-native';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import colors from '../../../themes/colors';
+import { TextInput } from 'react-native-paper';
 
-import {TextInput} from 'react-native-paper';
 
-
-export function AddCustomer({saveCustomer, store}) {
-
+export function AddCustomer({ saveCustomer, store }) {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [credit_balance, setBalance] = useState(0);
-  const [mobile, setMobile] = useState('');
-  const [errors, setError] = useState('');
-  const [name_errors, setNameError] = useState('');
+  const [points, setPoints] = useState('0');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
 
   const onSave = () => {
+    // Reset any previous errors
+    setError('');
+    
     // Input validation
-    if (isNaN(credit_balance)) {
-      setError("Credit balance must be a number.");
+    if (!name || name.trim().length === 0) {
+      setError("Name is required");
       return;
     }
-  
-    if (!name || name.length === 0) {
-      setError("Name is required.");
+    
+    // Phone validation only if provided
+    if (phone && phone.length < 10) {
+      setError("Please enter a valid phone number or leave it empty");
       return;
     }
-  
-    if (!mobile || mobile.length < 10) {
-      setError("Valid mobile number is required.");
+    
+    if (points && isNaN(points)) {
+      setError("Points must be a number");
       return;
     }
-  
-    // Call saveCustomer with proper arguments
+    
+    // Call saveCustomer with proper arguments for DataStore
+    // Parameter order: name, storeId, storeName, address, points, phone, email
     saveCustomer(
       name.trim(),
       store.id,
-      store.store_name,
+      store.name,
       address.trim(),
-      parseFloat(credit_balance),
-      mobile.trim(),
-      
+      parseInt(points) || 0,
+      phone.trim(),
+      email.trim()
     );
-  
+    
+    // Reset form fields
+    resetForm();
+    
+    // Close overlay
     setOverlayVisible(false);
+  };
+  
+  const resetForm = () => {
+    setName('');
+    setAddress('');
+    setPoints('0');
+    setPhone('');
+    setEmail('');
+    setError('');
   };
   
 
@@ -53,71 +69,97 @@ export function AddCustomer({saveCustomer, store}) {
     <>
       <Overlay
         isVisible={overlayVisible}
-        overlayStyle={{width: '80%', padding: 20}}
+        overlayStyle={{width: '85%', padding: 20, maxHeight: '80%'}}
         onBackdropPress={() => setOverlayVisible(false)}>
-        <>
+        <ScrollView showsVerticalScrollIndicator={false}>
           <Text
             style={{
-              fontSize: 19,
+              fontSize: 20,
               textAlign: 'center',
-              marginBottom: 10,
+              marginBottom: 15,
               marginTop: 5,
+              fontWeight: 'bold',
+              color: colors.primary
             }}>
-            Add Customer
+            Add New Customer
           </Text>
+          
           <TextInput
-            placeholder="Name"
+            label="Name"
+            placeholder="Customer name"
             mode="outlined"
+            value={name}
             onChangeText={text => setName(text)}
             autoFocus={true}
+            style={{marginBottom: 10}}
             theme={{
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          {name_errors.length !== 0 ? (
-            <Text
-              style={{
-                textAlign: 'center',
-                color: colors.red,
-                marginVertical: 5,
-              }}>
-              {name_errors}
-            </Text>
-          ) : null}
+          
           <TextInput
-            placeholder="Address"
+            label="Phone (Optional)"
+            placeholder="Phone number"
             mode="outlined"
+            value={phone}
+            onChangeText={text => setPhone(text)}
+            keyboardType="phone-pad"
+            style={{marginBottom: 10}}
+            theme={{
+              colors: {primary: colors.accent, underlineColor: 'transparent'},
+            }}
+          />
+          
+          <TextInput
+            label="Email (Optional)"
+            placeholder="Email address"
+            mode="outlined"
+            value={email}
+            onChangeText={text => setEmail(text)}
+            keyboardType="email-address"
+            style={{marginBottom: 10}}
+            theme={{
+              colors: {primary: colors.accent, underlineColor: 'transparent'},
+            }}
+          />
+          
+          <TextInput
+            label="Address"
+            placeholder="Customer address"
+            mode="outlined"
+            value={address}
             onChangeText={text => setAddress(text)}
+            style={{marginBottom: 10}}
             theme={{
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
+          
           <TextInput
-            placeholder="Mobile #"
+            label="Points (Optional)"
+            placeholder="Customer points"
             mode="outlined"
-            onChangeText={text => setMobile(text)}
+            value={points}
+            onChangeText={text => setPoints(text)}
+            keyboardType="numeric"
+            style={{marginBottom: 10}}
             theme={{
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          <TextInput
-            placeholder="Credit Balance (optional)"
-            mode="outlined"
-            onChangeText={text => setBalance(text)}
-            theme={{
-              colors: {primary: colors.accent, underlineColor: 'transparent'},
-            }}
-          />
-          {errors.length !== 0 ? (
+          
+          {error ? (
             <Text
               style={{
                 textAlign: 'center',
                 color: colors.red,
-                marginVertical: 5,
+                marginVertical: 10,
+                fontWeight: '500'
               }}>
-              {errors}
+              {error}
             </Text>
           ) : null}
+          
           <View
             style={{
               flexDirection: 'row',
@@ -126,9 +168,10 @@ export function AddCustomer({saveCustomer, store}) {
             }}>
             <View style={{flex: 1, marginHorizontal: 5}}>
               <Button
-                buttonStyle={{backgroundColor: colors.red, paddingVertical: 15}}
+                buttonStyle={{backgroundColor: '#999', paddingVertical: 12}}
                 title="Cancel"
                 onPress={() => {
+                  resetForm();
                   setOverlayVisible(false);
                 }}
               />
@@ -136,17 +179,15 @@ export function AddCustomer({saveCustomer, store}) {
             <View style={{flex: 1, marginHorizontal: 5}}>
               <Button
                 buttonStyle={{
-                  backgroundColor: colors.yellow,
-                  paddingVertical: 15,
+                  backgroundColor: colors.accent,
+                  paddingVertical: 12,
                 }}
                 title="Save"
-                onPress={() => {
-                  onSave();
-                }}
+                onPress={onSave}
               />
             </View>
           </View>
-        </>
+        </ScrollView>
       </Overlay>
       <TouchableOpacity onPress={() => setOverlayVisible(true)}>
         <EvilIcons name={'plus'} size={30} color={colors.white} />

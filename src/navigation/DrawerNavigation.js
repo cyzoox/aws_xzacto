@@ -4,15 +4,19 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {createDrawerNavigator} from '@react-navigation/drawer';
 import CashierScreen from '../screens/cashier/CashierScreen';
 import CheckoutScreen from '../screens/cashier/CheckoutScreen';
+import PrinterSettingsScreen from '../screens/PrinterSettingsScreen';
 import ExpensesScreen from '../screens/cashier/ExpensesScreen';
 import TransactionScreen from '../screens/cashier/TransactionsScreen';
 import TransactionDetailsScreen from '../screens/cashier/TransactionDetailScreen';
 import StaffManagementScreen from '../screens/StaffManagementScreen';
+import StaffProfileScreen from '../screens/StaffProfileScreen';
 import ProductsScreen from '../screens/store/ProductsScreen';
 import CreateProductScreen from '../screens/CreateProductScreen';
 import BatchEditScreen from '../screens/BatchEditScreen';
 import BatchAddScreen from '../screens/BatchAddScreen';
 import { RoleBasedHeader } from '../components/RoleBasedHeader';
+import { DrawerContent } from '../components/DrawerContent';
+import CustomerScreen from '../screens/customer/CustomerScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -27,9 +31,12 @@ function DrawerNavigator({route}) {
 
     return (
       <Drawer.Navigator
+        drawerContent={props => (
+          <DrawerContent {...props} staffData={staffData} />
+        )}
         backBehavior="history"
         screenOptions={{
-          header: ({ navigation, route }) => (
+          header: ({navigation, route}) => (
             <RoleBasedHeader
               title={route.name}
               navigation={navigation}
@@ -51,6 +58,19 @@ function DrawerNavigator({route}) {
             options={{headerShown: false}}
           />
         )}
+
+        <Drawer.Screen
+          name="Expenses"
+          component={ExpensesScreen}
+          initialParams={{staffData}}
+          options={{headerShown: false}}
+        />
+        <Drawer.Screen
+          name="Customers"
+          component={CustomerScreen}
+          initialParams={{staffData}}
+          options={{headerShown: false}}
+        />
         <Drawer.Screen
           name="Checkout"
           component={CheckoutScreen}
@@ -58,8 +78,8 @@ function DrawerNavigator({route}) {
           options={{headerShown: false}}
         />
         <Drawer.Screen
-          name="Expenses"
-          component={ExpensesScreen}
+          name="Printer Settings"
+          component={PrinterSettingsScreen}
           initialParams={{staffData}}
           options={{headerShown: false}}
         />
@@ -70,11 +90,12 @@ function DrawerNavigator({route}) {
           options={{headerShown: false}}
         />
         <Drawer.Screen
-          name="TransactionDetails"
-          component={TransactionDetailsScreen}
+          name="Staff Profile"
+          component={StaffProfileScreen}
           initialParams={{staffData}}
           options={{headerShown: false}}
         />
+
         {isAdmin && (
           <>
             <Drawer.Screen

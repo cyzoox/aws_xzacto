@@ -1,8 +1,10 @@
-import React,{useState,useEffect} from "react";
-import { Text, StyleSheet, View, TouchableOpacity } from "react-native";
+import React, {useState, useEffect} from "react";
+import { Text, StyleSheet, View, TouchableOpacity, Alert } from "react-native";
 import { FlatGrid } from 'react-native-super-grid';
 import formatMoney from 'accounting-js/lib/formatMoney.js'
 import { Card, Overlay, Input, Button } from "react-native-elements";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import PrinterService from '../services/PrinterService';
 
 import { TextInput } from "react-native-paper";
 import AlertwithChild from "./AlertwithChild";
@@ -16,6 +18,9 @@ import { listCartItems, getProduct } from '../graphql/queries';
 
 
 const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisible, navigation, staff}) => {
+    // Add state for cart to fix cart.length check during checkout
+    const [cart, setCart] = useState([]);
+    
     const [items, setItems] = useState([
         { name: 1000 },
         { name: 500 },
@@ -33,13 +38,54 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
       const [custom, setCustom] = useState(false);
       const [custom_cash, setCustomeCash] = useState(0);
       const [visible, setVisible]= useState(false);
-      const [cart, setCart] = useState([]);
+      // const [cart, setCart] = useState([]);
       const [isProcessing, setIsProcessing] = useState(false);
+      const [autoPrint, setAutoPrint] = useState(true);
+      const [printerConnected, setPrinterConnected] = useState(false);
+      const [storeInfo, setStoreInfo] = useState({
+        name: "Store Name",
+        address: "Store Address",
+        phone: "Phone Number"
+      });
 
 
       useEffect(() => {
-        fetchCart();
-    }, []);
+        // Fetch cart items only when staff data is available
+        if (staff && staff.id && staff.store_id) {
+          console.log(`Initializing checkout for ${staff.name} at store ${staff.store_id}`);
+          fetchCart();
+        } else {
+          console.log('Missing staff data for cart fetch');
+        }
+        
+        // Always check printer settings
+        checkPrinterSettings();
+    }, [staff]);
+    
+    // Check if printer is connected and load printer settings
+    const checkPrinterSettings = async () => {
+      try {
+        // Load printer settings from AsyncStorage
+        const printerSettingsStr = await AsyncStorage.getItem('printerSettings');
+        if (printerSettingsStr) {
+          const printerSettings = JSON.parse(printerSettingsStr);
+          setAutoPrint(printerSettings.autoPrint !== false);
+          
+          if (printerSettings.storeInfo) {
+            setStoreInfo(printerSettings.storeInfo);
+          }
+        }
+        
+        // Check if printer is connected
+        const permissionGranted = await PrinterService.requestBluetoothPermission();
+        if (permissionGranted) {
+          const deviceAddress = await PrinterService.isBluetoothDeviceConnected();
+          setPrinterConnected(!!deviceAddress);
+        }
+      } catch (error) {
+        console.error('Error checking printer settings:', error);
+      }
+    };
     
     const fetchCart = async () => {
       try {
@@ -88,7 +134,11 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
     const calculateTotal = () => {
       let total = 0;
       cart.forEach(item => {
-        total += item.quantity * item.sprice;
+        // Calculate the full unit price including variants and addons
+        let itemUnitPrice = calculateItemUnitPrice(item);
+        
+        // Multiply by quantity to get the total price for this item
+        total += item.quantity * itemUnitPrice;
       });
       
       // Apply discount if any
@@ -98,11 +148,60 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
       
       return total;
     }
+    
+    // Helper function to calculate the unit price for an item including variants and addons
+    const calculateItemUnitPrice = (item) => {
+      let itemPrice = 0;
+      let hasVariant = false;
+      
+      // Check if variant exists and use variant price instead of base price
+      if (item.variantData) {
+        try {
+          const variantInfo = JSON.parse(item.variantData);
+          if (variantInfo && variantInfo.price) {
+            // If variant exists, use ONLY the variant price (not base + variant)
+            itemPrice = parseFloat(variantInfo.price);
+            hasVariant = true;
+          }
+        } catch (e) {
+          console.error("Error parsing variantData", e);
+        }
+      }
+      
+      // If no variant, use the base price
+      if (!hasVariant) {
+        itemPrice = item.sprice;
+      }
+      
+      // Add addon prices if present
+      if (item.addonData) {
+        try {
+          const addonInfo = JSON.parse(item.addonData);
+          if (Array.isArray(addonInfo)) {
+            addonInfo.forEach(addon => {
+              if (addon.price) {
+                itemPrice += parseFloat(addon.price);
+              }
+            });
+          } else if (addonInfo && addonInfo.price) {
+            itemPrice += parseFloat(addonInfo.price);
+          }
+        } catch (e) {
+          console.error("Error parsing addonData", e);
+        }
+      }
+      
+      return itemPrice;
+    }
 
     const calculateTotalBeforeDiscount = () => {
       let total = 0;
       cart.forEach(item => {
-        total += item.quantity * item.sprice;
+        // Use the same helper function to calculate the unit price
+        let itemUnitPrice = calculateItemUnitPrice(item);
+        
+        // Multiply by quantity to get the total price for this item
+        total += item.quantity * itemUnitPrice;
       });
       return total;
     }
@@ -158,6 +257,23 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
         
         // Map cart items to item IDs for transaction
         const itemIds = cart.map(item => item.productId);
+        console.log("Staff data:", staff);
+        
+        // Extract ownerId from store if available
+        let ownerId = null;
+        // Try to get ownerId from staff directly first
+        if (staff.ownerId) {
+          ownerId = staff.ownerId;
+        } 
+        // If not available, try to get it from the stores property if it exists
+        else if (staff.stores && staff.stores.items && staff.stores.items.length > 0) {
+          const storeItem = staff.stores.items[0];
+          if (storeItem.store && storeItem.store.ownerId) {
+            ownerId = storeItem.store.ownerId;
+          }
+        }
+        
+        console.log("Extracted ownerId:", ownerId);
         
         // 1. Create SaleTransaction - only include fields defined in the schema
         const transactionInput = {
@@ -166,6 +282,7 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
           staffID: staff.id,
           staffName: staff.name,
           storeID: staff.store_id,
+          ownerId: ownerId, // Use the extracted ownerId
           status: 'Completed',
           payment_status: 'Paid',
           cash_received: custom_cash,
@@ -191,115 +308,292 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
         const transactionId = saleTransactionResponse.data.createSaleTransaction.id;
         console.log("SaleTransaction created:", transactionId);
 
-        // 2. Process each cart item
+        // 2. Process each cart item - First validate all stocks in parallel
         const deletePromises = [];
+        const productPromises = [];
         
+        // Step 1: First fetch all products in parallel to validate stock
         for (const item of cart) {
-          try {
-            // First get the latest product data to ensure we have current stock levels
-            const productResponse = await client.graphql({
+          productPromises.push(
+            client.graphql({
               query: getProduct,
               variables: { id: item.productId },
-            });
-            
-            const product = productResponse.data.getProduct;
-            if (!product) {
-              console.error(`Product not found: ${item.productId}`);
-              continue;
-            }
-            
-            // Verify stock availability
-            const currentStock = product.stock || 0;
-            if (currentStock < item.quantity) {
-              alert(`Insufficient stock for ${item.name}. Available: ${currentStock}, Requested: ${item.quantity}`);
-              throw new Error(`Insufficient stock for product: ${item.name}`);
-            }
-            
-            // Create Sale record
-            const saleResponse = await client.graphql({
-              query: createSale,
-              variables: {
-                input: {
-                  productID: item.productId,
-                  productName: item.name,
-                  transactionID: transactionId,
-                  price: item.sprice,
-                  quantity: item.quantity,
-                  discount: discount > 0 ? (discount / 100) * item.sprice * item.quantity : null,
-                  total: item.quantity * item.sprice * (discount > 0 ? (1 - discount / 100) : 1),
-                  status: 'Completed',
-                },
-              },
-            });
-            console.log("Sale created:", saleResponse.data.createSale.id);
-
-            // Update Product Stock
-            const updatedStock = currentStock - item.quantity;
-            await client.graphql({
-              query: updateProduct,
-              variables: {
-                input: {
-                  id: item.productId,
-                  stock: updatedStock,
-                },
-              },
-            });
-            console.log("Product stock updated for:", item.name, "New stock:", updatedStock);
-            
-            // Queue the delete operation to be run after all processing is complete
-            deletePromises.push(client.graphql({
-              query: deleteCartItem,
-              variables: {
-                input: {
-                  id: item.id,
-                },
-              },
-            }));
-            
-          } catch (itemError) {
-            console.error("Error processing item:", item.name, itemError);
-            // Continue with other items even if one fails
+            }).then(response => ({
+              item,
+              product: response.data.getProduct
+            }))
+          );
+        }
+        
+        // Wait for all product validations at once
+        const productResults = await Promise.all(productPromises);
+        
+        // Step 2: Validate all stocks before proceeding
+        for (const result of productResults) {
+          const { item, product } = result;
+          if (!product) {
+            console.error(`Product not found: ${item.productId}`);
+            throw new Error(`Product not found: ${item.name}`);
+          }
+          
+          const currentStock = product.stock || 0;
+          if (currentStock < item.quantity) {
+            setIsProcessing(false); // Reset processing state
+            setVisible(false); // Hide loading modal
+            alert(`Insufficient stock for ${item.name}. Available: ${currentStock}, Requested: ${item.quantity}`);
+            throw new Error(`Insufficient stock for product: ${item.name}`);
           }
         }
         
-        // Delete all cart items in parallel
-        console.log("Deleting cart items...");
-        await Promise.all(deletePromises);
-        console.log(`Successfully deleted ${deletePromises.length} cart items`);
+        // Successfully validated all stock - proceed with processing
         
-        // Also clear the local cart state
+        // Prepare parallel operations for sales creation and stock updates
+        const salesPromises = [];
+        const stockUpdatePromises = [];
+        
+        // Map of productId to item for stock updates later
+        const productMap = {};
+        productResults.forEach(result => {
+          productMap[result.item.productId] = {
+            product: result.product,
+            item: result.item
+          };
+        });
+        
+        // Process each cart item in parallel batches
+        for (const item of cart) {
+          try {
+            // Calculate item price including variants and addons
+            let itemPrice = item.sprice;
+            let itemVariantData = null;
+            let itemAddonData = null;
+            
+            // Process variant data if present
+            if (item.variantData) {
+              try {
+                itemVariantData = item.variantData; // Pass through as is (already AWSJSON)
+                const variantInfo = JSON.parse(item.variantData);
+                if (variantInfo && variantInfo.price) {
+                  itemPrice += parseFloat(variantInfo.price);
+                }
+              } catch (e) {
+                console.error("Error parsing variantData", e);
+              }
+            }
+            
+            // Process addon data if present
+            if (item.addonData) {
+              try {
+                itemAddonData = item.addonData; // Pass through as is (already AWSJSON)
+                const addonInfo = JSON.parse(item.addonData);
+                if (Array.isArray(addonInfo)) {
+                  addonInfo.forEach(addon => {
+                    if (addon.price) {
+                      itemPrice += parseFloat(addon.price);
+                    }
+                  });
+                } else if (addonInfo && addonInfo.price) {
+                  itemPrice += parseFloat(addonInfo.price);
+                }
+              } catch (e) {
+                console.error("Error parsing addonData", e);
+              }
+            }
+            
+            // Queue Sale creation (will run in parallel)
+            salesPromises.push(
+              client.graphql({
+                query: createSale,
+                variables: {
+                  input: {
+                    productID: item.productId,
+                    productName: item.name,
+                    transactionID: transactionId,
+                    price: itemPrice, // Base price with variants and addons
+                    quantity: item.quantity,
+                    discount: discount > 0 ? (discount / 100) * itemPrice * item.quantity : null,
+                    variantData: itemVariantData,
+                    addonData: itemAddonData,
+                    // Include ownerId from transaction
+                    ownerId: ownerId,
+                  },
+                },
+              })
+            );
+            
+            // Prepare stock update (will run after sales creation)
+            const productInfo = productMap[item.productId];
+            const updatedStock = productInfo.product.stock - item.quantity;
+            
+            // Queue product stock update
+            stockUpdatePromises.push(
+              client.graphql({
+                query: updateProduct,
+                variables: {
+                  input: {
+                    id: item.productId,
+                    stock: updatedStock,
+                  },
+                },
+              }).then(() => console.log("Stock updated for", item.name))
+            );
+            
+            // Queue cart item deletion
+            deletePromises.push(
+              client.graphql({
+                query: deleteCartItem,
+                variables: {
+                  input: {
+                    id: item.id,
+                  },
+                },
+              })
+            );
+            
+          } catch (e) {
+            console.error("Error preparing item operations:", e);
+          }
+        }
+        
+        // Execute all sales creations in parallel
+        console.log("Creating sales records...");
+        await Promise.all(salesPromises);
+        
+        // Execute all stock updates in parallel
+        console.log("Updating product stocks...");
+        await Promise.all(stockUpdatePromises);
+        
+        // Set local cart to empty first for perceived speed and better UX
         setCart([]);
+        setCustomeCash(0);
+        
+        // Process cart deletions in background without waiting
+        console.log("Deleting cart items...");
+        Promise.allSettled(deletePromises).then(results => {
+          const successful = results.filter(r => r.status === 'fulfilled').length;
+          console.log(`Completed ${successful}/${deletePromises.length} cart item deletions`);
+        }).catch(error => {
+          console.error('Error in batch cart deletion:', error);
+        });
+        
+        // Don't wait for cart deletions to complete - we'll refresh on navigation
+        console.log(`Queued ${deletePromises.length} cart item deletions in background`);
 
-        // 3. Create Discount record if applicable
+        // Start discount creation in parallel with a separate promise
+        let discountPromise = Promise.resolve();
         if (discount > 0) {
-          const discountResponse = await client.graphql({
+          console.log('Creating discount record...');
+          discountPromise = client.graphql({
             query: createDiscount,
             variables: {
               input: {
                 total: discount/100 * calculateTotalBeforeDiscount(),
                 name: discountName || 'Regular Discount',
                 transactionId: transactionId,
-                storeId: staff.store_id,
+                ownerId: ownerId, // Use ownerId instead of storeId to match schema
               },
             },
+          }).then(response => {
+            console.log('Discount created:', response.data.createDiscount.id);
+          }).catch(error => {
+            console.error('Error creating discount:', error);
           });
-          console.log("Discount created:", discountResponse.data.createDiscount.id);
         }
         
-        // Success - close modal and navigate
+        // Start printer process in parallel - capture the cart data now
+        // so we don't need to wait for printing later
+        let printData = null;
+        if (autoPrint && printerConnected) {
+          // Prepare print data upfront, which is cheaper than waiting
+          console.log('Preparing receipt data...');
+          
+          // Format cart items for printer
+          const cartItemsForPrinter = cart.map(item => {
+            // Parse variant and addon data
+            let parsedVariantData = null;
+            let parsedAddonData = null;
+            
+            if (item.variantData) {
+              try { parsedVariantData = JSON.parse(item.variantData); } 
+              catch (e) { console.error('Error parsing variant data', e); }
+            }
+            
+            if (item.addonData) {
+              try { parsedAddonData = JSON.parse(item.addonData); } 
+              catch (e) { console.error('Error parsing addon data', e); }
+            }
+            
+            return {
+              id: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              sprice: item.sprice,
+              parsedVariantData,
+              parsedAddonData
+            };
+          });
+          
+          printData = {
+            transaction: {
+              id: transactionId,
+              date: new Date(),
+              cashierName: staff.name,
+              discount: discount,
+              totalAmount: calculateTotal()
+            },
+            cartItems: cartItemsForPrinter,
+            payments: [{ method: 'Cash', amount: custom_cash }],
+            change: calculateChange()
+          };
+        }
+        
+        // Success - close modal immediately for better UX
         setVisible(false);
         setIsProcessing(false);
-        setCustomeCash(0);
         
-        // Show success message and navigate back to products screen
-        alert('Transaction completed successfully!');
+        // Wait for discount creation to complete (but don't delay navigation)
+        await discountPromise;
         
-        // Navigate back to the CashierScreen (products screen)
-        navigation.navigate('CashierScreen', { 
-          staffData: staff,
-          refreshCart: true, // Add a flag to refresh the cart on return
-          timestamp: Date.now() // Add a timestamp to force refresh
-        });
+        // Print receipt if data was prepared
+        if (printData) {
+          // Do printing in the background after showing success to the user
+          setTimeout(() => {
+            console.log('Printing receipt in background...');
+            PrinterService.printReceipt(
+              printData.transaction,
+              printData.cartItems,
+              storeInfo,
+              printData.payments,
+              printData.change
+            ).catch(printError => {
+              console.error('Error printing receipt:', printError);
+            });
+          }, 100);
+        }
+        
+        // Show success message and properly reset navigation stack
+        Alert.alert('Success', 'Transaction completed successfully!', [
+          { 
+            text: "OK", 
+            onPress: () => {
+              // Use reset instead of navigate to completely clear the stack
+              // This prevents going back to stale checkout screens
+              navigation.reset({
+                index: 0,
+                routes: [
+                  { 
+                    name: 'Home',
+                    params: {
+                      staffData: staff,
+                      refreshCart: true,
+                      timestamp: Date.now()
+                    }
+                  },
+                ],
+              });
+            }
+          }
+        ]);
         
       } catch (err) {
         console.error('Error during checkout:', err);
@@ -332,6 +626,11 @@ const AmountKeys = ({cashReceive, Change, discount, discountName, setCreditVisib
                 <Text style={styles.changeLabel}>Change</Text>
                 <Text style={styles.changeValue}>{formatMoney(calculateChange(), { symbol: "₱", precision: 2 })}</Text>
               </View>
+              {printerConnected && (
+                <View style={styles.printContainer}>
+                  <Text style={styles.printLabel}>Receipt will be printed automatically</Text>
+                </View>
+              )}
             </View>
           </AlertwithChild>
         <AlertwithChild 
@@ -584,6 +883,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     minWidth: 180,
     marginLeft: 15
+  },
+  itemValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.black
   },
   changeText: {
     color: colors.red

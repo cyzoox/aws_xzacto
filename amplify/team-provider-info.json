@@ -9,7 +9,8 @@
       "UnauthRoleName": "amplify-amplifiedtodo-dev-18387-unauthRole",
       "StackName": "amplify-amplifiedtodo-dev-18387",
       "StackId": "arn:aws:cloudformation:ap-southeast-1:886436949835:stack/amplify-amplifiedtodo-dev-18387/7d9f39e0-8511-11ef-93d1-02206434cff1",
-      "AmplifyAppId": "d17ta328siz41o"
+      "AmplifyAppId": "d17ta328siz41o",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-amplifiedtodo-dev-18387-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
       "api": {

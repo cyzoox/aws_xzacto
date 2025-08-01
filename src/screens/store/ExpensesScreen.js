@@ -1,10 +1,10 @@
-import React, { useCallback } from "react";
-import { Text, StyleSheet, View, TouchableOpacity, FlatList, ScrollView,Modal } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Text, StyleSheet, View, TouchableOpacity, FlatList, ScrollView, Modal } from "react-native";
 
 import EvilIcons from 'react-native-vector-icons/EvilIcons'
 import Feather from 'react-native-vector-icons/Feather'
 import { Row, Col, Grid } from 'react-native-easy-grid';
-import { useState } from "react";
+// useState imported with React
 import {TextInput } from 'react-native-paper';
 
 
@@ -18,19 +18,49 @@ import DataTable from "../../components/DataTable";
 
 import { generateClient } from 'aws-amplify/api';
 import { createExpense } from '../../graphql/mutations';
-import { listExpenses } from '../../graphql/queries';
+import { listExpenses, getStore } from '../../graphql/queries';
+import { getCurrentUser } from 'aws-amplify/auth';
 const client = generateClient();
 
 const ExpensesScreen = ({navigation, route}) => {
-  const STORE =  route.params.store
+  const initialStore = route.params.store || {}
+  const [store, setStore] = useState(initialStore)
+  const [storeLoading, setStoreLoading] = useState(false)
   const [description, setDescription] = useState('Description')
   const [amount, setAmount] = useState('')
   const [other, setOthers] = useState('')
-  const [specificDate, setSpecificDatePicker] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [expenses, setExpenses] = useState([])
+  
+  // Effect to fetch store data and expenses when screen is focused
+  useEffect(() => {
+    const handleScreenFocus = async () => {
+      // First fetch the latest store data if we have an ID
+      if (initialStore && initialStore.id) {
+        console.log('Screen focused - fetching latest store data...');
+        const updatedStore = await fetchStoreData(initialStore.id);
+        // After getting store data, fetch expenses
+        if (updatedStore) {
+          fetchExpenses();
+        }
+      } else {
+        console.log('No store ID available for fetching');
+      }
+    };
+    
+    // Add focus listener
+    const unsubscribe = navigation.addListener('focus', handleScreenFocus);
+
+    // Initial load
+    handleScreenFocus();
+    
+    return unsubscribe;
+  }, [navigation, initialStore?.id]);
+
   const [filter, setFilter] = useState('Today')
   const [attendant, setAttendant] = useState('');
   const [attendant_info, setAttendantInfo] = useState([]);
-  const [expenses, setExpenses] = useState([]);
+  const [specificDate, setSpecificDatePicker] = useState(false)
 
   const descriptions = [
     "Rental Expense",
@@ -42,48 +72,145 @@ const ExpensesScreen = ({navigation, route}) => {
     'Others please specify'
   ]
 
-  const fetchExpenses = async () => {
- 
-    const result = await client.graphql({
-        query: listExpenses,
-        variables: { filter: { storeId: { eq: STORE.id } } }
-    });
-    const expenseList = result.data.listExpenses.items;
-    setExpenses(expenseList);
+  // Fetch store data to ensure we have the latest info
+  const fetchStoreData = async (storeId) => {
+    if (!storeId) {
+      console.log('Cannot fetch store: Store ID is missing');
+      return null;
+    }
+    
+    setStoreLoading(true);
+    try {
+      console.log(`Fetching store data for ID: ${storeId}`);
+      
+      // Use timeout protection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const result = await client.graphql({
+        query: getStore,
+        variables: { id: storeId },
+        abortSignal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (result?.data?.getStore) {
+        const storeData = result.data.getStore;
+        console.log(`Fetched store: ${storeData.name}`);
+        setStore(storeData);
+        return storeData;
+      } else {
+        console.log('No store data returned');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching store:', error);
+      return null;
+    } finally {
+      setStoreLoading(false);
+    }
+  };
   
-
-};
+  const fetchExpenses = async () => {
+    if (!store || !store.id) {
+      console.log('Cannot fetch expenses: Store ID is missing');
+      return;
+    }
+    
+    try {
+      console.log(`Fetching expenses for store ID: ${store.id}`);
+      
+      // Use a simplified query with timeout protection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const result = await client.graphql({
+        query: listExpenses,
+        variables: { filter: { storeId: { eq: store.id } } },
+        abortSignal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (result && result.data && result.data.listExpenses) {
+        const expenseList = result.data.listExpenses.items;
+        console.log(`Fetched ${expenseList.length} expenses for store ${store.id}`);
+        setExpenses(expenseList);
+      } else {
+        console.log('No expenses data in response');
+        setExpenses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      setExpenses([]); // Set empty array in case of error
+    }
+  };
   
 const saveExpense = async () => {
-    // Construct the new customer object correctly
-    const newExpense = {
-        description,
-        storeId: STORE.id,
-        category: description,
-        attendant: "Admin",
-        attendantId: "Admin",
-        amount: parseFloat(amount),    // Use the parameter directly
-       // Use the parameter directly
-    };
-  
-    console.log(newExpense); // Debugging: Check the new customer data structure
-  
     // Validation checks
     if (!description || !amount) {
       console.log("Description and Amount are required!");
       return;
     }
-  
 
     try {
-      // Save Expense using a GraphQL mutation
-      await client.graphql({
-        query: createExpense, // Replace with the actual mutation for creating customers
+      console.log("Beginning expense creation...");
+      
+      // Get authenticated user info for the ownerId
+      let ownerId = store.ownerId;
+      try {
+        const currentUser = await getCurrentUser();
+        console.log("Current authenticated user:", currentUser.username);
+        // Use userId from authenticated user if available (preferred by system)
+        ownerId = currentUser.userId || store.ownerId;
+      } catch (authError) {
+        console.log("No authenticated user found, using store owner ID");
+      }
+      
+      // Properly construct the expense object with required fields
+      const newExpense = {
+        name: description,
+        storeId: store.id,
+        category: description,
+        staffName: "Admin",
+        staffId: "Admin",
+        amount: parseFloat(amount),
+        date: new Date().toISOString(),
+        ownerId: ownerId || store.ownerId || "Admin", // Use authenticated user ID or store owner ID
+        notes: ""
+      };
+
+      console.log("Expense object prepared, attempting creation with direct mutation...");
+      
+      // Try using direct mutation string to avoid potential client issues
+      const mutationString = /* GraphQL */ `
+        mutation CreateExpenseDirectly($input: CreateExpenseInput!) {
+          createExpense(input: $input) {
+            id
+            name
+          }
+        }
+      `;
+      
+      // Execute with a timeout of 10 seconds
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const result = await client.graphql({
+        query: mutationString,
         variables: { input: newExpense },
+        abortSignal: controller.signal,
       });
-  
-      console.log("Expense saved successfully!");
-      fetchExpenses(); // Reload Expense if implemented
+      
+      clearTimeout(timeoutId); // Clear the timeout if successful
+      
+      console.log("Expense created successfully:", result);
+      
+      // Reset form fields and reload data
+      setAmount("");
+      fetchExpenses();
+      
     } catch (error) {
       console.error("Error saving Expense:", error);
       console.log("Failed to save Expense. Please try again.");
@@ -93,26 +220,33 @@ const saveExpense = async () => {
 
   const calculateTotal = () => {
     let total = 0;
-    [].forEach(item => {
-      total =+ item.amount
+    expenses.forEach(item => {
+      total += parseFloat(item.amount || 0);
     });
 
     return total;
   }
 
-  const renderItem = ({ item }) => (
-    <Row style={{height: 40,shadowColor: "#EBECF0", marginVertical:1.5,marginHorizontal: 5,backgroundColor:'white'}}>    
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{item.description}</Text>
-      </Col>   
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{formatMoney(item.amount, { symbol: "₱", precision: 2 })}</Text>
-      </Col> 
-      <Col  style={[styles.ColStyle,{alignItems: 'center'}]}>
-            <Text  style={styles.textColor}>{item.attendant}</Text>
-      </Col> 
-    </Row>
-)
+  const renderItem = ({ item }) => {
+    // Add safety check for missing data
+    if (!item) return null;
+    
+    return (
+      <Row style={{height: 40, shadowColor: "#EBECF0", marginVertical:1.5, marginHorizontal: 5, backgroundColor:'white'}}>    
+        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
+          <Text style={styles.textColor}>{item.name || 'Unknown'}</Text>
+        </Col>   
+        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
+          <Text style={styles.textColor}>
+            {formatMoney(item.amount || 0, { symbol: "₱", precision: 2 })}
+          </Text>
+        </Col> 
+        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
+          <Text style={styles.textColor}>{item.staffName || 'Unknown'}</Text>
+        </Col> 
+      </Row>
+    );
+  }
 
 
   return (
@@ -298,7 +432,7 @@ const saveExpense = async () => {
         </View>
       </View>
       <DataTable
-          headerTitles={['Description', 'Amount', 'Attendant']}
+          headerTitles={['Description', 'Amount', 'Staff']}
           total={calculateTotal()}
           alignment="center"
         >

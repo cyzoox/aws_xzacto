@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Text, Title, TextInput, Button, Card, DataTable, IconButton, FAB, Chip, ActivityIndicator } from 'react-native-paper';
-import Appbar from '../../components/Appbar';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { colors } from '../../constants/theme';
 import { generateClient } from 'aws-amplify/api';
 import { listWarehouseProducts, listRequestItems } from '../../graphql/queries';
@@ -132,71 +132,66 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
       return;
     }
 
-    // Validate store ID
-    const targetStoreId = storeId || staffData?.store_id;
-    if (!targetStoreId) {
-      Alert.alert('Error', 'Store information is missing. Please try again.');
-      return;
-    }
-    
     setSubmitting(true);
-    
+
     try {
+      // Get staff data from AsyncStorage
+      if (!staffData) {
+        const staffJson = await AsyncStorage.getItem('staffData');
+        if (!staffJson) {
+          setSubmitting(false);
+          Alert.alert('Error', 'No staff data found. Please log in again.');
+          return;
+        }
+
+        const data = JSON.parse(staffJson);
+        setStaffData(data);
+      }
+
       // Create inventory request
-      const createRequestInput = {
-        storeId: targetStoreId,
+      const now = new Date().toISOString();
+      const requestInput = {
+        storeId: storeId,
         status: 'PENDING',
-        requestDate: new Date().toISOString(),
-        requestedBy: staffData?.id || 'unknown',
+        requestDate: now,
+        requestedBy: staffData.id, // Using staff ID
         priority: priority,
-        notes: notes
+        notes: notes.trim(),
+        ownerId: staffData.ownerId // Using owner ID for permissions
       };
-      
-      console.log('Creating inventory request:', JSON.stringify(createRequestInput, null, 2));
-      
+
+      console.log('Creating inventory request with:', requestInput);
+
       const requestResponse = await client.graphql({
         query: createInventoryRequest,
-        variables: {
-          input: createRequestInput
-        }
+        variables: { input: requestInput }
       });
-      
+
       const requestId = requestResponse.data.createInventoryRequest.id;
-      console.log('Created inventory request ID:', requestId);
-      
+      console.log('Created inventory request with ID:', requestId);
+
       // Create request items
-      console.log('Creating request items:', JSON.stringify(requestItems, null, 2));
-      
-      // Process items one by one instead of in parallel for reliability
-      for (const item of requestItems) {
-        try {
-          const itemInput = {
-            requestId: requestId,
-            warehouseProductId: item.productId,
-            requestedQuantity: item.quantity,
-            fulfilledQuantity: 0,
-            status: 'PENDING'
-          };
-          
-          console.log('Creating request item:', JSON.stringify(itemInput, null, 2));
-          
-          const itemResponse = await client.graphql({
-            query: createRequestItem,
-            variables: {
-              input: itemInput
-            }
-          });
-          
-          console.log('Created request item:', itemResponse.data.createRequestItem.id);
-        } catch (itemErr) {
-          console.error('Error creating request item:', itemErr);
-          // Continue with other items even if one fails
-        }
-      }
-      
-      console.log('Finished creating request items');
-      
-      // Verify created items by fetching them back
+      const itemPromises = requestItems.map(async (item) => {
+        const itemInput = {
+          requestId: requestId,
+          warehouseProductId: item.productId,
+          requestedQuantity: item.quantity,
+          fulfilledQuantity: 0,
+          status: 'PENDING'
+        };
+
+        console.log('Creating request item:', itemInput);
+
+        return client.graphql({
+          query: createRequestItem,
+          variables: { input: itemInput }
+        });
+      });
+
+      await Promise.all(itemPromises);
+      console.log('Created all request items');
+
+      // Verify items were created
       try {
         const verifyResponse = await client.graphql({
           query: listRequestItems,
@@ -206,21 +201,21 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
             }
           }
         });
-        
+
         const createdItems = verifyResponse.data.listRequestItems.items;
         console.log(`Verification found ${createdItems.length} created items`);
       } catch (verifyErr) {
         console.error('Error verifying created items:', verifyErr);
       }
-      
+
       setSubmitting(false);
       Alert.alert(
         'Success',
         'Your delivery request has been sent to the warehouse',
         [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.goBack() 
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
           }
         ]
       );
@@ -230,24 +225,29 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Failed to submit request. Please try again.');
     }
   };
-  
+
   // Calculate total items
   const totalItems = requestItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <View style={styles.container}>
-      <Appbar
-        title="Request Stock"
-        subtitle={`${storeName}`}
-        onBackPress={() => navigation.goBack()}
-      />
-      
+      {/* Simple header with only back button */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Inventory Request</Text>
+        <View style={{ width: 40 }} /> {/* Empty view for balance */}
+      </View>
       <View style={styles.content}>
         <ScrollView>
           <Card style={styles.card}>
             <Card.Content>
               <Title>New Stock Request</Title>
-              
+
               <View style={styles.searchContainer}>
                 <TextInput
                   label="Search Products"
@@ -257,7 +257,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                   placeholder="Enter product name or SKU"
                 />
               </View>
-              
+
               {loadingProducts ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
@@ -266,12 +266,12 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
               ) : error ? (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>{error}</Text>
-                  <Button 
-                    mode="contained" 
+                  <Button
+                    mode="contained"
                     onPress={fetchWarehouseProducts}
                     style={styles.retryButton}
                   >
-                    Retry
+                    <Text style={{ color: 'white' }}>Retry</Text>
                   </Button>
                 </View>
               ) : (
@@ -368,21 +368,21 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                         onPress={() => setPriority('LOW')}
                         style={[styles.chip, priority === 'LOW' && styles.selectedChip]}
                       >
-                        Low
+                        <Text style={{color: priority === 'LOW' ? 'white' : 'black'}}>Low</Text>
                       </Chip>
                       <Chip
                         selected={priority === 'NORMAL'}
                         onPress={() => setPriority('NORMAL')}
                         style={[styles.chip, priority === 'NORMAL' && styles.selectedChip]}
                       >
-                        Normal
+                        <Text style={{color: priority === 'NORMAL' ? 'white' : 'black'}}>Normal</Text>
                       </Chip>
                       <Chip
                         selected={priority === 'HIGH'}
                         onPress={() => setPriority('HIGH')}
                         style={[styles.chip, priority === 'HIGH' && styles.selectedChip]}
                       >
-                        High
+                        <Text style={{color: priority === 'HIGH' ? 'white' : 'black'}}>High</Text>
                       </Chip>
                     </View>
                   </View>
@@ -403,7 +403,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                   disabled={submitting}
                   style={styles.submitButton}
                 >
-                  Submit Request
+                  <Text style={{color: 'white'}}>Submit Request</Text>
                 </Button>
               </Card.Actions>
             )}
@@ -418,6 +418,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    elevation: 4,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
   },
   content: {
     flex: 1,

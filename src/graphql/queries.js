@@ -8,6 +8,7 @@ export const getStaff = /* GraphQL */ `
       name
       password
       ownerId
+      accountId
       role
       log_status
       device_id
@@ -22,6 +23,19 @@ export const getStaff = /* GraphQL */ `
       }
       cartItems {
         nextToken
+        __typename
+      }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -42,6 +56,7 @@ export const listStaff = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -66,6 +81,7 @@ export const getCategory = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -208,6 +224,7 @@ export const getProduct = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -297,6 +314,7 @@ export const getStore = /* GraphQL */ `
       name
       location
       ownerId
+      accountId
       products {
         nextToken
         __typename
@@ -333,6 +351,19 @@ export const getStore = /* GraphQL */ `
         nextToken
         __typename
       }
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -351,6 +382,7 @@ export const listStores = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -372,9 +404,11 @@ export const getSaleTransaction = /* GraphQL */ `
       staffName
       storeID
       customerID
+      ownerId
       status
       payment_status
       cash_received
+      paymentMethod
       change
       notes
       staff {
@@ -382,6 +416,7 @@ export const getSaleTransaction = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -395,6 +430,7 @@ export const getSaleTransaction = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -405,7 +441,11 @@ export const getSaleTransaction = /* GraphQL */ `
         email
         phone
         storeId
+        ownerId
         points
+        creditBalance
+        allowCredit
+        creditLimit
         createdAt
         updatedAt
         __typename
@@ -441,9 +481,11 @@ export const listSaleTransactions = /* GraphQL */ `
         staffName
         storeID
         customerID
+        ownerId
         status
         payment_status
         cash_received
+        paymentMethod
         change
         notes
         createdAt
@@ -467,6 +509,7 @@ export const getSale = /* GraphQL */ `
       discount
       total
       status
+      ownerId
       product {
         id
         name
@@ -496,9 +539,11 @@ export const getSale = /* GraphQL */ `
         staffName
         storeID
         customerID
+        ownerId
         status
         payment_status
         cash_received
+        paymentMethod
         change
         notes
         createdAt
@@ -506,6 +551,8 @@ export const getSale = /* GraphQL */ `
         __typename
       }
       void_reason
+      variantData
+      addonData
       createdAt
       updatedAt
       __typename
@@ -529,8 +576,68 @@ export const listSales = /* GraphQL */ `
         discount
         total
         status
+        ownerId
         void_reason
+        variantData
+        addonData
         createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getCreditTransaction = /* GraphQL */ `
+  query GetCreditTransaction($id: ID!) {
+    getCreditTransaction(id: $id) {
+      id
+      customerID
+      amount
+      type
+      remarks
+      createdAt
+      addedBy
+      customer {
+        id
+        name
+        email
+        phone
+        storeId
+        ownerId
+        points
+        creditBalance
+        allowCredit
+        creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listCreditTransactions = /* GraphQL */ `
+  query ListCreditTransactions(
+    $filter: ModelCreditTransactionFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listCreditTransactions(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        customerID
+        amount
+        type
+        remarks
+        createdAt
+        addedBy
         updatedAt
         __typename
       }
@@ -653,7 +760,11 @@ export const getCustomer = /* GraphQL */ `
       email
       phone
       storeId
+      ownerId
       points
+      creditBalance
+      allowCredit
+      creditLimit
       purchases {
         nextToken
         __typename
@@ -663,8 +774,13 @@ export const getCustomer = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
+        __typename
+      }
+      creditTransactions {
+        nextToken
         __typename
       }
       createdAt
@@ -686,7 +802,11 @@ export const listCustomers = /* GraphQL */ `
         email
         phone
         storeId
+        ownerId
         points
+        creditBalance
+        allowCredit
+        creditLimit
         createdAt
         updatedAt
         __typename
@@ -713,6 +833,7 @@ export const getSupplier = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -755,6 +876,7 @@ export const getExpense = /* GraphQL */ `
       storeId
       staffId
       staffName
+      ownerId
       category
       notes
       store {
@@ -762,6 +884,7 @@ export const getExpense = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -787,6 +910,7 @@ export const listExpenses = /* GraphQL */ `
         storeId
         staffId
         staffName
+        ownerId
         category
         notes
         createdAt
@@ -812,11 +936,15 @@ export const getCartItem = /* GraphQL */ `
       unit
       storeId
       quantity
+      variantData
+      addonData
+      addon
       store {
         id
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -845,6 +973,7 @@ export const getCartItem = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -878,6 +1007,9 @@ export const listCartItems = /* GraphQL */ `
         unit
         storeId
         quantity
+        variantData
+        addonData
+        addon
         createdAt
         updatedAt
         __typename
@@ -897,6 +1029,7 @@ export const getInventoryRequest = /* GraphQL */ `
       fulfillmentDate
       requestedBy
       processedBy
+      ownerId
       priority
       notes
       store {
@@ -904,6 +1037,7 @@ export const getInventoryRequest = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
@@ -937,6 +1071,7 @@ export const listInventoryRequests = /* GraphQL */ `
         fulfillmentDate
         requestedBy
         processedBy
+        ownerId
         priority
         notes
         createdAt
@@ -965,6 +1100,7 @@ export const getRequestItem = /* GraphQL */ `
         fulfillmentDate
         requestedBy
         processedBy
+        ownerId
         priority
         notes
         createdAt
@@ -1025,6 +1161,184 @@ export const listRequestItems = /* GraphQL */ `
     }
   }
 `;
+export const getSubscriptionPlan = /* GraphQL */ `
+  query GetSubscriptionPlan($id: ID!) {
+    getSubscriptionPlan(id: $id) {
+      id
+      name
+      description
+      price
+      interval
+      storeLimit
+      staffPerStoreLimit
+      adminPerStoreLimit
+      features
+      isActive
+      accounts {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listSubscriptionPlans = /* GraphQL */ `
+  query ListSubscriptionPlans(
+    $filter: ModelSubscriptionPlanFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSubscriptionPlans(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        name
+        description
+        price
+        interval
+        storeLimit
+        staffPerStoreLimit
+        adminPerStoreLimit
+        features
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getAccount = /* GraphQL */ `
+  query GetAccount($id: ID!) {
+    getAccount(id: $id) {
+      id
+      ownerId
+      ownerEmail
+      subscriptionPlanId
+      subscriptionStatus
+      subscriptionStartDate
+      subscriptionEndDate
+      lastModifiedBy
+      stores {
+        nextToken
+        __typename
+      }
+      staff {
+        nextToken
+        __typename
+      }
+      subscriptionPlan {
+        id
+        name
+        description
+        price
+        interval
+        storeLimit
+        staffPerStoreLimit
+        adminPerStoreLimit
+        features
+        isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      subscriptionHistory {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listAccounts = /* GraphQL */ `
+  query ListAccounts(
+    $filter: ModelAccountFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listAccounts(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getSubscriptionHistory = /* GraphQL */ `
+  query GetSubscriptionHistory($id: ID!) {
+    getSubscriptionHistory(id: $id) {
+      id
+      accountId
+      changeDate
+      changedBy
+      previousPlanId
+      newPlanId
+      account {
+        id
+        ownerId
+        ownerEmail
+        subscriptionPlanId
+        subscriptionStatus
+        subscriptionStartDate
+        subscriptionEndDate
+        lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listSubscriptionHistories = /* GraphQL */ `
+  query ListSubscriptionHistories(
+    $filter: ModelSubscriptionHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSubscriptionHistories(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        accountId
+        changeDate
+        changedBy
+        previousPlanId
+        newPlanId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getStaffStore = /* GraphQL */ `
   query GetStaffStore($id: ID!) {
     getStaffStore(id: $id) {
@@ -1036,6 +1350,7 @@ export const getStaffStore = /* GraphQL */ `
         name
         password
         ownerId
+        accountId
         role
         log_status
         device_id
@@ -1049,6 +1364,7 @@ export const getStaffStore = /* GraphQL */ `
         name
         location
         ownerId
+        accountId
         createdAt
         updatedAt
         __typename
