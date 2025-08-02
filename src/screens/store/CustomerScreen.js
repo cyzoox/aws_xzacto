@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { Text, StyleSheet, View, TouchableOpacity, FlatList, Alert, ActivityIndicator } from "react-native";
+import React, {useState, useEffect} from 'react';
+import {
+  Text,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 
-import EvilIcons from 'react-native-vector-icons/EvilIcons'
-import FontAwesome from 'react-native-vector-icons/FontAwesome'
+import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
-import { ListItem, Avatar, Overlay, Button } from 'react-native-elements'
-import { TextInput } from "react-native-paper";
-import { AddCustomer } from "./forms/AddCustomer";
-import AppHeader from "../../components/AppHeader";
-import colors from "../../themes/colors";
-import { API, graphqlOperation } from '@aws-amplify/api';
-import { createCustomer, updateCustomer, deleteCustomer } from '../../graphql/mutations';
-import { listCustomers } from '../../graphql/queries';
+import {ListItem, Avatar, Overlay, Button} from 'react-native-elements';
+import {TextInput} from 'react-native-paper';
+import {AddCustomer} from './forms/AddCustomer';
+import AppHeader from '../../components/AppHeader';
+import colors from '../../themes/colors';
+import {API, graphqlOperation} from '@aws-amplify/api';
+import {
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+} from '../../graphql/mutations';
+import {listCustomers} from '../../graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Hub } from '@aws-amplify/core';
+import {Hub} from '@aws-amplify/core';
 const CustomerScreen = ({navigation, route}) => {
   const STORE = route.params.store;
-  
+
   const [c_name, setName] = useState('');
   const [c_address, setAddress] = useState('');
   const [c_mobile, setMobile] = useState('');
@@ -33,20 +45,23 @@ const CustomerScreen = ({navigation, route}) => {
 
   // Set up DataStore sync listener
   useEffect(() => {
-    const hubListener = Hub.listen('datastore', async (hubData) => {
-      const { event, data } = hubData.payload;
+    const hubListener = Hub.listen('datastore', async hubData => {
+      const {event, data} = hubData.payload;
       if (event === 'networkStatus') {
         setSyncStatus(data.active ? 'Online' : 'Offline');
       } else if (event === 'ready') {
         console.log('DataStore is ready');
       } else if (event === 'outboxStatus') {
-        console.log('DataStore outbox status:', data.isEmpty ? 'Empty' : `${data.outboxSize} items`); 
+        console.log(
+          'DataStore outbox status:',
+          data.isEmpty ? 'Empty' : `${data.outboxSize} items`,
+        );
       }
     });
 
     // Start DataStore
     DataStore.start();
-    
+
     return () => {
       hubListener();
     };
@@ -62,7 +77,10 @@ const CustomerScreen = ({navigation, route}) => {
         console.log('Staff data loaded:', data.id);
         // Use userId rather than username for authentication (as per app requirements)
         if (data.userId) {
-          console.log('Using userId for proper store association:', data.userId);
+          console.log(
+            'Using userId for proper store association:',
+            data.userId,
+          );
         }
       } else {
         console.log('No staff data found in AsyncStorage');
@@ -77,36 +95,44 @@ const CustomerScreen = ({navigation, route}) => {
     setLoading(true);
     try {
       // Check if we have customer data in the cache first
-      const cachedCustomersJson = await AsyncStorage.getItem(`customers_${STORE.id}`);
+      const cachedCustomersJson = await AsyncStorage.getItem(
+        `customers_${STORE.id}`,
+      );
       let cachedCustomers = [];
       let cacheTimestamp = 0;
-      
+
       if (cachedCustomersJson) {
         const cacheData = JSON.parse(cachedCustomersJson);
         cachedCustomers = cacheData.data;
         cacheTimestamp = cacheData.timestamp;
-        
+
         // If cache is fresh (less than 5 minutes old), use it immediately
         const cacheAge = Date.now() - cacheTimestamp;
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+        if (cacheAge < 5 * 60 * 1000) {
+          // 5 minutes
           console.log('Using cached customer data');
           setCustomers(cachedCustomers);
           setLoading(false);
         }
       }
-      
+
       // Get customers from GraphQL API
-      const filter = { storeId: { eq: STORE.id } };
-      const response = await API.graphql(graphqlOperation(listCustomers, { filter, limit: 100 }));
+      const filter = {storeId: {eq: STORE.id}};
+      const response = await API.graphql(
+        graphqlOperation(listCustomers, {filter, limit: 100}),
+      );
       const customerList = response.data.listCustomers.items;
       console.log('Fetched customers:', customerList.length);
-      
+
       // Save to cache for future use
-      await AsyncStorage.setItem(`customers_${STORE.id}`, JSON.stringify({
-        data: customerList,
-        timestamp: Date.now()
-      }));
-      
+      await AsyncStorage.setItem(
+        `customers_${STORE.id}`,
+        JSON.stringify({
+          data: customerList,
+          timestamp: Date.now(),
+        }),
+      );
+
       setCustomers(customerList);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -124,16 +150,16 @@ const CustomerScreen = ({navigation, route}) => {
     address = null,
     points = 0,
     phone = null,
-    email = null
+    email = null,
   ) => {
     // Validation checks
     if (!name) {
-      Alert.alert("Error", "Customer name is required!");
+      Alert.alert('Error', 'Customer name is required!');
       return;
     }
     try {
       setIsSaving(true);
-      
+
       // Create new customer using GraphQL API
       const customerInput = {
         name: name,
@@ -143,26 +169,33 @@ const CustomerScreen = ({navigation, route}) => {
         address: address || null,
         points: points ? parseInt(points) : 0,
         // Use userId rather than username as per app requirements
-        ownerId: staffData?.userId || staffData?.ownerId || null
+        ownerId: staffData?.userId || staffData?.ownerId || null,
       };
-      
-      const response = await API.graphql(graphqlOperation(createCustomer, { input: customerInput }));
+
+      const response = await API.graphql(
+        graphqlOperation(createCustomer, {input: customerInput}),
+      );
       const newCustomer = response.data.createCustomer;
 
       console.log('Customer created:', newCustomer);
       Alert.alert('Success', 'Customer saved successfully!');
-      
+
       // Update local state for immediate UI update (optimistic update)
       setCustomers(prev => [...prev, newCustomer]);
-      
+
       // Update cache
-      const cachedCustomersJson = await AsyncStorage.getItem(`customers_${STORE.id}`);
+      const cachedCustomersJson = await AsyncStorage.getItem(
+        `customers_${STORE.id}`,
+      );
       if (cachedCustomersJson) {
         const cacheData = JSON.parse(cachedCustomersJson);
-        await AsyncStorage.setItem(`customers_${STORE.id}`, JSON.stringify({
-          data: [...cacheData.data, newCustomer],
-          timestamp: Date.now()
-        }));
+        await AsyncStorage.setItem(
+          `customers_${STORE.id}`,
+          JSON.stringify({
+            data: [...cacheData.data, newCustomer],
+            timestamp: Date.now(),
+          }),
+        );
       }
     } catch (error) {
       console.error('Error saving customer:', error);
@@ -171,8 +204,6 @@ const CustomerScreen = ({navigation, route}) => {
       setIsSaving(false);
     }
   };
-  
-  
 
   // Update an existing customer using GraphQL API
   const updateExistingCustomer = async () => {
@@ -194,29 +225,38 @@ const CustomerScreen = ({navigation, route}) => {
         phone: c_mobile || null,
         email: c_email || null,
         address: c_address || null,
-        points: parseInt(c_points) || 0
+        points: parseInt(c_points) || 0,
       };
-      
-      const response = await API.graphql(graphqlOperation(updateCustomer, { input: updateInput }));
-      const updated = response.data.updateCustomer;
-      
-      console.log('Customer updated:', updated);
-      
-      // Update local state for immediate UI update (optimistic update)
-      setCustomers(prev => 
-        prev.map(item => item.id === updated.id ? updated : item)
+
+      const response = await API.graphql(
+        graphqlOperation(updateCustomer, {input: updateInput}),
       );
-      
+      const updated = response.data.updateCustomer;
+
+      console.log('Customer updated:', updated);
+
+      // Update local state for immediate UI update (optimistic update)
+      setCustomers(prev =>
+        prev.map(item => (item.id === updated.id ? updated : item)),
+      );
+
       // Update cache
-      const cachedCustomersJson = await AsyncStorage.getItem(`customers_${STORE.id}`);
+      const cachedCustomersJson = await AsyncStorage.getItem(
+        `customers_${STORE.id}`,
+      );
       if (cachedCustomersJson) {
         const cacheData = JSON.parse(cachedCustomersJson);
-        await AsyncStorage.setItem(`customers_${STORE.id}`, JSON.stringify({
-          data: cacheData.data.map(item => item.id === updated.id ? updated : item),
-          timestamp: Date.now()
-        }));
+        await AsyncStorage.setItem(
+          `customers_${STORE.id}`,
+          JSON.stringify({
+            data: cacheData.data.map(item =>
+              item.id === updated.id ? updated : item,
+            ),
+            timestamp: Date.now(),
+          }),
+        );
       }
-      
+
       setOverlayVisible(false);
       Alert.alert('Success', 'Customer updated successfully');
     } catch (error) {
@@ -225,39 +265,46 @@ const CustomerScreen = ({navigation, route}) => {
     }
   };
   // Delete customer
-  const removeCustomer = async (customerId) => {
+  const removeCustomer = async customerId => {
     try {
       // Confirm deletion
       Alert.alert(
         'Confirm Deletion',
         'Are you sure you want to delete this customer?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          {text: 'Cancel', style: 'cancel'},
           {
             text: 'Delete',
             style: 'destructive',
             onPress: async () => {
               setIsDeleting(true);
-              
+
               try {
                 // Delete customer using GraphQL API
-                const deleteInput = { id: customerId };
-                await API.graphql(graphqlOperation(deleteCustomer, { input: deleteInput }));
-                
+                const deleteInput = {id: customerId};
+                await API.graphql(
+                  graphqlOperation(deleteCustomer, {input: deleteInput}),
+                );
+
                 console.log('Customer deleted:', customerId);
                 Alert.alert('Success', 'Customer deleted successfully!');
-                
+
                 // Update local state for immediate UI update (optimistic update)
                 setCustomers(prev => prev.filter(c => c.id !== customerId));
-                
+
                 // Update cache
-                const cachedCustomersJson = await AsyncStorage.getItem(`customers_${STORE.id}`);
+                const cachedCustomersJson = await AsyncStorage.getItem(
+                  `customers_${STORE.id}`,
+                );
                 if (cachedCustomersJson) {
                   const cacheData = JSON.parse(cachedCustomersJson);
-                  await AsyncStorage.setItem(`customers_${STORE.id}`, JSON.stringify({
-                    data: cacheData.data.filter(c => c.id !== customerId),
-                    timestamp: Date.now()
-                  }));
+                  await AsyncStorage.setItem(
+                    `customers_${STORE.id}`,
+                    JSON.stringify({
+                      data: cacheData.data.filter(c => c.id !== customerId),
+                      timestamp: Date.now(),
+                    }),
+                  );
                 }
               } catch (error) {
                 console.error('Error deleting customer:', error);
@@ -265,9 +312,9 @@ const CustomerScreen = ({navigation, route}) => {
               } finally {
                 setIsDeleting(false);
               }
-            }
-          }
-        ]
+            },
+          },
+        ],
       );
     } catch (error) {
       console.error('Error initiating customer deletion:', error);
@@ -275,16 +322,17 @@ const CustomerScreen = ({navigation, route}) => {
   };
 
   // Render each customer item in the list
-  const renderItem = ({ item }) => (
-    <ListItem 
-      underlayColor={'#fffff'} 
-      bottomDivider 
+  const renderItem = ({item}) => (
+    <ListItem
+      underlayColor={'#fffff'}
+      bottomDivider
       containerStyle={styles.listStyle}
-      onPress={() => navigation.navigate('CreditDetails', {customer: item, store: STORE})}
-    >
-      <Avatar 
-        title={item.name?.[0] || 'C'} 
-        size={60} 
+      onPress={() =>
+        navigation.navigate('CreditDetails', {customer: item, store: STORE})
+      }>
+      <Avatar
+        title={item.name?.[0] || 'C'}
+        size={60}
         source={require('../../../assets//xzacto_icons/iconsstore/customer.png')}
       />
       <ListItem.Content>
@@ -292,8 +340,8 @@ const CustomerScreen = ({navigation, route}) => {
         <ListItem.Subtitle>{item.address || 'No address'}</ListItem.Subtitle>
         <Text style={styles.phoneText}>{item.phone || 'No phone'}</Text>
       </ListItem.Content>
-      <View style={{flexDirection:'row'}}>
-        <TouchableOpacity 
+      <View style={{flexDirection: 'row'}}>
+        <TouchableOpacity
           onPress={() => {
             setCustomerInfo(item);
             setName(item.name || '');
@@ -302,24 +350,22 @@ const CustomerScreen = ({navigation, route}) => {
             setEmail(item.email || '');
             setPoints(item.points !== undefined ? item.points.toString() : '0');
             setOverlayVisible(true);
-          }}
-        >
-          <FontAwesome name={'edit'} size={25} color={colors.primary}/>
+          }}>
+          <FontAwesome name={'edit'} size={25} color={colors.primary} />
         </TouchableOpacity>
-        
-        <View style={{width: 20}}></View>
+
+        <View style={{width: 20}} />
         <TouchableOpacity
           onPress={() => {
             setCustomerInfo(item);
             setDeleteOverlayVisible(true);
-          }}
-        >
-          <FontAwesome name={'trash'} size={25} color={colors.red}/>
+          }}>
+          <FontAwesome name={'trash'} size={25} color={colors.red} />
         </TouchableOpacity>
-        <View style={{width: 10}}></View>
+        <View style={{width: 10}} />
       </View>
     </ListItem>
-  )
+  );
 
   // Refresh control for pull-to-refresh
   const onRefresh = () => {
@@ -346,9 +392,9 @@ const CustomerScreen = ({navigation, route}) => {
     // Load data when component mounts
     loadStaffData();
     fetchCustomers();
-    
+
     // Create a subscription to network status changes to handle online/offline transitions
-    const hubListener = Hub.listen('networkStatus', (data) => {
+    const hubListener = Hub.listen('networkStatus', data => {
       console.log('Network status changed:', data);
       if (data.payload.online === true) {
         // When we come back online, fetch latest data
@@ -356,7 +402,7 @@ const CustomerScreen = ({navigation, route}) => {
         fetchCustomers();
       }
     });
-    
+
     // Set up periodic refresh for data (every 30 seconds)
     const refreshInterval = setInterval(() => {
       // Only refresh if not currently refreshing and not offline
@@ -364,7 +410,7 @@ const CustomerScreen = ({navigation, route}) => {
         fetchCustomers();
       }
     }, 30000); // 30 seconds
-    
+
     // Clean up on unmount
     return () => {
       clearInterval(refreshInterval);
@@ -372,7 +418,7 @@ const CustomerScreen = ({navigation, route}) => {
       console.log('Customer refresh interval and hub listener cleaned up');
     };
   }, []);
-  
+
   // Set up refresh when component comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -385,24 +431,32 @@ const CustomerScreen = ({navigation, route}) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader 
-        centerText="Customers & Credits" 
+      <AppHeader
+        centerText="Customers & Credits"
         leftComponent={
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={30} color={colors.white}/>
+            <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
           </TouchableOpacity>
         }
         rightComponent={
           <View style={styles.headerRightContainer}>
-            <TouchableOpacity onPress={syncWithServer} style={styles.syncButton}>
-              <FontAwesome name={syncStatus === 'Syncing...' ? 'refresh' : 'cloud-upload'} size={18} color={colors.white}/>
-              {syncStatus === 'Offline' && <View style={styles.offlineIndicator} />}
+            <TouchableOpacity
+              onPress={syncWithServer}
+              style={styles.syncButton}>
+              <FontAwesome
+                name={syncStatus === 'Syncing...' ? 'refresh' : 'cloud-upload'}
+                size={18}
+                color={colors.white}
+              />
+              {syncStatus === 'Offline' && (
+                <View style={styles.offlineIndicator} />
+              )}
             </TouchableOpacity>
             <AddCustomer saveCustomer={saveCustomer} store={STORE} />
           </View>
         }
       />
-      
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -412,7 +466,7 @@ const CustomerScreen = ({navigation, route}) => {
         <FlatList
           data={customers}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           refreshing={refreshing}
           onRefresh={onRefresh}
           ListEmptyComponent={
@@ -427,9 +481,13 @@ const CustomerScreen = ({navigation, route}) => {
       {/* Edit Customer Overlay */}
       <Overlay
         isVisible={overlayVisible}
-        overlayStyle={{ width: "80%", paddingHorizontal: 30, paddingBottom: 20, paddingTop:15}}
-        onBackdropPress={() => setOverlayVisible(false)}
-      >
+        overlayStyle={{
+          width: '80%',
+          paddingHorizontal: 30,
+          paddingBottom: 20,
+          paddingTop: 15,
+        }}
+        onBackdropPress={() => setOverlayVisible(false)}>
         <>
           <Text style={styles.overlayTitle}>Edit Customer Details</Text>
           <TextInput
@@ -437,7 +495,7 @@ const CustomerScreen = ({navigation, route}) => {
             value={c_name}
             label="Name"
             placeholder="Customer Name"
-            onChangeText={(text) => setName(text)}
+            onChangeText={text => setName(text)}
             style={styles.input}
           />
           <TextInput
@@ -445,7 +503,7 @@ const CustomerScreen = ({navigation, route}) => {
             value={c_address}
             label="Address"
             placeholder="Customer Address"
-            onChangeText={(text) => setAddress(text)}
+            onChangeText={text => setAddress(text)}
             style={styles.input}
           />
           <TextInput
@@ -453,7 +511,7 @@ const CustomerScreen = ({navigation, route}) => {
             value={c_mobile}
             label="Mobile No."
             placeholder="Mobile Number"
-            onChangeText={(text) => setMobile(text)}
+            onChangeText={text => setMobile(text)}
             style={styles.input}
             keyboardType="phone-pad"
           />
@@ -462,7 +520,7 @@ const CustomerScreen = ({navigation, route}) => {
             value={c_email}
             label="Email"
             placeholder="Email Address"
-            onChangeText={(text) => setEmail(text)}
+            onChangeText={text => setEmail(text)}
             style={styles.input}
             keyboardType="email-address"
           />
@@ -471,7 +529,7 @@ const CustomerScreen = ({navigation, route}) => {
             value={c_points}
             label="Points"
             placeholder="Customer Points"
-            onChangeText={(text) => setPoints(text)}
+            onChangeText={text => setPoints(text)}
             style={styles.input}
             keyboardType="numeric"
           />
@@ -494,12 +552,12 @@ const CustomerScreen = ({navigation, route}) => {
       <Overlay
         isVisible={deleteOverlayVisible}
         overlayStyle={styles.deleteOverlay}
-        onBackdropPress={() => setDeleteOverlayVisible(false)}
-      >
+        onBackdropPress={() => setDeleteOverlayVisible(false)}>
         <>
           <Text style={styles.deleteTitle}>Delete Customer</Text>
           <Text style={styles.deleteMessage}>
-            Are you sure you want to delete {c_info?.name}? This action cannot be undone.
+            Are you sure you want to delete {c_info?.name}? This action cannot
+            be undone.
           </Text>
           <View style={styles.buttonContainer}>
             <Button
@@ -521,9 +579,9 @@ const CustomerScreen = ({navigation, route}) => {
 
 CustomerScreen.navigationOptions = () => {
   return {
-    headerShown: false
+    headerShown: false,
   };
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -548,22 +606,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'red',
   },
   text: {
-    fontSize: 30
+    fontSize: 30,
   },
   listStyle: {
     flex: 1,
     height: 85,
-    backgroundColor: colors.white, 
+    backgroundColor: colors.white,
     marginHorizontal: 15,
-    paddingHorizontal: 15, 
+    paddingHorizontal: 15,
     marginBottom: 10,
-    marginTop: 10, 
-    borderRadius: 15, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 10, 
+    marginTop: 10,
+    borderRadius: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
     alignItems: 'center',
-    shadowColor: "#EBECF0",
+    shadowColor: '#EBECF0',
     shadowOffset: {
       width: 0,
       height: 5,
@@ -601,9 +659,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   overlayTitle: {
-    textAlign: 'center', 
-    fontSize: 18, 
-    fontWeight: '700', 
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
     marginBottom: 15,
     color: colors.primary,
   },
@@ -629,14 +687,14 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   deleteOverlay: {
-    width: "80%", 
-    paddingHorizontal: 20, 
+    width: '80%',
+    paddingHorizontal: 20,
     paddingVertical: 20,
   },
   deleteTitle: {
-    textAlign: 'center', 
-    fontSize: 18, 
-    fontWeight: 'bold', 
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 15,
     color: colors.red,
   },

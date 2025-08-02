@@ -11,7 +11,7 @@ import DeviceInfo from 'react-native-device-info';
 // overlay shows up to request user input for the new task name. When the
 // "Create" button on the overlay is pressed, the overlay closes and the new
 // task is created in the realm.
-export function AddStaff({ saveStaff, store }) {
+export function AddStaff({saveStaff, store}) {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +26,7 @@ export function AddStaff({ saveStaff, store }) {
 
   const handleCreate = () => {
     if (!name || !password) {
-      console.log("Name and Password are required!");
+      console.log('Name and Password are required!');
       return;
     }
 
@@ -38,8 +38,8 @@ export function AddStaff({ saveStaff, store }) {
       status,
       deviceName,
       deviceId,
-      ["cashier"], // Role
-      "Active" // Log status
+      ['cashier'], // Role
+      'Active', // Log status
     );
 
     // Clear fields
@@ -58,8 +58,7 @@ export function AddStaff({ saveStaff, store }) {
           paddingBottom: 20,
           paddingTop: 15,
         }}
-        onBackdropPress={() => setOverlayVisible(false)}
-      >
+        onBackdropPress={() => setOverlayVisible(false)}>
         <>
           <Text
             style={{
@@ -67,8 +66,7 @@ export function AddStaff({ saveStaff, store }) {
               fontSize: 18,
               fontWeight: '700',
               marginBottom: 10,
-            }}
-          >
+            }}>
             Add Staff
           </Text>
           <TextInput
@@ -87,7 +85,7 @@ export function AddStaff({ saveStaff, store }) {
           />
           <Button
             title="Create"
-            buttonStyle={{ marginTop: 20, backgroundColor: colors.accent }}
+            buttonStyle={{marginTop: 20, backgroundColor: colors.accent}}
             onPress={handleCreate}
           />
         </>

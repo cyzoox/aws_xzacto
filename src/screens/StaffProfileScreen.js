@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,18 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import colors from '../themes/colors';
 import Appbar from '../components/Appbar';
-import { generateClient } from 'aws-amplify/api';
-import { updateStaff } from '../graphql/mutations';
+import {generateClient} from 'aws-amplify/api';
+import {updateStaff} from '../graphql/mutations';
 
 const client = generateClient();
 
-const StaffProfileScreen = ({ navigation, route }) => {
-  const { staffData } = route.params;
-  
+const StaffProfileScreen = ({navigation, route}) => {
+  const {staffData} = route.params;
+
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -34,49 +34,49 @@ const StaffProfileScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'All fields are required');
       return false;
     }
-    
+
     if (newPin !== confirmPin) {
       Alert.alert('Error', 'New PIN and confirmation PIN do not match');
       return false;
     }
-    
+
     if (newPin.length < 5) {
       Alert.alert('Error', 'PIN must be at least 5 digits');
       return false;
     }
-    
+
     if (currentPin !== staffData.password) {
       Alert.alert('Error', 'Current PIN is incorrect');
       return false;
     }
-    
+
     return true;
   };
 
   const handleUpdatePin = async () => {
-    if (!validateForm()) return;
-    
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       setIsLoading(true);
-      
+
       const updateInput = {
         id: staffData.id,
         password: newPin,
       };
-      
+
       const result = await client.graphql({
         query: updateStaff,
         variables: {
-          input: updateInput
-        }
+          input: updateInput,
+        },
       });
-      
+
       setIsLoading(false);
-      Alert.alert(
-        'Success',
-        'PIN successfully updated.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert('Success', 'PIN successfully updated.', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
     } catch (error) {
       setIsLoading(false);
       Alert.alert('Error', 'Failed to update PIN: ' + error.message);
@@ -91,7 +91,7 @@ const StaffProfileScreen = ({ navigation, route }) => {
         subtitle={staffData?.name || ''}
         onBack={() => navigation.goBack()}
       />
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
@@ -102,10 +102,10 @@ const StaffProfileScreen = ({ navigation, route }) => {
           <Text style={styles.staffName}>{staffData.name}</Text>
           <Text style={styles.staffRole}>{staffData.role}</Text>
         </View>
-        
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Change PIN</Text>
-          
+
           <View style={styles.formGroup}>
             <Text style={styles.label}>Current PIN</Text>
             <View style={styles.inputContainer}>
@@ -118,19 +118,18 @@ const StaffProfileScreen = ({ navigation, route }) => {
                 secureTextEntry={!showCurrentPin}
                 placeholder="Enter current PIN"
               />
-              <TouchableOpacity 
-                style={styles.visibilityIcon} 
-                onPress={() => setShowCurrentPin(!showCurrentPin)}
-              >
-                <Ionicons 
-                  name={showCurrentPin ? 'eye-off-outline' : 'eye-outline'} 
-                  size={24} 
-                  color={colors.charcoalGrey} 
+              <TouchableOpacity
+                style={styles.visibilityIcon}
+                onPress={() => setShowCurrentPin(!showCurrentPin)}>
+                <Ionicons
+                  name={showCurrentPin ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={colors.charcoalGrey}
                 />
               </TouchableOpacity>
             </View>
           </View>
-          
+
           <View style={styles.formGroup}>
             <Text style={styles.label}>New PIN</Text>
             <View style={styles.inputContainer}>
@@ -143,19 +142,18 @@ const StaffProfileScreen = ({ navigation, route }) => {
                 secureTextEntry={!showNewPin}
                 placeholder="Enter new PIN"
               />
-              <TouchableOpacity 
-                style={styles.visibilityIcon} 
-                onPress={() => setShowNewPin(!showNewPin)}
-              >
-                <Ionicons 
-                  name={showNewPin ? 'eye-off-outline' : 'eye-outline'} 
-                  size={24} 
-                  color={colors.charcoalGrey} 
+              <TouchableOpacity
+                style={styles.visibilityIcon}
+                onPress={() => setShowNewPin(!showNewPin)}>
+                <Ionicons
+                  name={showNewPin ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={colors.charcoalGrey}
                 />
               </TouchableOpacity>
             </View>
           </View>
-          
+
           <View style={styles.formGroup}>
             <Text style={styles.label}>Confirm New PIN</Text>
             <View style={styles.inputContainer}>
@@ -168,24 +166,22 @@ const StaffProfileScreen = ({ navigation, route }) => {
                 secureTextEntry={!showConfirmPin}
                 placeholder="Confirm new PIN"
               />
-              <TouchableOpacity 
-                style={styles.visibilityIcon} 
-                onPress={() => setShowConfirmPin(!showConfirmPin)}
-              >
-                <Ionicons 
-                  name={showConfirmPin ? 'eye-off-outline' : 'eye-outline'} 
-                  size={24} 
-                  color={colors.charcoalGrey} 
+              <TouchableOpacity
+                style={styles.visibilityIcon}
+                onPress={() => setShowConfirmPin(!showConfirmPin)}>
+                <Ionicons
+                  name={showConfirmPin ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={colors.charcoalGrey}
                 />
               </TouchableOpacity>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.updateButton}
             onPress={handleUpdatePin}
-            disabled={isLoading}
-          >
+            disabled={isLoading}>
             {isLoading ? (
               <ActivityIndicator color={colors.white} />
             ) : (
@@ -193,16 +189,28 @@ const StaffProfileScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
-            <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+            <Ionicons
+              name="information-circle-outline"
+              size={24}
+              color={colors.primary}
+            />
             <Text style={styles.infoTitle}>PIN Security Tips</Text>
           </View>
-          <Text style={styles.infoText}>• Choose a PIN that's easy to remember but hard to guess</Text>
-          <Text style={styles.infoText}>• Don't use common sequences like 12345</Text>
-          <Text style={styles.infoText}>• Don't share your PIN with others</Text>
-          <Text style={styles.infoText}>• Change your PIN periodically for better security</Text>
+          <Text style={styles.infoText}>
+            • Choose a PIN that's easy to remember but hard to guess
+          </Text>
+          <Text style={styles.infoText}>
+            • Don't use common sequences like 12345
+          </Text>
+          <Text style={styles.infoText}>
+            • Don't share your PIN with others
+          </Text>
+          <Text style={styles.infoText}>
+            • Change your PIN periodically for better security
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -251,7 +259,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,

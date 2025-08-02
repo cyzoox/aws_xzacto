@@ -1,28 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, Image, StyleSheet, View, Text } from 'react-native';
-import { FlatGrid } from 'react-native-super-grid';
+import React, {useState, useEffect} from 'react';
+import {TouchableOpacity, Image, StyleSheet, View, Text} from 'react-native';
+import {FlatGrid} from 'react-native-super-grid';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useStore } from '../context/StoreContext';
+import {useStore} from '../context/StoreContext';
 import SearchBar from './SearchBar';
 import colors from '../themes/colors';
 
-export default function Products({ products, navigation, categories, activeStore }) {
+export default function Products({
+  products,
+  navigation,
+  categories,
+  activeStore,
+}) {
   // Use explicitly passed activeStore instead of context
-  const { currentStore } = useStore();
+  const {currentStore} = useStore();
   // For backward compatibility, use activeStore if provided, otherwise fall back to context
   const storeToUse = activeStore || currentStore;
   const [filteredProducts, setFilteredProducts] = useState(products);
   const [selectedCategory, setSelectedCategory] = useState(null); // Default to null (All)
   const [searchTerm, setSearchTerm] = useState(''); // Search query
-  
+
   // Debug logging when products change
   useEffect(() => {
     console.log('Products component received products:', products?.length || 0);
-    
+
     if (!products || products.length === 0) {
       console.log('No products received in Products component');
     } else {
-      console.log('First product in Products component:', JSON.stringify(products[0], null, 2));
+      console.log(
+        'First product in Products component:',
+        JSON.stringify(products[0], null, 2),
+      );
     }
   }, [products]);
 
@@ -30,20 +38,21 @@ export default function Products({ products, navigation, categories, activeStore
   useEffect(() => {
     // Ensure products is always an array
     let filtered = Array.isArray(products) ? products : [];
-    
+
     console.log('Filtering products, count:', filtered.length);
 
     if (selectedCategory) {
       filtered = filtered.filter(
-        (product) => product.categoryId === selectedCategory.id
+        product => product.categoryId === selectedCategory.id,
       );
       console.log('After category filter:', filtered.length);
     }
 
     if (searchTerm) {
-      filtered = filtered.filter((product) =>
-        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        product =>
+          product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.brand?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       console.log('After search filter:', filtered.length);
     }
@@ -51,7 +60,7 @@ export default function Products({ products, navigation, categories, activeStore
     setFilteredProducts(filtered);
   }, [searchTerm, selectedCategory, products]);
 
-  const onTabChange = (category) => {
+  const onTabChange = category => {
     setSelectedCategory(category); // category will be null for 'All' or a category object
   };
 
@@ -69,9 +78,9 @@ export default function Products({ products, navigation, categories, activeStore
         {/* "All" Category Tab */}
         <TouchableOpacity
           style={[styles.tab, !selectedCategory && styles.activeTab]}
-          onPress={() => onTabChange(null)}
-        >
-          <Text style={[styles.tabText, !selectedCategory && styles.activeTabText]}>
+          onPress={() => onTabChange(null)}>
+          <Text
+            style={[styles.tabText, !selectedCategory && styles.activeTabText]}>
             All
           </Text>
         </TouchableOpacity>
@@ -79,35 +88,37 @@ export default function Products({ products, navigation, categories, activeStore
         {/* Other Category Tabs */}
         {categories
           .filter(category => category.storeId === storeToUse?.id) // Only show categories for active store
-          .map((category) => (
+          .map(category => (
             <TouchableOpacity
               key={category.id}
               style={[
                 styles.tab,
                 selectedCategory?.id === category.id && styles.activeTab,
               ]}
-              onPress={() => onTabChange(category)}
-            >
+              onPress={() => onTabChange(category)}>
               <Text
                 style={[
                   styles.tabText,
                   selectedCategory?.id === category.id && styles.activeTabText,
                 ]}
                 numberOfLines={1}
-                ellipsizeMode="tail"
-              >
+                ellipsizeMode="tail">
                 {category.name}
               </Text>
             </TouchableOpacity>
           ))}
-    </View>
+      </View>
 
       {/* Product Grid */}
       {filteredProducts.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No products found</Text>
           <Text style={styles.emptySubtext}>
-            {searchTerm ? 'Try a different search term' : selectedCategory ? 'Try a different category' : 'Add products to get started'}
+            {searchTerm
+              ? 'Try a different search term'
+              : selectedCategory
+              ? 'Try a different category'
+              : 'Add products to get started'}
           </Text>
         </View>
       ) : (
@@ -115,59 +126,74 @@ export default function Products({ products, navigation, categories, activeStore
           itemDimension={120} // Adjust based on screen size as needed
           data={filteredProducts}
           spacing={15}
-          renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('EditProduct', { product: item })
-            }
-            style={styles.itemContainer}
-          >
-            <Image
-              source={{ uri: item.img }}
-              resizeMode="stretch"
-              style={{ flex: 2, height: 70, width: '90%', marginTop: 5 }}
-            />
-            <View style={{ paddingVertical: 5 }}>
-              <Text style={{ textAlign: 'center', fontSize: 10, fontWeight: '700' }}>
-                {item.name}
-              </Text>
-              <Text style={{ textAlign: 'center', fontSize: 9 }}>{item.brand}</Text>
-              <Text style={{ textAlign: 'center', fontSize: 9 }}>
-                {Math.round(item.stock * 100) / 100} In Stock
-              </Text>
-              {item.variants?.items?.length > 0 && (
-                <Text style={{ textAlign: 'center', fontSize: 8, color: colors.accent }}>
-                  {item.variants.items.length} Variants
+          renderItem={({item}) => (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('EditProduct', {product: item})
+              }
+              style={styles.itemContainer}>
+              <Image
+                source={{uri: item.img}}
+                resizeMode="stretch"
+                style={{flex: 2, height: 70, width: '90%', marginTop: 5}}
+              />
+              <View style={{paddingVertical: 5}}>
+                <Text
+                  style={{
+                    textAlign: 'center',
+                    fontSize: 10,
+                    fontWeight: '700',
+                  }}>
+                  {item.name}
+                </Text>
+                <Text style={{textAlign: 'center', fontSize: 9}}>
+                  {item.brand}
+                </Text>
+                <Text style={{textAlign: 'center', fontSize: 9}}>
+                  {Math.round(item.stock * 100) / 100} In Stock
+                </Text>
+                {item.variants?.items?.length > 0 && (
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      fontSize: 8,
+                      color: colors.accent,
+                    }}>
+                    {item.variants.items.length} Variants
+                  </Text>
+                )}
+                {item.addons?.items?.length > 0 && (
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      fontSize: 8,
+                      color: colors.accent,
+                    }}>
+                    {item.addons.items.length} Add-ons
+                  </Text>
+                )}
+              </View>
+              {item.stock < 10 && (
+                <Text
+                  style={{
+                    paddingHorizontal: 2,
+                    paddingVertical: 2,
+                    backgroundColor: colors.red,
+                    borderRadius: 15,
+                    position: 'absolute',
+                    right: 10,
+                    top: 10,
+                  }}>
+                  <MaterialCommunityIcons
+                    name="alert-octagram-outline"
+                    size={20}
+                    color={colors.white}
+                  />
                 </Text>
               )}
-              {item.addons?.items?.length > 0 && (
-                <Text style={{ textAlign: 'center', fontSize: 8, color: colors.accent }}>
-                  {item.addons.items.length} Add-ons
-                </Text>
-              )}
-            </View>
-            {item.stock < 10 && (
-              <Text
-                style={{
-                  paddingHorizontal: 2,
-                  paddingVertical: 2,
-                  backgroundColor: colors.red,
-                  borderRadius: 15,
-                  position: 'absolute',
-                  right: 10,
-                  top: 10,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="alert-octagram-outline"
-                  size={20}
-                  color={colors.white}
-                />
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
-      />
+            </TouchableOpacity>
+          )}
+        />
       )}
     </>
   );
@@ -207,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     height: 170,
     shadowColor: '#EBECF0',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 2,

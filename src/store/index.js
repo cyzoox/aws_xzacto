@@ -1,5 +1,5 @@
-import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
+import {configureStore, combineReducers} from '@reduxjs/toolkit';
+import {persistStore, persistReducer} from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import staffReducer from './slices/staffSlice';
 import storeReducer from './slices/storeSlice';
@@ -20,7 +20,7 @@ const persistConfig = {
   storage: AsyncStorage,
   // Add blacklist/whitelist if needed
   blacklist: ['_persist'], // Don't persist the persist state itself
-  whitelist: ['staff', 'store', 'sales', 'subscription'] // Persist these reducers
+  whitelist: ['staff', 'store', 'sales', 'subscription'], // Persist these reducers
 };
 
 // Create persisted reducer
@@ -29,7 +29,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 // Create store with middleware
 export const store = configureStore({
   reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) =>
+  middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: {
         // Ignore these action types
@@ -42,7 +42,7 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 // Create sync middleware to handle offline data
-export const syncMiddleware = () => (next) => (action) => {
+export const syncMiddleware = () => next => action => {
   const result = next(action);
   const state = store.getState();
 

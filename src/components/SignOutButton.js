@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { authService } from '../services/authService';
+import React, {useState} from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import {authService} from '../services/authService';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 /**
@@ -13,25 +19,25 @@ import Icon from 'react-native-vector-icons/Ionicons';
  * @param {Object} props.iconProps Additional props for the icon
  * @param {string} props.iconName Optional custom icon name
  */
-const SignOutButton = ({ 
+const SignOutButton = ({
   style,
   showIcon = true,
   showText = true,
   iconProps = {},
   iconName = 'log-out-outline',
   textStyle = {},
-  onPress = null
+  onPress = null,
 }) => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
-  
+
   const handleSignOut = async () => {
     // Allow custom onPress handler if provided
     if (onPress) {
       onPress();
       return;
     }
-    
+
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -47,12 +53,12 @@ const SignOutButton = ({
             try {
               setLoading(true);
               const success = await authService.logout();
-              
+
               if (success) {
                 // Navigate back to RoleSelection screen
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'RoleSelection' }],
+                  routes: [{name: 'RoleSelection'}],
                 });
               } else {
                 Alert.alert('Error', 'Failed to sign out. Please try again.');
@@ -66,10 +72,10 @@ const SignOutButton = ({
           },
         },
       ],
-      { cancelable: true }
+      {cancelable: true},
     );
   };
-  
+
   if (loading) {
     return (
       <TouchableOpacity style={[styles.button, style]} disabled>
@@ -77,25 +83,22 @@ const SignOutButton = ({
       </TouchableOpacity>
     );
   }
-  
+
   return (
-    <TouchableOpacity 
-      style={[styles.button, style]} 
+    <TouchableOpacity
+      style={[styles.button, style]}
       onPress={handleSignOut}
-      activeOpacity={0.7}
-    >
+      activeOpacity={0.7}>
       {showIcon && (
-        <Icon 
-          name={iconName} 
-          size={iconProps.size || 18} 
-          color={iconProps.color || '#fff'} 
-          style={styles.icon} 
+        <Icon
+          name={iconName}
+          size={iconProps.size || 18}
+          color={iconProps.color || '#fff'}
+          style={styles.icon}
           {...iconProps}
         />
       )}
-      {showText && (
-        <Text style={[styles.text, textStyle]}>Sign Out</Text>
-      )}
+      {showText && <Text style={[styles.text, textStyle]}>Sign Out</Text>}
     </TouchableOpacity>
   );
 };

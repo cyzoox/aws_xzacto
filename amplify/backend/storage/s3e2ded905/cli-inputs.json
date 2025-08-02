@@ -4,11 +4,7 @@
   "bucketName": "amplifiedtodo7e384f6598ce44aa9bce2657c028cba1",
   "storageAccess": "auth",
   "guestAccess": [],
-  "authAccess": [
-    "CREATE_AND_UPDATE",
-    "READ",
-    "DELETE"
-  ],
+  "authAccess": ["CREATE_AND_UPDATE", "READ", "DELETE"],
   "triggerFunction": "NONE",
   "groupAccess": {}
 }

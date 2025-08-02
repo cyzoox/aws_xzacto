@@ -1,10 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Text, Searchbar, Card, Title, Paragraph, FAB, Badge, Button } from 'react-native-paper';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  Text,
+  Searchbar,
+  Card,
+  Title,
+  Paragraph,
+  FAB,
+  Badge,
+  Button,
+} from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
-import { generateClient } from 'aws-amplify/api';
-import { listWarehouseProducts } from '../../graphql/queries';
+import {colors} from '../../constants/theme';
+import {generateClient} from 'aws-amplify/api';
+import {listWarehouseProducts} from '../../graphql/queries';
 
 // Generate API client
 const client = generateClient();
@@ -12,13 +27,13 @@ const client = generateClient();
 // Simplified for direct rendering without complex data processing
 const LOW_STOCK_THRESHOLD = 10;
 
-const WarehouseInventoryScreen = ({ navigation, route }) => {
-  const { staffData } = route.params || {};
+const WarehouseInventoryScreen = ({navigation, route}) => {
+  const {staffData} = route.params || {};
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState(null);
-  
+
   // Fetch products from backend
   useEffect(() => {
     fetchProducts();
@@ -29,7 +44,7 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
     try {
       console.log('Fetching warehouse products...');
       const productsData = await client.graphql({
-        query: listWarehouseProducts
+        query: listWarehouseProducts,
       });
       console.log('Warehouse products fetched:', productsData);
       setProducts(productsData.data.listWarehouseProducts.items || []);
@@ -43,13 +58,14 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
   };
 
   // Filter products based on search
-  const filteredProducts = products.filter(product => 
-    product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProducts = products.filter(
+    product =>
+      product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  
+
   // Helper to render stock status
-  const renderStockStatus = (stock) => {
+  const renderStockStatus = stock => {
     if (stock <= 0) {
       return <Badge style={styles.outOfStock}>Out of Stock</Badge>;
     } else if (stock <= LOW_STOCK_THRESHOLD) {
@@ -63,7 +79,7 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
     // Navigate to role selection screen for switching users
     navigation.reset({
       index: 0,
-      routes: [{ name: 'RoleSelection' }],
+      routes: [{name: 'RoleSelection'}],
     });
   };
 
@@ -74,7 +90,7 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
         subtitle="Manage inventory and stock levels"
         onProfilePress={handleLogout}
       />
-      
+
       <View style={styles.content}>
         <Searchbar
           placeholder="Search products"
@@ -82,25 +98,23 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
           value={searchQuery}
           style={styles.searchBar}
         />
-        
+
         <View style={styles.actionsContainer}>
-          <Button 
-            mode="contained" 
+          <Button
+            mode="contained"
             onPress={() => navigation.navigate('WarehouseProductAdd')}
-            style={styles.actionButton}
-          >
+            style={styles.actionButton}>
             Add Product
           </Button>
-          <Button 
-            mode="outlined" 
+          <Button
+            mode="outlined"
             onPress={fetchProducts}
             style={[styles.actionButton, styles.refreshButton]}
-            disabled={loading}
-          >
+            disabled={loading}>
             Refresh
           </Button>
         </View>
-        
+
         <ScrollView style={styles.productList}>
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -111,7 +125,10 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
             <Card style={styles.errorCard}>
               <Card.Content>
                 <Paragraph style={styles.errorText}>{error}</Paragraph>
-                <Button mode="contained" onPress={fetchProducts} style={styles.retryButton}>
+                <Button
+                  mode="contained"
+                  onPress={fetchProducts}
+                  style={styles.retryButton}>
                   Retry
                 </Button>
               </Card.Content>
@@ -127,17 +144,30 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
                   <View style={styles.productDetails}>
                     <View style={styles.detailColumn}>
                       <Paragraph>SKU: {product.sku || 'N/A'}</Paragraph>
-                      <Paragraph>Category: {product.category || 'N/A'}</Paragraph>
-                      <Paragraph>Location: {product.location || 'N/A'}</Paragraph>
-                      <Paragraph>Supplier: {product.supplier || 'N/A'}</Paragraph>
+                      <Paragraph>
+                        Category: {product.category || 'N/A'}
+                      </Paragraph>
+                      <Paragraph>
+                        Location: {product.location || 'N/A'}
+                      </Paragraph>
+                      <Paragraph>
+                        Supplier: {product.supplier || 'N/A'}
+                      </Paragraph>
                     </View>
                     <View style={styles.priceColumn}>
-                      <Paragraph style={styles.price}>₱{(product.sellingPrice || 0).toFixed(2)}</Paragraph>
-                      <Paragraph style={styles.purchasePrice}>Cost: ₱{(product.purchasePrice || 0).toFixed(2)}</Paragraph>
-                      <TouchableOpacity 
+                      <Paragraph style={styles.price}>
+                        ₱{(product.sellingPrice || 0).toFixed(2)}
+                      </Paragraph>
+                      <Paragraph style={styles.purchasePrice}>
+                        Cost: ₱{(product.purchasePrice || 0).toFixed(2)}
+                      </Paragraph>
+                      <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => navigation.navigate('WarehouseProductEdit', { productId: product.id })}
-                      >
+                        onPress={() =>
+                          navigation.navigate('WarehouseProductEdit', {
+                            productId: product.id,
+                          })
+                        }>
                         <Text style={styles.editButtonText}>Edit</Text>
                       </TouchableOpacity>
                     </View>
@@ -148,20 +178,22 @@ const WarehouseInventoryScreen = ({ navigation, route }) => {
           ) : (
             <Card style={styles.emptyCard}>
               <Card.Content>
-                <Paragraph style={styles.emptyText}>No products found.</Paragraph>
+                <Paragraph style={styles.emptyText}>
+                  No products found.
+                </Paragraph>
               </Card.Content>
             </Card>
           )}
         </ScrollView>
       </View>
-      
+
       <FAB
         style={styles.fab}
         icon="plus"
         onPress={() => navigation.navigate('WarehouseProductAdd')}
         label="Add Product"
       />
-      
+
       <FAB
         style={styles.logoutFab}
         icon="logout"

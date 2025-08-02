@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   StyleSheet,
-  Image
+  Image,
 } from 'react-native';
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
-import { generateClient } from 'aws-amplify/api';
-import { createProduct, createWarehouseProduct } from '../../graphql/mutations';
-import { listCategories } from '../../graphql/queries';
-import { Picker } from '@react-native-picker/picker';
-import { colors } from '../../constants/theme';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { Storage } from 'aws-amplify/storage';
+import {useAuthenticator} from '@aws-amplify/ui-react-native';
+import {generateClient} from 'aws-amplify/api';
+import {createProduct, createWarehouseProduct} from '../../graphql/mutations';
+import {listCategories} from '../../graphql/queries';
+import {Picker} from '@react-native-picker/picker';
+import {colors} from '../../constants/theme';
+import {launchImageLibrary} from 'react-native-image-picker';
+import {Storage} from 'aws-amplify/storage';
 
 // Define styles
 const styles = StyleSheet.create({
@@ -145,10 +145,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function WarehouseProductScreen({ navigation, route }) {
-  const { user } = useAuthenticator();
+export default function WarehouseProductScreen({navigation, route}) {
+  const {user} = useAuthenticator();
   const client = generateClient();
-  
+
   const [formState, setFormState] = useState({
     name: '',
     brand: '',
@@ -159,18 +159,18 @@ export default function WarehouseProductScreen({ navigation, route }) {
     category: '',
     sku: '',
     img: '',
-    source: 'warehouse'
+    source: 'warehouse',
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  
+
   // Safe getter for categories to prevent length of undefined errors
   const getCategories = () => categories || [];
-  
+
   // We're not fetching categories from API anymore
   // Using direct text input for category instead
 
@@ -182,10 +182,10 @@ export default function WarehouseProductScreen({ navigation, route }) {
         includeBase64: false,
         maxHeight: 800,
         maxWidth: 800,
-        quality: 0.8
+        quality: 0.8,
       };
-      
-      launchImageLibrary(options, (response) => {
+
+      launchImageLibrary(options, response => {
         if (response.didCancel) {
           console.log('User cancelled image picker');
         } else if (response.error) {
@@ -203,18 +203,22 @@ export default function WarehouseProductScreen({ navigation, route }) {
 
   // Function to upload image to S3
   const uploadImage = async () => {
-    if (!selectedImage) return null;
-    
+    if (!selectedImage) {
+      return null;
+    }
+
     try {
       setUploadingImage(true);
-      
+
       // Create a unique filename
-      const filename = `warehouse-products/${Date.now()}-${Math.floor(Math.random() * 1000000)}.jpg`;
-      
+      const filename = `warehouse-products/${Date.now()}-${Math.floor(
+        Math.random() * 1000000,
+      )}.jpg`;
+
       // Get the extension
       const response = await fetch(selectedImage);
       const blob = await response.blob();
-      
+
       // Upload to S3
       await Storage.put(filename, blob, {
         contentType: 'image/jpeg',
@@ -222,7 +226,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
         },
       });
-      
+
       // Return the S3 URL
       return filename;
     } catch (error) {
@@ -233,19 +237,24 @@ export default function WarehouseProductScreen({ navigation, route }) {
       setUploadingImage(false);
     }
   };
-  
+
   const handleSubmit = async () => {
-    if (!formState.name || !formState.oprice || !formState.sprice || !formState.stock) {
+    if (
+      !formState.name ||
+      !formState.oprice ||
+      !formState.sprice ||
+      !formState.stock
+    ) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-    
+
     // Debug step - log what we're trying to submit
     console.log('Submitting product:', formState);
 
     try {
       setLoading(true);
-      
+
       // Upload image if selected
       let imageUrl = formState.img;
       if (selectedImage) {
@@ -254,7 +263,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           imageUrl = uploadedImageKey;
         }
       }
-      
+
       // Create warehouse product directly without creating store product first
       await client.graphql({
         query: createWarehouseProduct,
@@ -278,9 +287,9 @@ export default function WarehouseProductScreen({ navigation, route }) {
             reorderQuantity: null,
             location: null,
             isActive: true,
-            lastRestockDate: new Date().toISOString()
-          }
-        }
+            lastRestockDate: new Date().toISOString(),
+          },
+        },
       });
 
       Alert.alert('Success', 'Product added to warehouse successfully');
@@ -294,7 +303,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
         category: '',
         sku: '',
         img: '',
-        source: 'warehouse'
+        source: 'warehouse',
       });
       setSelectedImage(null);
       navigation.goBack();
@@ -302,9 +311,9 @@ export default function WarehouseProductScreen({ navigation, route }) {
       console.error('Error details:', error);
       Alert.alert(
         'Error',
-        error?.errors?.[0]?.message || 
-        error?.message || 
-        'Failed to add product to warehouse. Please try again.'
+        error?.errors?.[0]?.message ||
+          error?.message ||
+          'Failed to add product to warehouse. Please try again.',
       );
     } finally {
       setLoading(false);
@@ -312,10 +321,9 @@ export default function WarehouseProductScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+      style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <Text style={styles.heading}>Add Warehouse Product</Text>
 
@@ -324,7 +332,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TextInput
             placeholder="Enter product name"
             value={formState.name}
-            onChangeText={(text) => setFormState({ ...formState, name: text })}
+            onChangeText={text => setFormState({...formState, name: text})}
             style={styles.input}
           />
         </View>
@@ -334,7 +342,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TextInput
             placeholder="Enter brand name"
             value={formState.brand}
-            onChangeText={(text) => setFormState({ ...formState, brand: text })}
+            onChangeText={text => setFormState({...formState, brand: text})}
             style={styles.input}
           />
         </View>
@@ -344,7 +352,9 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TextInput
             placeholder="Enter product description"
             value={formState.description}
-            onChangeText={(text) => setFormState({ ...formState, description: text })}
+            onChangeText={text =>
+              setFormState({...formState, description: text})
+            }
             style={[styles.input, styles.textArea]}
             multiline={true}
             numberOfLines={4}
@@ -357,7 +367,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
             <TextInput
               placeholder="0.00"
               value={formState.oprice}
-              onChangeText={(text) => setFormState({ ...formState, oprice: text })}
+              onChangeText={text => setFormState({...formState, oprice: text})}
               keyboardType="numeric"
               style={styles.input}
             />
@@ -368,7 +378,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
             <TextInput
               placeholder="0.00"
               value={formState.sprice}
-              onChangeText={(text) => setFormState({ ...formState, sprice: text })}
+              onChangeText={text => setFormState({...formState, sprice: text})}
               keyboardType="numeric"
               style={styles.input}
             />
@@ -381,7 +391,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
             <TextInput
               placeholder="0"
               value={formState.stock}
-              onChangeText={(text) => setFormState({ ...formState, stock: text })}
+              onChangeText={text => setFormState({...formState, stock: text})}
               keyboardType="numeric"
               style={styles.input}
             />
@@ -392,7 +402,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
             <TextInput
               placeholder="Enter SKU"
               value={formState.sku}
-              onChangeText={(text) => setFormState({ ...formState, sku: text })}
+              onChangeText={text => setFormState({...formState, sku: text})}
               style={styles.input}
             />
           </View>
@@ -403,7 +413,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TextInput
             placeholder="Enter Category"
             value={formState.category}
-            onChangeText={(text) => setFormState({...formState, category: text})}
+            onChangeText={text => setFormState({...formState, category: text})}
             style={styles.input}
           />
         </View>
@@ -412,17 +422,19 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <Text style={styles.label}>Product Image</Text>
           <View style={styles.imageUploadContainer}>
             {selectedImage ? (
-              <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+              <Image
+                source={{uri: selectedImage}}
+                style={styles.previewImage}
+              />
             ) : (
               <View style={styles.placeholderImage}>
                 <Text style={styles.placeholderText}>No Image</Text>
               </View>
             )}
-            <TouchableOpacity 
-              style={styles.imageButton} 
+            <TouchableOpacity
+              style={styles.imageButton}
               onPress={pickImage}
-              disabled={uploadingImage}
-            >
+              disabled={uploadingImage}>
               <Text style={styles.imageButtonText}>
                 {selectedImage ? 'Change Image' : 'Select Image'}
               </Text>
@@ -434,8 +446,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading || uploadingImage}
-            style={[styles.button, styles.primaryButton]}
-          >
+            style={[styles.button, styles.primaryButton]}>
             {loading || uploadingImage ? (
               <ActivityIndicator color="white" size="small" />
             ) : (
@@ -446,8 +457,7 @@ export default function WarehouseProductScreen({ navigation, route }) {
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={[styles.button, styles.secondaryButton]}
-            disabled={loading || uploadingImage}
-          >
+            disabled={loading || uploadingImage}>
             <Text style={styles.secondaryButtonText}>Cancel</Text>
           </TouchableOpacity>
         </View>

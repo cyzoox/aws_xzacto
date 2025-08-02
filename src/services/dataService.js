@@ -1,21 +1,21 @@
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 import * as queries from '../graphql/queries';
-import { store } from '../store';
-import { syncService } from './syncService';
-import { 
-  setStoreList, 
+import {store} from '../store';
+import {syncService} from './syncService';
+import {
+  setStoreList,
   setLoading as setStoreLoading,
-  setError as setStoreError 
+  setError as setStoreError,
 } from '../store/slices/storeSlice';
-import { 
-  setStaffList, 
+import {
+  setStaffList,
   setLoading as setStaffLoading,
-  setError as setStaffError 
+  setError as setStaffError,
 } from '../store/slices/staffSlice';
-import { 
-  setSalesList, 
+import {
+  setSalesList,
   setLoading as setSalesLoading,
-  setError as setSalesError 
+  setError as setSalesError,
 } from '../store/slices/salesSlice';
 
 const client = generateClient();
@@ -32,18 +32,20 @@ const lastFetchTimestamps = {
 };
 
 // Cache expiration time (5 minutes in milliseconds)
-const CACHE_EXPIRATION = 5 * 60 * 1000; 
+const CACHE_EXPIRATION = 5 * 60 * 1000;
 
 // Check if cache is valid for an entity
-const isCacheValid = (entity) => {
-  if (!lastFetchTimestamps[entity]) return false;
-  
+const isCacheValid = entity => {
+  if (!lastFetchTimestamps[entity]) {
+    return false;
+  }
+
   const now = new Date().getTime();
-  return (now - lastFetchTimestamps[entity]) < CACHE_EXPIRATION;
+  return now - lastFetchTimestamps[entity] < CACHE_EXPIRATION;
 };
 
 // Update cache timestamp for an entity
-const updateCacheTimestamp = (entity) => {
+const updateCacheTimestamp = entity => {
   lastFetchTimestamps[entity] = new Date().getTime();
 };
 
@@ -55,7 +57,7 @@ class DataService {
       console.log('App offline, using cached Redux data only');
       return;
     }
-    
+
     // Don't block the UI, let this run in the background
     this.fetchStores(true);
     this.fetchStaff(true);
@@ -72,15 +74,15 @@ class DataService {
 
     try {
       store.dispatch(setStoreLoading(true));
-      
-      const { data } = await client.graphql({
-        query: queries.listStores
+
+      const {data} = await client.graphql({
+        query: queries.listStores,
       });
-      
+
       const stores = data.listStores.items;
       store.dispatch(setStoreList(stores));
       updateCacheTimestamp('stores');
-      
+
       return stores;
     } catch (error) {
       console.error('Error fetching stores:', error);
@@ -100,15 +102,15 @@ class DataService {
 
     try {
       store.dispatch(setStaffLoading(true));
-      
-      const { data } = await client.graphql({
-        query: queries.listStaff
+
+      const {data} = await client.graphql({
+        query: queries.listStaff,
       });
-      
+
       const staffList = data.listStaff.items;
       store.dispatch(setStaffList(staffList));
       updateCacheTimestamp('staff');
-      
+
       return staffList;
     } catch (error) {
       console.error('Error fetching staff:', error);
@@ -128,15 +130,15 @@ class DataService {
 
     try {
       store.dispatch(setSalesLoading(true));
-      
-      const { data } = await client.graphql({
-        query: queries.listSaleTransactions
+
+      const {data} = await client.graphql({
+        query: queries.listSaleTransactions,
       });
-      
+
       const salesList = data.listSaleTransactions.items;
       store.dispatch(setSalesList(salesList));
       updateCacheTimestamp('sales');
-      
+
       return salesList;
     } catch (error) {
       console.error('Error fetching sales:', error);
@@ -150,26 +152,26 @@ class DataService {
   // Fetch products for a specific store
   async fetchProductsByStore(storeId, force = false) {
     const cacheKey = `products_${storeId}`;
-    
+
     if (!force && isCacheValid(cacheKey)) {
       console.log(`Using cached products for store ${storeId}`);
       return store.getState().product?.itemsByStore?.[storeId] || [];
     }
 
     try {
-      const { data } = await client.graphql({
+      const {data} = await client.graphql({
         query: queries.listProducts,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId } 
-          } 
-        }
+        variables: {
+          filter: {
+            storeId: {eq: storeId},
+          },
+        },
       });
-      
+
       const products = data.listProducts.items;
       // Note: This assumes you have a product slice with the right actions
       // If not, you'll need to create one or modify this function
-      
+
       updateCacheTimestamp(cacheKey);
       return products;
     } catch (error) {
@@ -177,33 +179,36 @@ class DataService {
       return [];
     }
   }
-  
+
   // Fetch pending inventory requests for a store
   async getPendingInventoryRequests(storeId, force = false) {
     const cacheKey = `inventory_requests_${storeId}`;
-    
+
     if (!force && isCacheValid(cacheKey)) {
       console.log(`Using cached inventory requests for store ${storeId}`);
       // If we had a Redux slice for inventory requests, we'd use it here
       // For now, we don't have a persistent cache
     }
-    
+
     try {
-      const { data } = await client.graphql({
+      const {data} = await client.graphql({
         query: queries.listInventoryRequests,
-        variables: { 
-          filter: { 
-            storeId: { eq: storeId },
-            status: { eq: 'Pending' }
-          } 
-        }
+        variables: {
+          filter: {
+            storeId: {eq: storeId},
+            status: {eq: 'Pending'},
+          },
+        },
       });
-      
+
       const requests = data.listInventoryRequests.items;
       updateCacheTimestamp(cacheKey);
       return requests;
     } catch (error) {
-      console.error(`Error fetching inventory requests for store ${storeId}:`, error);
+      console.error(
+        `Error fetching inventory requests for store ${storeId}:`,
+        error,
+      );
       return [];
     }
   }

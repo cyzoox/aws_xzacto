@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 import NetInfo from '@react-native-community/netinfo';
 
 const client = generateClient();
@@ -96,38 +96,43 @@ const createSubscriptionPlan = /* GraphQL */ `
 // Async thunks
 export const fetchSubscriptionPlans = createAsyncThunk(
   'subscription/fetchPlans',
-  async (_, { rejectWithValue }) => {
+  async (_, {rejectWithValue}) => {
     try {
-      const { isConnected } = await NetInfo.fetch();
-      
+      const {isConnected} = await NetInfo.fetch();
+
       if (!isConnected) {
-        const offlinePlans = await AsyncStorage.getItem('offline_subscription_plans');
+        const offlinePlans = await AsyncStorage.getItem(
+          'offline_subscription_plans',
+        );
         return offlinePlans ? JSON.parse(offlinePlans) : [];
       }
 
       const response = await client.graphql({
-        query: listSubscriptionPlans
+        query: listSubscriptionPlans,
       });
-      
+
       const plans = response.data.listSubscriptionPlans.items;
-      
+
       // Store plans in AsyncStorage for offline access
-      await AsyncStorage.setItem('offline_subscription_plans', JSON.stringify(plans));
-      
+      await AsyncStorage.setItem(
+        'offline_subscription_plans',
+        JSON.stringify(plans),
+      );
+
       return plans;
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 export const fetchAccountByOwnerId = createAsyncThunk(
   'subscription/fetchAccount',
-  async (ownerId, { rejectWithValue }) => {
+  async (ownerId, {rejectWithValue}) => {
     try {
-      const { isConnected } = await NetInfo.fetch();
-      
+      const {isConnected} = await NetInfo.fetch();
+
       if (!isConnected) {
         const offlineAccount = await AsyncStorage.getItem('offline_account');
         return offlineAccount ? JSON.parse(offlineAccount) : null;
@@ -135,49 +140,58 @@ export const fetchAccountByOwnerId = createAsyncThunk(
 
       const response = await client.graphql({
         query: getAccountByOwnerId,
-        variables: { ownerId }
+        variables: {ownerId},
       });
-      
+
       const accounts = response.data.listAccounts.items;
-      if (accounts.length === 0) return null;
-      
+      if (accounts.length === 0) {
+        return null;
+      }
+
       const account = accounts[0];
-      
+
       // Store account in AsyncStorage for offline access
       await AsyncStorage.setItem('offline_account', JSON.stringify(account));
-      
+
       return account;
     } catch (error) {
       console.error('Error fetching account by owner ID:', error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 export const upgradeSubscription = createAsyncThunk(
   'subscription/upgrade',
-  async ({ accountId, currentPlanId, newPlanId, staffId }, { rejectWithValue }) => {
+  async ({accountId, currentPlanId, newPlanId, staffId}, {rejectWithValue}) => {
     try {
-      const { isConnected } = await NetInfo.fetch();
-      
+      const {isConnected} = await NetInfo.fetch();
+
       if (!isConnected) {
         // Store upgrade request for later sync
         const pendingAction = {
           type: 'UPGRADE_SUBSCRIPTION',
-          data: { accountId, currentPlanId, newPlanId, staffId },
-          timestamp: Date.now()
+          data: {accountId, currentPlanId, newPlanId, staffId},
+          timestamp: Date.now(),
         };
-        
-        const pendingActions = await AsyncStorage.getItem('pending_subscription_actions');
+
+        const pendingActions = await AsyncStorage.getItem(
+          'pending_subscription_actions',
+        );
         const actions = pendingActions ? JSON.parse(pendingActions) : [];
         actions.push(pendingAction);
-        await AsyncStorage.setItem('pending_subscription_actions', JSON.stringify(actions));
-        
+        await AsyncStorage.setItem(
+          'pending_subscription_actions',
+          JSON.stringify(actions),
+        );
+
         // Get plan details for optimistic update
-        const offlinePlans = await AsyncStorage.getItem('offline_subscription_plans');
+        const offlinePlans = await AsyncStorage.getItem(
+          'offline_subscription_plans',
+        );
         const plans = offlinePlans ? JSON.parse(offlinePlans) : [];
         const selectedPlan = plans.find(plan => plan.id === newPlanId);
-        
+
         // Update the offline account with new subscription
         const offlineAccount = await AsyncStorage.getItem('offline_account');
         if (offlineAccount) {
@@ -186,14 +200,19 @@ export const upgradeSubscription = createAsyncThunk(
             ...account,
             subscriptionPlanId: newPlanId,
             subscriptionStatus: 'active',
-            subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            subscriptionEndDate: new Date(
+              Date.now() + 30 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
             subscriptionPlan: selectedPlan,
-            _offline: true
+            _offline: true,
           };
-          await AsyncStorage.setItem('offline_account', JSON.stringify(updatedAccount));
+          await AsyncStorage.setItem(
+            'offline_account',
+            JSON.stringify(updatedAccount),
+          );
           return updatedAccount;
         }
-        
+
         return null;
       }
 
@@ -207,11 +226,13 @@ export const upgradeSubscription = createAsyncThunk(
             subscriptionPlanId: newPlanId,
             lastModifiedBy: staffId,
             subscriptionStatus: 'active',
-            subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          }
-        }
+            subscriptionEndDate: new Date(
+              Date.now() + 30 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          },
+        },
       });
-      
+
       // 2. Record subscription change in history
       await client.graphql({
         query: createSubscriptionHistory,
@@ -221,36 +242,39 @@ export const upgradeSubscription = createAsyncThunk(
             changeDate: new Date().toISOString(),
             changedBy: staffId,
             previousPlanId: currentPlanId,
-            newPlanId: newPlanId
-          }
-        }
+            newPlanId: newPlanId,
+          },
+        },
       });
-      
+
       // 3. Fetch the updated account with the new plan
       const response = await client.graphql({
         query: getAccountByOwnerId,
-        variables: { ownerId: updateResult.data.updateAccount.ownerId }
+        variables: {ownerId: updateResult.data.updateAccount.ownerId},
       });
-      
+
       const updatedAccount = response.data.listAccounts.items[0];
-      
+
       // Update the offline cache
-      await AsyncStorage.setItem('offline_account', JSON.stringify(updatedAccount));
-      
+      await AsyncStorage.setItem(
+        'offline_account',
+        JSON.stringify(updatedAccount),
+      );
+
       return updatedAccount;
     } catch (error) {
       console.error('Error upgrading subscription:', error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 export const createDefaultFreePlan = createAsyncThunk(
   'subscription/createDefaultPlan',
-  async (_, { rejectWithValue }) => {
+  async (_, {rejectWithValue}) => {
     try {
-      const { isConnected } = await NetInfo.fetch();
-      
+      const {isConnected} = await NetInfo.fetch();
+
       if (!isConnected) {
         // Cannot create a plan offline
         return rejectWithValue('Cannot create subscription plan while offline');
@@ -260,57 +284,70 @@ export const createDefaultFreePlan = createAsyncThunk(
         query: createSubscriptionPlan,
         variables: {
           input: {
-            name: "Free",
-            description: "Free tier with limited features",
+            name: 'Free',
+            description: 'Free tier with limited features',
             price: 0,
-            interval: "monthly",
+            interval: 'monthly',
             storeLimit: 2,
             staffPerStoreLimit: 3,
             adminPerStoreLimit: 1,
-            features: ["basic_pos", "basic_inventory"],
-            isActive: true
-          }
-        }
+            features: ['basic_pos', 'basic_inventory'],
+            isActive: true,
+          },
+        },
       });
-      
+
       const newPlan = response.data.createSubscriptionPlan;
-      
+
       // Update offline cache
-      const offlinePlans = await AsyncStorage.getItem('offline_subscription_plans');
+      const offlinePlans = await AsyncStorage.getItem(
+        'offline_subscription_plans',
+      );
       const plans = offlinePlans ? JSON.parse(offlinePlans) : [];
       plans.push(newPlan);
-      await AsyncStorage.setItem('offline_subscription_plans', JSON.stringify(plans));
-      
+      await AsyncStorage.setItem(
+        'offline_subscription_plans',
+        JSON.stringify(plans),
+      );
+
       return newPlan;
     } catch (error) {
       console.error('Error creating default free plan:', error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 export const syncSubscriptionActions = createAsyncThunk(
   'subscription/syncActions',
-  async (_, { dispatch, rejectWithValue }) => {
+  async (_, {dispatch, rejectWithValue}) => {
     try {
-      const { isConnected } = await NetInfo.fetch();
-      if (!isConnected) return rejectWithValue('No internet connection');
+      const {isConnected} = await NetInfo.fetch();
+      if (!isConnected) {
+        return rejectWithValue('No internet connection');
+      }
 
-      const pendingActions = await AsyncStorage.getItem('pending_subscription_actions');
-      if (!pendingActions) return;
+      const pendingActions = await AsyncStorage.getItem(
+        'pending_subscription_actions',
+      );
+      if (!pendingActions) {
+        return;
+      }
 
       const actions = JSON.parse(pendingActions);
-      
+
       for (const action of actions) {
         if (action.type === 'UPGRADE_SUBSCRIPTION') {
           // Re-dispatch the upgrade action but exclude the _offline flag
-          await dispatch(upgradeSubscription({
-            ...action.data,
-            _sync: true // Mark that this is a sync operation
-          }));
+          await dispatch(
+            upgradeSubscription({
+              ...action.data,
+              _sync: true, // Mark that this is a sync operation
+            }),
+          );
         }
       }
-      
+
       // Clear pending actions after successful sync
       await AsyncStorage.removeItem('pending_subscription_actions');
       return true;
@@ -318,7 +355,7 @@ export const syncSubscriptionActions = createAsyncThunk(
       console.error('Error syncing subscription actions:', error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 const subscriptionSlice = createSlice({
@@ -328,17 +365,17 @@ const subscriptionSlice = createSlice({
     currentAccount: null,
     loading: false,
     error: null,
-    syncStatus: 'idle'
+    syncStatus: 'idle',
   },
   reducers: {
-    resetError: (state) => {
+    resetError: state => {
       state.error = null;
-    }
+    },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
       // Fetch subscription plans
-      .addCase(fetchSubscriptionPlans.pending, (state) => {
+      .addCase(fetchSubscriptionPlans.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -350,9 +387,9 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch account
-      .addCase(fetchAccountByOwnerId.pending, (state) => {
+      .addCase(fetchAccountByOwnerId.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -364,9 +401,9 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Upgrade subscription
-      .addCase(upgradeSubscription.pending, (state) => {
+      .addCase(upgradeSubscription.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -380,9 +417,9 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Create default free plan
-      .addCase(createDefaultFreePlan.pending, (state) => {
+      .addCase(createDefaultFreePlan.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -394,20 +431,20 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Sync subscription actions
-      .addCase(syncSubscriptionActions.pending, (state) => {
+      .addCase(syncSubscriptionActions.pending, state => {
         state.syncStatus = 'syncing';
       })
-      .addCase(syncSubscriptionActions.fulfilled, (state) => {
+      .addCase(syncSubscriptionActions.fulfilled, state => {
         state.syncStatus = 'completed';
       })
       .addCase(syncSubscriptionActions.rejected, (state, action) => {
         state.syncStatus = 'failed';
         state.error = action.payload;
       });
-  }
+  },
 });
 
-export const { resetError } = subscriptionSlice.actions;
+export const {resetError} = subscriptionSlice.actions;
 export default subscriptionSlice.reducer;

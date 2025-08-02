@@ -13,42 +13,46 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
-import { createProductWithDetails, syncOfflineActions } from '../redux/slices/productSlice';
-import { fetchCategories } from '../redux/slices/categorySlice';
+import {
+  createProductWithDetails,
+  syncOfflineActions,
+} from '../redux/slices/productSlice';
+import {fetchCategories} from '../redux/slices/categorySlice';
 import NetInfo from '@react-native-community/netinfo';
 import {generateClient} from 'aws-amplify/api';
 
 import {useStore} from '../context/StoreContext';
 import {uploadData} from 'aws-amplify/storage';
-import {
-  Button,
-  Card,
-  Divider,
-  IconButton,
-  Menu,
-} from 'react-native-paper';
+import {Button, Card, Divider, IconButton, Menu} from 'react-native-paper';
 import Appbar from '../components/Appbar';
 import * as ImagePicker from 'react-native-image-picker';
 
 import {v4 as uuidv4} from 'uuid';
 
-
-
-const CreateProductScreen = ({ navigation, route }) => {
+const CreateProductScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
-  const {loading: reduxLoading, error: reduxError} = useSelector(state => state.products);
-  const { items: categories } = useSelector(state => state.categories);
-  
+  const {loading: reduxLoading, error: reduxError} = useSelector(
+    state => state.products,
+  );
+  const {items: categories} = useSelector(state => state.categories);
+
   // Get store directly from route params if available
   const storeFromParams = route.params?.store;
-  
+
   // Still use StoreContext as fallback
-  const { currentStore: contextStore, currentStaff, staffStores, fetchStores } = useStore();
-  
+  const {
+    currentStore: contextStore,
+    currentStaff,
+    staffStores,
+    fetchStores,
+  } = useStore();
+
   // Use store from params if available, otherwise fall back to context
   const currentStore = storeFromParams || contextStore;
-  
-  const { loading: storeLoading } = useSelector(state => state.store) || { loading: false };
+
+  const {loading: storeLoading} = useSelector(state => state.store) || {
+    loading: false,
+  };
 
   // Form state
   const [isLoading, setIsLoading] = useState(false);
@@ -67,12 +71,12 @@ const CreateProductScreen = ({ navigation, route }) => {
     sku: '',
     image: null,
     variants: [],
-    addons: []
+    addons: [],
   });
 
   // Variant and Addon state
-  const [newVariant, setNewVariant] = useState({ name: '', price: '' });
-  const [newAddon, setNewAddon] = useState({ name: '', price: '' });
+  const [newVariant, setNewVariant] = useState({name: '', price: ''});
+  const [newAddon, setNewAddon] = useState({name: '', price: ''});
 
   // Initialize client
   const client = generateClient();
@@ -119,7 +123,7 @@ const CreateProductScreen = ({ navigation, route }) => {
 
     return () => unsubscribe();
   }, [dispatch]);
-  
+
   // Form validation
   const validateForm = () => {
     const errors = {};
@@ -149,7 +153,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     } else if (parseFloat(formState.stock) < 0) {
       errors.stock = 'Stock cannot be negative';
     }
-    
+
     // Category validation
     if (!formState.category) {
       errors.category = 'Category is required';
@@ -171,20 +175,22 @@ const CreateProductScreen = ({ navigation, route }) => {
   // Upload image helper
   const uploadImage = async () => {
     try {
-      if (!formState.image) return null;
+      if (!formState.image) {
+        return null;
+      }
 
       const response = await fetch(formState.image);
       const blob = await response.blob();
       const imageKey = `products/${currentStore.id}/${uuidv4()}.jpg`;
-      
+
       await uploadData({
         key: imageKey,
         data: blob,
         options: {
-          contentType: 'image/jpeg'
-        }
+          contentType: 'image/jpeg',
+        },
       });
-      
+
       return imageKey;
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -204,8 +210,13 @@ const CreateProductScreen = ({ navigation, route }) => {
     setIsLoading(true);
     try {
       // Log store information for debugging
-      console.log('Creating product for store:', currentStore?.name, 'with ID:', currentStore?.id);
-      
+      console.log(
+        'Creating product for store:',
+        currentStore?.name,
+        'with ID:',
+        currentStore?.id,
+      );
+
       // Upload image if exists
       let imageKey = null;
       if (formState.image) {
@@ -226,31 +237,32 @@ const CreateProductScreen = ({ navigation, route }) => {
           subcategory: formState.subcategory || '',
           sku: formState.sku || '',
           img: imageKey || '',
-          storeId: currentStore?.id || '',  // Link to store
-          isActive: true
+          storeId: currentStore?.id || '', // Link to store
+          isActive: true,
         },
         // Prepare variants array with proper structure
         variants: formState.variants.map(variant => ({
           name: variant.name,
           price: parseFloat(variant.price),
-          productId: '' // Will be set after product creation
+          productId: '', // Will be set after product creation
         })),
         // Prepare addons array with proper structure
         addons: formState.addons.map(addon => ({
           name: addon.name,
           price: parseFloat(addon.price),
-          productId: '' // Will be set after product creation
-        }))
+          productId: '', // Will be set after product creation
+        })),
       };
-      
-      console.log('Creating product with data:', JSON.stringify(productData, null, 2));
+
+      console.log(
+        'Creating product with data:',
+        JSON.stringify(productData, null, 2),
+      );
       await dispatch(createProductWithDetails(productData));
 
-      Alert.alert(
-        'Success',
-        'Product created successfully',
-        [{text: 'OK', onPress: () => navigation.goBack()}]
-      );
+      Alert.alert('Success', 'Product created successfully', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
     } catch (error) {
       console.error('Error creating product:', error);
       Alert.alert('Error', 'Failed to create product. Please try again.');
@@ -269,19 +281,21 @@ const CreateProductScreen = ({ navigation, route }) => {
   // State for category menu
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
 
-  if (!currentStore) return null;
+  if (!currentStore) {
+    return null;
+  }
 
   // Form handlers
   const handleInputChange = (field, value) => {
     setFormState(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
     // Clear error when user starts typing
     if (formErrors[field]) {
       setFormErrors(prev => ({
         ...prev,
-        [field]: ''
+        [field]: '',
       }));
     }
   };
@@ -307,43 +321,57 @@ const CreateProductScreen = ({ navigation, route }) => {
 
   // Variant handlers
   const addVariant = () => {
-    if (!newVariant.name || !newVariant.price || isNaN(parseFloat(newVariant.price))) {
+    if (
+      !newVariant.name ||
+      !newVariant.price ||
+      isNaN(parseFloat(newVariant.price))
+    ) {
       Alert.alert('Error', 'Please enter valid variant name and price');
       return;
     }
 
     setFormState(prev => ({
       ...prev,
-      variants: [...prev.variants, { ...newVariant, price: parseFloat(newVariant.price) }]
+      variants: [
+        ...prev.variants,
+        {...newVariant, price: parseFloat(newVariant.price)},
+      ],
     }));
-    setNewVariant({ name: '', price: '' });
+    setNewVariant({name: '', price: ''});
   };
 
-  const removeVariant = (index) => {
+  const removeVariant = index => {
     setFormState(prev => ({
       ...prev,
-      variants: prev.variants.filter((_, i) => i !== index)
+      variants: prev.variants.filter((_, i) => i !== index),
     }));
   };
 
   // Addon handlers
   const addAddon = () => {
-    if (!newAddon.name || !newAddon.price || isNaN(parseFloat(newAddon.price))) {
+    if (
+      !newAddon.name ||
+      !newAddon.price ||
+      isNaN(parseFloat(newAddon.price))
+    ) {
       Alert.alert('Error', 'Please enter valid addon name and price');
       return;
     }
 
     setFormState(prev => ({
       ...prev,
-      addons: [...prev.addons, { ...newAddon, price: parseFloat(newAddon.price) }]
+      addons: [
+        ...prev.addons,
+        {...newAddon, price: parseFloat(newAddon.price)},
+      ],
     }));
-    setNewAddon({ name: '', price: '' });
+    setNewAddon({name: '', price: ''});
   };
 
-  const removeAddon = (index) => {
+  const removeAddon = index => {
     setFormState(prev => ({
       ...prev,
-      addons: prev.addons.filter((_, i) => i !== index)
+      addons: prev.addons.filter((_, i) => i !== index),
     }));
   };
 
@@ -351,27 +379,29 @@ const CreateProductScreen = ({ navigation, route }) => {
   const renderBasicInfoSection = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Basic Information</Text>
-      
+
       <TextInput
         style={[styles.input, formErrors.name && styles.inputError]}
         placeholder="Product Name *"
         value={formState.name}
-        onChangeText={(value) => handleInputChange('name', value)}
+        onChangeText={value => handleInputChange('name', value)}
       />
-      {formErrors.name && <Text style={styles.errorText}>{formErrors.name}</Text>}
+      {formErrors.name && (
+        <Text style={styles.errorText}>{formErrors.name}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.brand && styles.inputError]}
         placeholder="Brand"
         value={formState.brand}
-        onChangeText={(value) => handleInputChange('brand', value)}
+        onChangeText={value => handleInputChange('brand', value)}
       />
 
       <TextInput
         style={[styles.input, formErrors.description && styles.inputError]}
         placeholder="Description"
         value={formState.description}
-        onChangeText={(value) => handleInputChange('description', value)}
+        onChangeText={value => handleInputChange('description', value)}
         multiline
       />
 
@@ -379,34 +409,40 @@ const CreateProductScreen = ({ navigation, route }) => {
         style={[styles.input, formErrors.oprice && styles.inputError]}
         placeholder="Original Price *"
         value={formState.oprice}
-        onChangeText={(value) => handleInputChange('oprice', value)}
+        onChangeText={value => handleInputChange('oprice', value)}
         keyboardType="decimal-pad"
       />
-      {formErrors.oprice && <Text style={styles.errorText}>{formErrors.oprice}</Text>}
+      {formErrors.oprice && (
+        <Text style={styles.errorText}>{formErrors.oprice}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.sprice && styles.inputError]}
         placeholder="Selling Price *"
         value={formState.sprice}
-        onChangeText={(value) => handleInputChange('sprice', value)}
+        onChangeText={value => handleInputChange('sprice', value)}
         keyboardType="decimal-pad"
       />
-      {formErrors.sprice && <Text style={styles.errorText}>{formErrors.sprice}</Text>}
+      {formErrors.sprice && (
+        <Text style={styles.errorText}>{formErrors.sprice}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.stock && styles.inputError]}
         placeholder="Initial Stock *"
         value={formState.stock}
-        onChangeText={(value) => handleInputChange('stock', value)}
+        onChangeText={value => handleInputChange('stock', value)}
         keyboardType="decimal-pad"
       />
-      {formErrors.stock && <Text style={styles.errorText}>{formErrors.stock}</Text>}
+      {formErrors.stock && (
+        <Text style={styles.errorText}>{formErrors.stock}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.sku && styles.inputError]}
         placeholder="SKU"
         value={formState.sku}
-        onChangeText={(value) => handleInputChange('sku', value)}
+        onChangeText={value => handleInputChange('sku', value)}
       />
 
       <View style={styles.categoryContainer}>
@@ -414,15 +450,16 @@ const CreateProductScreen = ({ navigation, route }) => {
         <Menu
           visible={showCategoryMenu}
           onDismiss={() => setShowCategoryMenu(false)}
-          anchor={(
-            <TouchableOpacity 
-              style={[styles.categoryButton, formErrors.category && styles.inputError]}
-              onPress={() => setShowCategoryMenu(true)}
-            >
+          anchor={
+            <TouchableOpacity
+              style={[
+                styles.categoryButton,
+                formErrors.category && styles.inputError,
+              ]}
+              onPress={() => setShowCategoryMenu(true)}>
               <Text>{formState.category || 'Select Category'}</Text>
             </TouchableOpacity>
-          )}
-        >
+          }>
           {categories
             .filter(cat => cat.storeId === currentStore.id)
             .map(category => (
@@ -437,20 +474,22 @@ const CreateProductScreen = ({ navigation, route }) => {
             ))}
         </Menu>
       </View>
-      {formErrors.category && <Text style={styles.errorText}>{formErrors.category}</Text>}
+      {formErrors.category && (
+        <Text style={styles.errorText}>{formErrors.category}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.subcategory && styles.inputError]}
         placeholder="Subcategory"
         value={formState.subcategory}
-        onChangeText={(value) => handleInputChange('subcategory', value)}
+        onChangeText={value => handleInputChange('subcategory', value)}
       />
 
       <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
         <Text>Select Product Image</Text>
       </TouchableOpacity>
       {formState.image && (
-        <Image source={{ uri: formState.image }} style={styles.previewImage} />
+        <Image source={{uri: formState.image}} style={styles.previewImage} />
       )}
     </View>
   );
@@ -460,16 +499,20 @@ const CreateProductScreen = ({ navigation, route }) => {
       <Text style={styles.sectionTitle}>Variants</Text>
       <View style={styles.inputRow}>
         <TextInput
-          style={[styles.input, { flex: 2 }]}
+          style={[styles.input, {flex: 2}]}
           placeholder="Variant Name"
           value={newVariant.name}
-          onChangeText={(value) => setNewVariant(prev => ({ ...prev, name: value }))}
+          onChangeText={value =>
+            setNewVariant(prev => ({...prev, name: value}))
+          }
         />
         <TextInput
-          style={[styles.input, { flex: 1, marginLeft: 8 }]}
+          style={[styles.input, {flex: 1, marginLeft: 8}]}
           placeholder="Price"
           value={newVariant.price}
-          onChangeText={(value) => setNewVariant(prev => ({ ...prev, price: value }))}
+          onChangeText={value =>
+            setNewVariant(prev => ({...prev, price: value}))
+          }
           keyboardType="decimal-pad"
         />
         <TouchableOpacity style={styles.addButton} onPress={addVariant}>
@@ -482,8 +525,7 @@ const CreateProductScreen = ({ navigation, route }) => {
           <Text style={styles.itemPrice}>₱{variant.price}</Text>
           <TouchableOpacity
             style={styles.removeButton}
-            onPress={() => removeVariant(index)}
-          >
+            onPress={() => removeVariant(index)}>
             <Text style={styles.removeButtonText}>×</Text>
           </TouchableOpacity>
         </View>
@@ -496,16 +538,16 @@ const CreateProductScreen = ({ navigation, route }) => {
       <Text style={styles.sectionTitle}>Add-ons</Text>
       <View style={styles.inputRow}>
         <TextInput
-          style={[styles.input, { flex: 2 }]}
+          style={[styles.input, {flex: 2}]}
           placeholder="Add-on Name"
           value={newAddon.name}
-          onChangeText={(value) => setNewAddon(prev => ({ ...prev, name: value }))}
+          onChangeText={value => setNewAddon(prev => ({...prev, name: value}))}
         />
         <TextInput
-          style={[styles.input, { flex: 1, marginLeft: 8 }]}
+          style={[styles.input, {flex: 1, marginLeft: 8}]}
           placeholder="Price"
           value={newAddon.price}
-          onChangeText={(value) => setNewAddon(prev => ({ ...prev, price: value }))}
+          onChangeText={value => setNewAddon(prev => ({...prev, price: value}))}
           keyboardType="decimal-pad"
         />
         <TouchableOpacity style={styles.addButton} onPress={addAddon}>
@@ -518,8 +560,7 @@ const CreateProductScreen = ({ navigation, route }) => {
           <Text style={styles.itemPrice}>₱{addon.price}</Text>
           <TouchableOpacity
             style={styles.removeButton}
-            onPress={() => removeAddon(index)}
-          >
+            onPress={() => removeAddon(index)}>
             <Text style={styles.removeButtonText}>×</Text>
           </TouchableOpacity>
         </View>
@@ -531,10 +572,7 @@ const CreateProductScreen = ({ navigation, route }) => {
   if (reduxLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Appbar
-          title="Create Product"
-          onBack={() => navigation.goBack()}
-        />
+        <Appbar title="Create Product" onBack={() => navigation.goBack()} />
         <ActivityIndicator size="large" color="#4CAF50" />
         <Text style={styles.loadingText}>Loading product form...</Text>
       </View>
@@ -542,21 +580,20 @@ const CreateProductScreen = ({ navigation, route }) => {
   }
 
   // Show debug info about store
-  console.log('CreateProduct using store:', currentStore?.name, 'id:', currentStore?.id);
-  
+  console.log(
+    'CreateProduct using store:',
+    currentStore?.name,
+    'id:',
+    currentStore?.id,
+  );
+
   // Simplified error handling - only show error if we can't continue
   if (!currentStore?.id) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Appbar
-          title="Create Product"
-          onBack={() => navigation.goBack()}
-        />
+        <Appbar title="Create Product" onBack={() => navigation.goBack()} />
         <Text style={styles.errorText}>No store information available.</Text>
-        <Button 
-          mode="outlined" 
-          onPress={() => navigation.goBack()}
-        >
+        <Button mode="outlined" onPress={() => navigation.goBack()}>
           Go Back
         </Button>
       </View>
@@ -565,28 +602,40 @@ const CreateProductScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <Appbar
-        title="Create Product"
-        onBack={() => navigation.goBack()}
-      />
+      <Appbar title="Create Product" onBack={() => navigation.goBack()} />
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeSection === 'basic' && styles.activeTab]}
-          onPress={() => setActiveSection('basic')}
-        >
-          <Text style={[styles.tabText, activeSection === 'basic' && styles.activeTabText]}>Basic</Text>
+          onPress={() => setActiveSection('basic')}>
+          <Text
+            style={[
+              styles.tabText,
+              activeSection === 'basic' && styles.activeTabText,
+            ]}>
+            Basic
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeSection === 'variants' && styles.activeTab]}
-          onPress={() => setActiveSection('variants')}
-        >
-          <Text style={[styles.tabText, activeSection === 'variants' && styles.activeTabText]}>Variants</Text>
+          onPress={() => setActiveSection('variants')}>
+          <Text
+            style={[
+              styles.tabText,
+              activeSection === 'variants' && styles.activeTabText,
+            ]}>
+            Variants
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeSection === 'addons' && styles.activeTab]}
-          onPress={() => setActiveSection('addons')}
-        >
-          <Text style={[styles.tabText, activeSection === 'addons' && styles.activeTabText]}>Add-ons</Text>
+          onPress={() => setActiveSection('addons')}>
+          <Text
+            style={[
+              styles.tabText,
+              activeSection === 'addons' && styles.activeTabText,
+            ]}>
+            Add-ons
+          </Text>
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.content}>
@@ -599,8 +648,7 @@ const CreateProductScreen = ({ navigation, route }) => {
           mode="contained"
           onPress={handleSubmit}
           loading={isLoading}
-          disabled={isLoading}
-        >
+          disabled={isLoading}>
           Create Product
         </Button>
       </View>
@@ -760,18 +808,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#ddd'
+    borderTopColor: '#ddd',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 40,
   },
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 20,
     backgroundColor: '#fff',
     borderRadius: 8,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,

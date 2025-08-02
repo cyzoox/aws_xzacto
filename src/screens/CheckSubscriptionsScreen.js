@@ -1,28 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSelector, useDispatch } from 'react-redux';
+import {useSelector, useDispatch} from 'react-redux';
 
-const CheckSubscriptionsScreen = ({ navigation }) => {
+const CheckSubscriptionsScreen = ({navigation}) => {
   const [loading, setLoading] = useState(true);
   const [subscriptionPlan, setSubscriptionPlan] = useState(null);
   const [error, setError] = useState(null);
-  
+
   // Access subscription data from Redux
   const subscription = useSelector(state => state.subscription);
-  
+
   useEffect(() => {
     const checkSubscription = async () => {
       try {
         setLoading(true);
-        
+
         // Get subscription data from AsyncStorage
-        const storedSubscription = await AsyncStorage.getItem('subscriptionPlan');
-        
+        const storedSubscription = await AsyncStorage.getItem(
+          'subscriptionPlan',
+        );
+
         if (storedSubscription) {
           const parsedSubscription = JSON.parse(storedSubscription);
           setSubscriptionPlan(parsedSubscription);
-          
+
           // Validate subscription and redirect accordingly
           setTimeout(() => {
             navigation.replace('MainApp');
@@ -30,7 +38,7 @@ const CheckSubscriptionsScreen = ({ navigation }) => {
         } else {
           // No subscription data found
           setError('No active subscription found');
-          
+
           // Redirect to SuperAdmin screen to set up subscription
           setTimeout(() => {
             navigation.replace('SuperAdmin');
@@ -39,7 +47,7 @@ const CheckSubscriptionsScreen = ({ navigation }) => {
       } catch (err) {
         console.error('Error checking subscription:', err);
         setError('Error verifying subscription status');
-        
+
         // Fall back to SuperAdmin on error
         setTimeout(() => {
           navigation.replace('SuperAdmin');
@@ -48,26 +56,29 @@ const CheckSubscriptionsScreen = ({ navigation }) => {
         setLoading(false);
       }
     };
-    
+
     checkSubscription();
   }, [navigation]);
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>XZACTO</Text>
-      
+
       {loading ? (
         <>
-          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+          <ActivityIndicator
+            size="large"
+            color="#007AFF"
+            style={styles.loader}
+          />
           <Text style={styles.message}>Checking subscription plan...</Text>
         </>
       ) : error ? (
         <>
           <Text style={styles.errorMessage}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.replace('SuperAdmin')}
-          >
+            onPress={() => navigation.replace('SuperAdmin')}>
             <Text style={styles.buttonText}>Go to Admin</Text>
           </TouchableOpacity>
         </>
@@ -77,10 +88,9 @@ const CheckSubscriptionsScreen = ({ navigation }) => {
           <Text style={styles.planInfo}>
             {subscriptionPlan?.name || 'Standard Plan'}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.replace('MainApp')}
-          >
+            onPress={() => navigation.replace('MainApp')}>
             <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
         </>

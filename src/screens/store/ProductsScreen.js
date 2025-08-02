@@ -1,12 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, View, ActivityIndicator, Alert } from 'react-native';
-import { TextInput } from 'react-native-paper';
-import { useDispatch, useSelector } from 'react-redux';
+import React, {useState, useEffect} from 'react';
+import {
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Image,
+  View,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import {TextInput} from 'react-native-paper';
+import {useDispatch, useSelector} from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
-import { generateClient } from 'aws-amplify/api';
-import { listProducts, listVariants, listAddons, getWarehouseProduct } from '../../graphql/queries';
-import { createCategoryWithDetails, fetchCategories, syncOfflineActions, setOfflineMode } from '../../redux/slices/categorySlice';
-import { useStore } from '../../context/StoreContext';
+import {generateClient} from 'aws-amplify/api';
+import {
+  listProducts,
+  listVariants,
+  listAddons,
+  getWarehouseProduct,
+} from '../../graphql/queries';
+import {
+  createCategoryWithDetails,
+  fetchCategories,
+  syncOfflineActions,
+  setOfflineMode,
+} from '../../redux/slices/categorySlice';
+import {useStore} from '../../context/StoreContext';
 import Appbar from '../../components/Appbar';
 import SearchBar from '../../components/SearchBar';
 import ModalInputForm from '../../components/ModalInputForm';
@@ -15,36 +34,43 @@ import colors from '../../themes/colors';
 
 const client = generateClient();
 
-const ProductsScreen = ({ navigation, route }) => {
+const ProductsScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
   // Get store directly from route params if available
   const storeFromParams = route.params?.store;
-  
+
   // Still use StoreContext as fallback
-  const { currentStore: contextStore, currentStaff, staffStores, fetchStores } = useStore();
-  
+  const {
+    currentStore: contextStore,
+    currentStaff,
+    staffStores,
+    fetchStores,
+  } = useStore();
+
   // Use store from params if available, otherwise fall back to context
-  const [activeStore, setActiveStore] = useState(storeFromParams || contextStore);
-  
+  const [activeStore, setActiveStore] = useState(
+    storeFromParams || contextStore,
+  );
+
   const [term, setTerm] = useState('');
   const [categoryName, setCategoryName] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // Get categories from Redux store
-  const { 
+  const {
     items: categories,
     loading: categoryLoading,
     error: categoryError,
-    offlineMode 
+    offlineMode,
   } = useSelector(state => state.categories);
 
   // Check connection and sync on mount
   useEffect(() => {
     const checkConnectionAndSync = async () => {
-      const { isConnected } = await NetInfo.fetch();
+      const {isConnected} = await NetInfo.fetch();
       dispatch(setOfflineMode(!isConnected));
       if (isConnected) {
         dispatch(syncOfflineActions());
@@ -70,15 +96,21 @@ const ProductsScreen = ({ navigation, route }) => {
     console.log('Route params changed:', route.params);
     // Update active store if it comes from navigation params
     if (route.params?.store) {
-      console.log('Setting active store from navigation params:', route.params.store.name);
+      console.log(
+        'Setting active store from navigation params:',
+        route.params.store.name,
+      );
       setActiveStore(route.params.store);
     }
   }, [route.params]);
-  
+
   // Fetch products when active store changes or on initial load
   useEffect(() => {
     if (activeStore?.id) {
-      console.log('Active store changed, fetching products for:', activeStore.name);
+      console.log(
+        'Active store changed, fetching products for:',
+        activeStore.name,
+      );
       fetchProducts();
       // Pass storeId when fetching categories
       dispatch(fetchCategories(activeStore.id));
@@ -93,58 +125,57 @@ const ProductsScreen = ({ navigation, route }) => {
     }
   }, [activeStore, initialized, dispatch]);
 
-
-
-
-  const fetchProductDetails = async (productId) => {
+  const fetchProductDetails = async productId => {
     try {
       // Fetch variants
       const variantsResult = await client.graphql({
         query: listVariants,
         variables: {
-          filter: { productId: { eq: productId } }
-        }
+          filter: {productId: {eq: productId}},
+        },
       });
 
       // Fetch addons
       const addonsResult = await client.graphql({
         query: listAddons,
         variables: {
-          filter: { productId: { eq: productId } }
-        }
+          filter: {productId: {eq: productId}},
+        },
       });
 
       return {
         variants: variantsResult.data?.listVariants?.items || [],
-        addons: addonsResult.data?.listAddons?.items || []
+        addons: addonsResult.data?.listAddons?.items || [],
       };
     } catch (error) {
       console.error('Error fetching product details:', error);
-      return { variants: [], addons: [] };
+      return {variants: [], addons: []};
     }
   };
 
   const fetchProducts = async () => {
     setLoading(true);
     setError(null);
-    
+
     // Add detailed debugging
-    console.log('Debug - Store state:', { 
-      activeStore: activeStore ? activeStore.name : 'null', 
+    console.log('Debug - Store state:', {
+      activeStore: activeStore ? activeStore.name : 'null',
       storeId: activeStore?.id || 'missing',
       storeIdValue: activeStore?.id, // Log the exact value for comparison
-      fromParams: !!route.params?.store
+      fromParams: !!route.params?.store,
     });
-    
+
     // Check if the ID matches the one you're having trouble with
     if (activeStore?.id === 'f497bddc-b993-41b0-93e4-671804dbacbb') {
-      console.log('📊 MATCHING STORE ID DETECTED - Special handling for problematic store ID');
+      console.log(
+        '📊 MATCHING STORE ID DETECTED - Special handling for problematic store ID',
+      );
     }
-    
+
     try {
       // Simplify to the most direct query possible
       console.log('Attempting direct query for ALL products without filtering');
-      
+
       try {
         // Use the simplest possible GraphQL query
         const result = await client.graphql({
@@ -162,34 +193,46 @@ const ProductsScreen = ({ navigation, route }) => {
                 categoryId
               }
             }
-          }`
+          }`,
         });
 
         // Check if we got a valid response
         if (result?.data?.listProducts?.items) {
           const allProducts = result.data.listProducts.items;
-          console.log(`SUCCESS: Fetched ${allProducts.length} total products with simple query`);
-          
+          console.log(
+            `SUCCESS: Fetched ${allProducts.length} total products with simple query`,
+          );
+
           // Filter products to only include those belonging to the active store
           if (activeStore?.id) {
-            const storeProducts = allProducts.filter(product => product.storeId === activeStore.id);
-            console.log(`After filtering: ${storeProducts.length} products belong to store ${activeStore.name} (ID: ${activeStore.id})`);
-            
+            const storeProducts = allProducts.filter(
+              product => product.storeId === activeStore.id,
+            );
+            console.log(
+              `After filtering: ${storeProducts.length} products belong to store ${activeStore.name} (ID: ${activeStore.id})`,
+            );
+
             // Debug any mismatched products
             if (storeProducts.length < allProducts.length) {
-              const mismatchedProducts = allProducts.filter(product => product.storeId !== activeStore.id);
-              console.log('Products with mismatched store IDs:', 
-                mismatchedProducts.map(p => ({ name: p.name, storeId: p.storeId }))
+              const mismatchedProducts = allProducts.filter(
+                product => product.storeId !== activeStore.id,
+              );
+              console.log(
+                'Products with mismatched store IDs:',
+                mismatchedProducts.map(p => ({
+                  name: p.name,
+                  storeId: p.storeId,
+                })),
               );
             }
-            
+
             setProducts(storeProducts);
           } else {
             // If no active store, still show all products but with a warning
             console.warn('No active store selected, showing all products');
             setProducts(allProducts);
           }
-          
+
           setError(null);
           setLoading(false);
           return;
@@ -199,11 +242,11 @@ const ProductsScreen = ({ navigation, route }) => {
       } catch (directQueryError) {
         console.error('Direct query error:', directQueryError);
       }
-      
+
       // Normal flow with valid activeStore
       if (activeStore?.id) {
         console.log('Fetching store products for store ID:', activeStore.id);
-        
+
         // Use a more direct and simpler query with explicit filter
         const result = await client.graphql({
           query: `query GetProductsByStore($storeId: ID!) {
@@ -229,72 +272,87 @@ const ProductsScreen = ({ navigation, route }) => {
             }
           }`,
           variables: {
-            storeId: activeStore.id
-          }
+            storeId: activeStore.id,
+          },
         });
-        
+
         const productItems = result.data.listProducts.items || [];
         console.log(`Fetched ${productItems.length} products for store`);
-      
+
         // Split products into regular and warehouse-sourced
-        const regularProducts = productItems.filter(product => !product.warehouseProductId);
-        const warehouseProducts = productItems.filter(product => product.warehouseProductId);
-      
-        console.log(`Found ${regularProducts.length} regular products and ${warehouseProducts.length} warehouse-sourced products`);
-        
+        const regularProducts = productItems.filter(
+          product => !product.warehouseProductId,
+        );
+        const warehouseProducts = productItems.filter(
+          product => product.warehouseProductId,
+        );
+
+        console.log(
+          `Found ${regularProducts.length} regular products and ${warehouseProducts.length} warehouse-sourced products`,
+        );
+
         if (productItems.length === 0) {
           console.log('No products found for this store');
           setProducts([]);
-          setError('No products found for this store. Try requesting items from the warehouse.');
+          setError(
+            'No products found for this store. Try requesting items from the warehouse.',
+          );
         } else {
           // Process all products to get additional details
           const productsWithDetails = await Promise.all(
-            productItems.map(async (product) => {
-            // Get variants and addons for all products
-            const details = await fetchProductDetails(product.id);
-            
-            // For warehouse products, fetch additional details from warehouse
-            if (product.warehouseProductId) {
-              try {
-                // Get the warehouse product details to ensure complete information
-                const productResult = await client.graphql({
-                  query: getWarehouseProduct,
-                  variables: { id: product.warehouseProductId }
-                });
-                
-                const warehouseProduct = productResult.data.getWarehouseProduct;
-                if (warehouseProduct) {
-                  // Enhance with warehouse data if available
-                  return {
-                    ...product,
-                    // These fields might be more up-to-date from warehouse
-                    brand: product.brand || warehouseProduct.brand || '',
-                    sku: product.sku || warehouseProduct.sku || '',
-                    categoryId: product.categoryId || warehouseProduct.categoryId,
-                    // Keep original store stock but mark as warehouse product
-                    isWarehouseProduct: true,
-                    variants: details.variants,
-                    addons: details.addons
-                  };
+            productItems.map(async product => {
+              // Get variants and addons for all products
+              const details = await fetchProductDetails(product.id);
+
+              // For warehouse products, fetch additional details from warehouse
+              if (product.warehouseProductId) {
+                try {
+                  // Get the warehouse product details to ensure complete information
+                  const productResult = await client.graphql({
+                    query: getWarehouseProduct,
+                    variables: {id: product.warehouseProductId},
+                  });
+
+                  const warehouseProduct =
+                    productResult.data.getWarehouseProduct;
+                  if (warehouseProduct) {
+                    // Enhance with warehouse data if available
+                    return {
+                      ...product,
+                      // These fields might be more up-to-date from warehouse
+                      brand: product.brand || warehouseProduct.brand || '',
+                      sku: product.sku || warehouseProduct.sku || '',
+                      categoryId:
+                        product.categoryId || warehouseProduct.categoryId,
+                      // Keep original store stock but mark as warehouse product
+                      isWarehouseProduct: true,
+                      variants: details.variants,
+                      addons: details.addons,
+                    };
+                  }
+                } catch (err) {
+                  console.log(
+                    'Error fetching warehouse details, using store product data:',
+                    err,
+                  );
                 }
-              } catch (err) {
-                console.log('Error fetching warehouse details, using store product data:', err);
               }
-            }
-            
-            // Return product with variants and addons
-            return {
-              ...product,
-              variants: details.variants,
-              addons: details.addons
-            };
-          })
-        );
-        
-          console.log(`Processed ${productsWithDetails.length} products with details`);
+
+              // Return product with variants and addons
+              return {
+                ...product,
+                variants: details.variants,
+                addons: details.addons,
+              };
+            }),
+          );
+
+          console.log(
+            `Processed ${productsWithDetails.length} products with details`,
+          );
           setProducts(productsWithDetails);
         }
-        
+
         setError(null);
       }
     } catch (err) {
@@ -319,14 +377,19 @@ const ProductsScreen = ({ navigation, route }) => {
     try {
       const newCategory = {
         name: categoryName.trim(),
-        storeId: activeStore.id
+        storeId: activeStore.id,
       };
-      
-      console.log('Creating category for store:', activeStore.name, 'with ID:', activeStore.id);
+
+      console.log(
+        'Creating category for store:',
+        activeStore.name,
+        'with ID:',
+        activeStore.id,
+      );
 
       await dispatch(createCategoryWithDetails(newCategory));
       setCategoryName('');
-      
+
       if (!offlineMode) {
         Alert.alert('Success', 'Category created successfully');
       } else {
@@ -353,7 +416,9 @@ const ProductsScreen = ({ navigation, route }) => {
         <View style={styles.deck}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('CreateProduct', { store: activeStore })}>
+            onPress={() =>
+              navigation.navigate('CreateProduct', {store: activeStore})
+            }>
             <Image
               source={require('../../../assets/add_product.png')}
               style={styles.actionIcon}
@@ -363,7 +428,9 @@ const ProductsScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('BatchEdit', { store: activeStore })}>
+            onPress={() =>
+              navigation.navigate('BatchEdit', {store: activeStore})
+            }>
             <Image
               source={require('../../../assets/edit.png')}
               style={styles.actionIcon}
@@ -422,7 +489,9 @@ const ProductsScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('BatchAdd', { store: activeStore })}>
+            onPress={() =>
+              navigation.navigate('BatchAdd', {store: activeStore})
+            }>
             <Image
               source={require('../../../assets/batch_add.png')}
               style={styles.actionIcon}
@@ -461,19 +530,33 @@ const ProductsScreen = ({ navigation, route }) => {
           <>
             {/* Debug info for categories */}
             {categories.length === 0 && (
-              <View style={{ padding: 10, backgroundColor: '#f8d7da', margin: 10, borderRadius: 5 }}>
-                <Text style={{ color: '#721c24' }}>
-                  No categories found. Try adding a category using the button above.
+              <View
+                style={{
+                  padding: 10,
+                  backgroundColor: '#f8d7da',
+                  margin: 10,
+                  borderRadius: 5,
+                }}>
+                <Text style={{color: '#721c24'}}>
+                  No categories found. Try adding a category using the button
+                  above.
                 </Text>
               </View>
             )}
-            
+
             {/* Debug info for store */}
-            <View style={{ padding: 10, backgroundColor: '#cce5ff', margin: 10, borderRadius: 5 }}>
-              <Text style={{ color: '#004085' }}>
-                Active Store: {activeStore?.name || 'None'} (ID: {activeStore?.id || 'None'})
+            <View
+              style={{
+                padding: 10,
+                backgroundColor: '#cce5ff',
+                margin: 10,
+                borderRadius: 5,
+              }}>
+              <Text style={{color: '#004085'}}>
+                Active Store: {activeStore?.name || 'None'} (ID:{' '}
+                {activeStore?.id || 'None'})
               </Text>
-              <Text style={{ color: '#004085', marginTop: 5 }}>
+              <Text style={{color: '#004085', marginTop: 5}}>
                 Products: {products.length}, Categories: {categories.length}
               </Text>
             </View>
@@ -494,11 +577,11 @@ const ProductsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
-    padding: 16
+    padding: 16,
   },
   deck: {
     flexDirection: 'row',
@@ -506,50 +589,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     flexWrap: 'wrap',
-    gap: 10
+    gap: 10,
   },
   actionButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10
+    padding: 10,
   },
   actionIcon: {
     width: 40,
     height: 40,
-    resizeMode: 'contain'
+    resizeMode: 'contain',
   },
   actionText: {
     fontSize: 12,
     marginTop: 5,
     textAlign: 'center',
-    color: colors.text
+    color: colors.text,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   errorText: {
     color: colors.error,
     fontSize: 16,
-    marginBottom: 10
+    marginBottom: 10,
   },
   retryButton: {
     backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 5
+    borderRadius: 5,
   },
   retryText: {
     color: colors.white,
     fontSize: 14,
-    fontWeight: 'bold'
-  }
+    fontWeight: 'bold',
+  },
 });
 
 export default ProductsScreen;

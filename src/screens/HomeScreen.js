@@ -1,37 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
   ActivityIndicator,
   Alert,
   RefreshControl,
-  Dimensions
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { formatMoney } from 'accounting-js';
+import {formatMoney} from 'accounting-js';
 import Appbar from '../components/Appbar';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SignOutButton from '../components/SignOutButton';
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 import * as queries from '../graphql/queries';
-import { useSelector, useDispatch } from 'react-redux';
-import { syncService } from '../services/syncService';
-import { getCurrentUser } from '@aws-amplify/auth';
-import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
-import { setStoreList } from '../store/slices/storeSlice';
+import {useSelector, useDispatch} from 'react-redux';
+import {syncService} from '../services/syncService';
+import {getCurrentUser} from '@aws-amplify/auth';
+import {LineChart, BarChart, PieChart} from 'react-native-chart-kit';
+import {setStoreList} from '../store/slices/storeSlice';
 
-  // Simplified Store Summary Card Component with basic store information
-const StoreSummaryCard = ({ store, onPress }) => {
+// Simplified Store Summary Card Component with basic store information
+const StoreSummaryCard = ({store, onPress}) => {
   const [storeStats, setStoreStats] = useState({
     salesTotal: 0,
-    orderCount: 0
+    orderCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  
+
   // Fetch real transaction data instead of using placeholders
   useEffect(() => {
     let isMounted = true;
@@ -39,39 +39,44 @@ const StoreSummaryCard = ({ store, onPress }) => {
       try {
         setLoading(true);
         const client = generateClient();
-        
+
         // Get transactions for the past 7 days
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 6); // Past 7 days including today
-        
+
         // Fetch transactions for this store
         const result = await client.graphql({
           query: queries.listSaleTransactions,
           variables: {
             filter: {
-              storeID: { eq: store.id },
-              createdAt: { between: [startDate.toISOString(), endDate.toISOString()] }
-            }
-          }
+              storeID: {eq: store.id},
+              createdAt: {
+                between: [startDate.toISOString(), endDate.toISOString()],
+              },
+            },
+          },
         });
-        
+
         const transactions = result.data.listSaleTransactions.items;
-        
+
         // Calculate sales total and order count
-        const salesTotal = transactions.reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+        const salesTotal = transactions.reduce(
+          (sum, t) => sum + (parseFloat(t.total) || 0),
+          0,
+        );
         const orderCount = transactions.length;
-        
+
         // Group transactions by day of week
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const dailyTotals = Array(7).fill(0);
-        
+
         transactions.forEach(transaction => {
           const date = new Date(transaction.createdAt);
           const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
           dailyTotals[dayIndex] += parseFloat(transaction.total) || 0;
         });
-        
+
         // Reorder days to start with Monday
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const amounts = [
@@ -81,17 +86,17 @@ const StoreSummaryCard = ({ store, onPress }) => {
           dailyTotals[4], // Thursday
           dailyTotals[5], // Friday
           dailyTotals[6], // Saturday
-          dailyTotals[0]  // Sunday
+          dailyTotals[0], // Sunday
         ];
-        
+
         if (isMounted) {
           setStoreStats({
             salesTotal: salesTotal,
             orderCount: orderCount,
             dailySales: {
               days,
-              amounts
-            }
+              amounts,
+            },
           });
           setLoading(false);
         }
@@ -104,30 +109,29 @@ const StoreSummaryCard = ({ store, onPress }) => {
             orderCount: 0,
             dailySales: {
               days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-              amounts: [0, 0, 0, 0, 0, 0, 0]
-            }
+              amounts: [0, 0, 0, 0, 0, 0, 0],
+            },
           });
           setLoading(false);
         }
       }
     };
-    
+
     fetchStoreData();
-    
+
     return () => {
       isMounted = false;
     };
   }, [store.id]);
-  
+
   // We've removed the need for this function by using placeholder data
 
-  
   const toggleExpand = () => {
     setExpanded(!expanded);
   };
-  
+
   const screenWidth = Dimensions.get('window').width - 50;
-  
+
   const renderCharts = () => {
     if (loading) {
       return (
@@ -137,7 +141,7 @@ const StoreSummaryCard = ({ store, onPress }) => {
         </View>
       );
     }
-    
+
     return (
       <View style={styles.chartContainer}>
         {/* Sales Performance Chart */}
@@ -145,9 +149,11 @@ const StoreSummaryCard = ({ store, onPress }) => {
         <LineChart
           data={{
             labels: storeStats.dailySales.days,
-            datasets: [{
-              data: storeStats.dailySales.amounts
-            }]
+            datasets: [
+              {
+                data: storeStats.dailySales.amounts,
+              },
+            ],
           }}
           width={screenWidth}
           height={180}
@@ -159,13 +165,13 @@ const StoreSummaryCard = ({ store, onPress }) => {
             color: (opacity = 1) => `rgba(58, 110, 165, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
             style: {
-              borderRadius: 16
+              borderRadius: 16,
             },
             propsForDots: {
               r: '6',
               strokeWidth: '2',
-              stroke: '#3A6EA5'
-            }
+              stroke: '#3A6EA5',
+            },
           }}
           bezier
           style={styles.chart}
@@ -173,29 +179,38 @@ const StoreSummaryCard = ({ store, onPress }) => {
       </View>
     );
   };
-  
+
   return (
     <View style={styles.storeCardContainer}>
-      <TouchableOpacity 
-        style={styles.storeCard} 
-        onPress={onPress}
-      >
+      <TouchableOpacity style={styles.storeCard} onPress={onPress}>
         <View style={styles.storeIconContainer}>
           <Text style={styles.storeIcon}>{store.name?.charAt(0) || 'S'}</Text>
         </View>
-        
+
         <View style={styles.storeContent}>
           <Text style={styles.storeName}>{store.name}</Text>
-          
+
           <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={14} color="#6c757d" style={{ marginRight: 5 }} />
-            <Text style={styles.locationText}>{store.location || 'No location set'}</Text>
+            <Ionicons
+              name="location-outline"
+              size={14}
+              color="#6c757d"
+              style={{marginRight: 5}}
+            />
+            <Text style={styles.locationText}>
+              {store.location || 'No location set'}
+            </Text>
           </View>
-          
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total Sales</Text>
-              <Text style={styles.statValue}>{formatMoney(storeStats.salesTotal, { symbol: '₱', precision: 2 })}</Text>
+              <Text style={styles.statValue}>
+                {formatMoney(storeStats.salesTotal, {
+                  symbol: '₱',
+                  precision: 2,
+                })}
+              </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Orders</Text>
@@ -203,71 +218,72 @@ const StoreSummaryCard = ({ store, onPress }) => {
             </View>
           </View>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.expandButton}
-          onPress={toggleExpand}
-        >
-          <Ionicons 
-            name={expanded ? "chevron-up-outline" : "chevron-down-outline"} 
-            size={20} 
-            color="#3A6EA5" 
+
+        <TouchableOpacity style={styles.expandButton} onPress={toggleExpand}>
+          <Ionicons
+            name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={20}
+            color="#3A6EA5"
           />
         </TouchableOpacity>
       </TouchableOpacity>
-      
+
       {expanded && renderCharts()}
     </View>
   );
 };
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = ({navigation}) => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState(null);
   const [filteredStores, setFilteredStores] = useState([]);
   const client = generateClient();
   const dispatch = useDispatch();
-  
+
   // Get all stores from Redux store
-  const { items: allStores, loading: storeLoading } = useSelector(state => state.store);
-  
+  const {items: allStores, loading: storeLoading} = useSelector(
+    state => state.store,
+  );
+
   // Do NOT rely on Redux state - we'll use direct API calls instead
   // This is the pattern used in StoreScreen that is known to work
   useEffect(() => {
-    console.log(`Redux store has ${allStores.length} total stores, but we'll use direct API call instead`);
+    console.log(
+      `Redux store has ${allStores.length} total stores, but we'll use direct API call instead`,
+    );
   }, [allStores]);
-  
+
   // Fetch user's stores when component mounts
   useEffect(() => {
     loadUserData();
     // Initialize the sync service which will handle keeping data updated
     syncService.init();
-    
+
     return () => {
       // Clean up sync service when component unmounts
       syncService.destroy();
     };
   }, []);
-  
+
   // Load user data and directly fetch stores - using EXACT pattern from StoreScreen.js
   const loadUserData = async () => {
     try {
       setLoading(true);
-      
+
       // Get the current authenticated user - EXACT same code as StoreScreen.js
       const userInfo = await getCurrentUser();
       // Correctly extract the username (which is our userId in the system)
       const userId = userInfo.userId;
       console.log('Authenticated user ID (username):', userId);
       setOwnerId(userId);
-      
+
       if (!userId) {
         console.error('User not authenticated');
         setLoading(false);
         return;
       }
-      
+
       // Get staff data to determine role (from StoreScreen.js)
       const staffJson = await AsyncStorage.getItem('staffData');
       if (!staffJson) {
@@ -275,27 +291,28 @@ const HomeScreen = ({ navigation }) => {
         setLoading(false);
         return;
       }
-      
+
       // Make direct GraphQL call to fetch stores - EXACT same code as StoreScreen.js
       console.log('Fetching stores directly with ownerId filter:', userId);
-      const { data: storeData } = await client.graphql({
+      const {data: storeData} = await client.graphql({
         query: queries.listStores,
-        variables: { filter: { ownerId: { eq: userId } } }
+        variables: {filter: {ownerId: {eq: userId}}},
       });
-      
+
       // Log what we got from the database
       const directStores = storeData.listStores.items.filter(s => !s._deleted);
-      console.log(`Directly fetched ${directStores.length} stores for user ${userId}`);
-      
+      console.log(
+        `Directly fetched ${directStores.length} stores for user ${userId}`,
+      );
+
       // Set the stores directly from the query result
       setFilteredStores(directStores);
       console.log('Stores after direct fetch:', directStores);
-      
+
       // Also update Redux store to be consistent
       dispatch(setStoreList(directStores));
-      
+
       console.log('Initialization complete - data should be loaded');
-      
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -311,19 +328,21 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Handle store selection to view detailed dashboard
-  const handleStoreSelect = (store) => {
+  const handleStoreSelect = store => {
     // If StoreDashboard exists in the navigation, use it
     if (navigation.getState().routeNames.includes('StoreDashboard')) {
-      navigation.navigate('StoreDashboard', { store });
+      navigation.navigate('StoreDashboard', {store});
     } else {
       // Otherwise, just show an alert with store details
       Alert.alert(
         `${store.name} Details`,
-        `Location: ${store.location || 'Not specified'}\nMore detailed metrics coming soon!`
+        `Location: ${
+          store.location || 'Not specified'
+        }\nMore detailed metrics coming soon!`,
       );
     }
   };
-  
+
   // Render list of store cards
   const renderStores = () => {
     // Debug info to see what's happening
@@ -331,7 +350,7 @@ const HomeScreen = ({ navigation }) => {
     filteredStores.forEach(store => {
       console.log(`- Store: ${store.name}, ID: ${store.id}`);
     });
-    
+
     if (!filteredStores || filteredStores.length === 0) {
       console.log('No stores to display, showing empty state');
       return (
@@ -339,35 +358,32 @@ const HomeScreen = ({ navigation }) => {
           <Ionicons name="storefront-outline" size={60} color="#adb5bd" />
           <Text style={styles.emptyStateText}>No Stores Found</Text>
           <Text style={styles.emptyStateSubtext}>
-            {allStores.length > 0 ? 
-              `Found ${allStores.length} stores in Redux but none match filtering criteria.` : 
-              "You don't have any stores yet. Create one to get started."}
+            {allStores.length > 0
+              ? `Found ${allStores.length} stores in Redux but none match filtering criteria.`
+              : "You don't have any stores yet. Create one to get started."}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addStoreButton}
-            onPress={() => navigation.navigate('AddStore')}
-          >
+            onPress={() => navigation.navigate('AddStore')}>
             <Text style={styles.addStoreButtonText}>Create Store</Text>
           </TouchableOpacity>
         </View>
       );
     }
-    
+
     console.log('Rendering store list with', filteredStores.length, 'stores');
     return (
       <View style={styles.storesList}>
         {filteredStores.map(store => {
           console.log(`Rendering store card for: ${store.name}`);
           return (
-            <StoreSummaryCard 
-              key={store.id} 
-              store={store} 
-              onPress={() => handleStoreSelect(store)} 
+            <StoreSummaryCard
+              key={store.id}
+              store={store}
+              onPress={() => handleStoreSelect(store)}
             />
           );
         })}
-        
-      
       </View>
     );
   };
@@ -375,10 +391,7 @@ const HomeScreen = ({ navigation }) => {
   if (loading || storeLoading) {
     return (
       <View style={styles.container}>
-        <Appbar
-          title="Store Dashboard"
-          rightComponent={<SignOutButton />}
-        />
+        <Appbar title="Store Dashboard" rightComponent={<SignOutButton />} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3A6EA5" />
           <Text style={styles.loadingText}>Loading your stores...</Text>
@@ -386,15 +399,12 @@ const HomeScreen = ({ navigation }) => {
       </View>
     );
   }
-  
+
   return (
     <View style={styles.container}>
-      <Appbar
-        title="Store Dashboard"
-        rightComponent={<SignOutButton />}
-      />
-      
-      <ScrollView 
+      <Appbar title="Store Dashboard" rightComponent={<SignOutButton />} />
+
+      <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl
@@ -403,16 +413,14 @@ const HomeScreen = ({ navigation }) => {
             colors={['#3A6EA5']}
             tintColor="#3A6EA5"
           />
-        }
-      >
+        }>
         {renderStores()}
 
         <View style={styles.managementContainer}>
           <Text style={styles.managementTitle}>Management</Text>
           <TouchableOpacity
             style={styles.managementButton}
-            onPress={() => navigation.navigate('CustomerScreen')}
-          >
+            onPress={() => navigation.navigate('CustomerScreen')}>
             <Ionicons name="people-outline" size={22} color="white" />
             <Text style={styles.managementButtonText}>Manage Customers</Text>
           </TouchableOpacity>
@@ -420,7 +428,7 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   managementContainer: {
@@ -444,7 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -531,7 +539,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },

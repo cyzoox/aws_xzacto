@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, StyleSheet } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {createStackNavigator} from '@react-navigation/stack';
+import {View, Text, StyleSheet} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useSelector } from 'react-redux';
+import {useSelector} from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import centralized data service
-import { dataService } from '../services/dataService';
+import {dataService} from '../services/dataService';
 
 import HomeScreen from '../screens/HomeScreen';
 import StoreScreen from '../screens/store/StoreScreen';
@@ -38,12 +38,12 @@ function HomeStackScreen() {
       <HomeStack.Screen
         name="HomeScreen"
         component={HomeScreen}
-        options={{ headerShown: false }}
+        options={{headerShown: false}}
       />
       <HomeStack.Screen
         name="CustomerScreen"
         component={CustomerScreen}
-        options={{ headerShown: false }}
+        options={{headerShown: false}}
       />
     </HomeStack.Navigator>
   );
@@ -146,58 +146,66 @@ const BottomTabNavigator = () => {
   const [newTransactions, setNewTransactions] = useState(0);
   const [storeName, setStoreName] = useState('Store');
   const [homeName, setHomeName] = useState('Home');
-  
+
   // Select data from Redux store
-  const { loading: storeLoading } = useSelector(state => state.store);
+  const {loading: storeLoading} = useSelector(state => state.store);
   const sales = useSelector(state => state.sales?.items) || [];
-  
+
   useEffect(() => {
     const fetchNotificationData = async () => {
-      try {        
+      try {
         // Get store information from session
         const sessionData = await AsyncStorage.getItem('staffSession');
-        if (!sessionData) return;
-        
+        if (!sessionData) {
+          return;
+        }
+
         const parsedData = JSON.parse(sessionData);
         if (!parsedData.storeData) {
           console.log('Store data not found in session');
           return;
         }
-        
-        const { storeData } = parsedData;
+
+        const {storeData} = parsedData;
         setStoreName(storeData.name || 'Store');
         const storeId = storeData.id;
-        
+
         // Use centralized data service to fetch pending requests
-        const inventoryRequests = await dataService.getPendingInventoryRequests(storeId);
+        const inventoryRequests = await dataService.getPendingInventoryRequests(
+          storeId,
+        );
         setPendingRequests(inventoryRequests.length);
-        
+
         // Get today's transactions from Redux state instead of refetching
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        
-        const todayTransactions = sales.filter(tx => 
-          tx.storeId === storeId && 
-          tx.createdAt >= todayStart && 
-          !tx._deleted
+        const todayStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+        ).toISOString();
+
+        const todayTransactions = sales.filter(
+          tx =>
+            tx.storeId === storeId &&
+            tx.createdAt >= todayStart &&
+            !tx._deleted,
         );
-        
+
         setNewTransactions(todayTransactions.length);
-        
       } catch (error) {
         console.error('Error fetching notification data:', error);
       }
     };
-    
+
     // Initial fetch
     fetchNotificationData();
-    
+
     // Set up interval to refresh data every 5 minutes
     const intervalId = setInterval(fetchNotificationData, 5 * 60 * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, [sales]); // Only re-run when sales data changes
-  
+
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({

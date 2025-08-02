@@ -1,10 +1,14 @@
 /* eslint-disable */
 // Custom queries for fetching complete data
-import { gql } from '@aws-amplify/api';
+import {gql} from '@aws-amplify/api';
 
 // Custom query to fetch staff with their complete store information
 export const listStaffWithStores = /* GraphQL */ `
-  query ListStaffWithStores($filter: ModelStaffFilterInput, $limit: Int, $nextToken: String) {
+  query ListStaffWithStores(
+    $filter: ModelStaffFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
     listStaff(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
@@ -42,7 +46,11 @@ export const listStaffWithStores = /* GraphQL */ `
 `;
 
 export const listProductsWithExtras = /* GraphQL */ `
-  query ListProductsWithExtras($filter: ModelProductFilterInput, $limit: Int, $nextToken: String) {
+  query ListProductsWithExtras(
+    $filter: ModelProductFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
     listProducts(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id

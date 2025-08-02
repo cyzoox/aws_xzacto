@@ -1,44 +1,50 @@
-import React from "react";
+import React from 'react';
 import {StyleSheet, ScrollView, FlatList, View, Dimensions} from 'react-native';
-import { Grid, Col, Row } from "react-native-easy-grid";
-import { Text } from 'react-native-elements';
+import {Grid, Col, Row} from 'react-native-easy-grid';
+import {Text} from 'react-native-elements';
 
-import formatMoney from 'accounting-js/lib/formatMoney.js'
-import colors from "../themes/colors";
-import Spacer from "./Spacer";
+import formatMoney from 'accounting-js/lib/formatMoney.js';
+import colors from '../themes/colors';
+import Spacer from './Spacer';
 const windowWidth = Dimensions.get('window').width;
-const DataTable = ({ alignment, headerTitles, children, total, ototal }) => {
+const DataTable = ({alignment, headerTitles, children, total, ototal}) => {
   return (
-    <View style={{flex :1}}>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <View style={{flex: 1}}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Spacer>
-                <Grid>
-                    <Row style={{ height: 40,  backgroundColor: colors.coverDark, marginHorizontal: 5}}>
-                        {
-                            headerTitles.map((rowData) => (      
-                                <Col key={rowData} style={[styles.ColStyle,{alignItems: alignment}]}>
-                                    <Text  style={styles.textColor}>{rowData}</Text>
-                                </Col>      
-                            ))
-                        }
-                    </Row>
-                    {children}
-                </Grid>    
-      </Spacer>
-    </ScrollView>
-    <View style={styles.footerContainer}>
+          <Grid>
+            <Row
+              style={{
+                height: 40,
+                backgroundColor: colors.coverDark,
+                marginHorizontal: 5,
+              }}>
+              {headerTitles.map(rowData => (
+                <Col
+                  key={rowData}
+                  style={[styles.ColStyle, {alignItems: alignment}]}>
+                  <Text style={styles.textColor}>{rowData}</Text>
+                </Col>
+              ))}
+            </Row>
+            {children}
+          </Grid>
+        </Spacer>
+      </ScrollView>
+      <View style={styles.footerContainer}>
         <View>
-            <Text style={styles.footerBar}>Total</Text>
+          <Text style={styles.footerBar}>Total</Text>
         </View>
-      
+
         <View>
-            <Text style={styles.footerBar}>{formatMoney(total, { symbol: "₱", precision: 2 })}</Text>
+          <Text style={styles.footerBar}>
+            {formatMoney(total, {symbol: '₱', precision: 2})}
+          </Text>
         </View>
-    </View>
+      </View>
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   textColor: {

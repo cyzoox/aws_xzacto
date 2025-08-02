@@ -1,21 +1,21 @@
 import React from 'react';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import {createDrawerNavigator} from '@react-navigation/drawer';
 import SuperAdminScreen from '../screens/SuperAdminScreen';
 import StaffManagementScreen from '../screens/StaffManagementScreen';
 import StoreManagementScreen from '../screens/StoreManagementScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
-import { RoleBasedHeader } from '../components/RoleBasedHeader';
+import {RoleBasedHeader} from '../components/RoleBasedHeader';
 
 const Drawer = createDrawerNavigator();
 
 function SuperAdminNavigator({route}) {
-  const { staffData } = route.params;
+  const {staffData} = route.params;
 
   return (
     <Drawer.Navigator
       backBehavior="history"
       screenOptions={{
-        header: ({ navigation, route }) => (
+        header: ({navigation, route}) => (
           <RoleBasedHeader
             title={route.name}
             navigation={navigation}

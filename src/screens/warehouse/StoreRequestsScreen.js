@@ -1,10 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
-import { Text, Card, Title, Paragraph, Button, Chip, DataTable, Searchbar, Menu, Provider } from 'react-native-paper';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  Text,
+  Card,
+  Title,
+  Paragraph,
+  Button,
+  Chip,
+  DataTable,
+  Searchbar,
+  Menu,
+  Provider,
+} from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
-import { API, graphqlOperation } from 'aws-amplify';
-import { listInventoryRequests, getStore } from '../../graphql/queries';
+import {colors} from '../../constants/theme';
+import {API, graphqlOperation} from 'aws-amplify';
+import {listInventoryRequests, getStore} from '../../graphql/queries';
 
 // Constants for status values
 const REQUEST_STATUS = {
@@ -12,50 +29,59 @@ const REQUEST_STATUS = {
   PROCESSING: 'PROCESSING',
   PARTIALLY_FULFILLED: 'PARTIALLY_FULFILLED',
   FULFILLED: 'FULFILLED',
-  CANCELLED: 'CANCELLED'
+  CANCELLED: 'CANCELLED',
 };
 
 const PRIORITY_LEVELS = {
   HIGH: 'HIGH',
   NORMAL: 'NORMAL',
-  LOW: 'LOW'
+  LOW: 'LOW',
 };
 
-const StoreRequestsScreen = ({ navigation, route }) => {
+const StoreRequestsScreen = ({navigation, route}) => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
-  
+
   // Fetch all inventory requests
   const fetchInventoryRequests = async () => {
     try {
       // Get all inventory requests
-      const requestsData = await API.graphql(graphqlOperation(listInventoryRequests));
+      const requestsData = await API.graphql(
+        graphqlOperation(listInventoryRequests),
+      );
       let inventoryRequests = requestsData.data.listInventoryRequests.items;
-      
+
       // Fetch store details for each request
       const requestsWithStoreNames = await Promise.all(
-        inventoryRequests.map(async (request) => {
+        inventoryRequests.map(async request => {
           try {
-            const storeData = await API.graphql(graphqlOperation(getStore, { id: request.storeId }));
+            const storeData = await API.graphql(
+              graphqlOperation(getStore, {id: request.storeId}),
+            );
             const store = storeData.data.getStore;
-            
+
             // Count request items
-            const itemCount = request.requestItems ? request.requestItems.items.length : 0;
-            
-            // Calculate total quantity requested
-            const totalQuantity = request.requestItems 
-              ? request.requestItems.items.reduce((total, item) => total + item.requestedQuantity, 0)
+            const itemCount = request.requestItems
+              ? request.requestItems.items.length
               : 0;
-              
+
+            // Calculate total quantity requested
+            const totalQuantity = request.requestItems
+              ? request.requestItems.items.reduce(
+                  (total, item) => total + item.requestedQuantity,
+                  0,
+                )
+              : 0;
+
             return {
               ...request,
               storeName: store ? store.name : 'Unknown Store',
               items: itemCount,
-              totalQuantity
+              totalQuantity,
             };
           } catch (error) {
             console.error('Error fetching store details:', error);
@@ -63,12 +89,12 @@ const StoreRequestsScreen = ({ navigation, route }) => {
               ...request,
               storeName: 'Unknown Store',
               items: 0,
-              totalQuantity: 0
+              totalQuantity: 0,
             };
           }
-        })
+        }),
       );
-      
+
       setRequests(requestsWithStoreNames);
       return requestsWithStoreNames;
     } catch (error) {
@@ -76,7 +102,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
       return [];
     }
   };
-  
+
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
@@ -84,44 +110,57 @@ const StoreRequestsScreen = ({ navigation, route }) => {
       await fetchInventoryRequests();
       setLoading(false);
     };
-    
+
     loadData();
   }, []);
-  
+
   // Filter requests based on search and status
   const filteredRequests = requests
-    .filter(request => 
-      (request.storeName && request.storeName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      request.id.toLowerCase().includes(searchQuery.toLowerCase())
+    .filter(
+      request =>
+        (request.storeName &&
+          request.storeName
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())) ||
+        request.id.toLowerCase().includes(searchQuery.toLowerCase()),
     )
     .filter(request => !statusFilter || request.status === statusFilter);
-  
+
   // Get status chip color
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     switch (status) {
-      case 'PENDING': return '#FFA000';
-      case 'PARTIALLY_FULFILLED': return '#2196F3';
-      case 'COMPLETED': return '#4CAF50';
-      case 'CANCELLED': return '#F44336';
-      default: return '#757575';
+      case 'PENDING':
+        return '#FFA000';
+      case 'PARTIALLY_FULFILLED':
+        return '#2196F3';
+      case 'COMPLETED':
+        return '#4CAF50';
+      case 'CANCELLED':
+        return '#F44336';
+      default:
+        return '#757575';
     }
   };
-  
+
   // Get priority icon
-  const getPriorityIcon = (priority) => {
+  const getPriorityIcon = priority => {
     switch (priority) {
-      case 'HIGH': return '🔴';
-      case 'NORMAL': return '🟠';
-      case 'LOW': return '🟢';
-      default: return '';
+      case 'HIGH':
+        return '🔴';
+      case 'NORMAL':
+        return '🟠';
+      case 'LOW':
+        return '🟢';
+      default:
+        return '';
     }
   };
-  
+
   // Format date
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     return new Date(dateString).toLocaleDateString();
   };
-  
+
   // Refresh data
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -144,7 +183,7 @@ const StoreRequestsScreen = ({ navigation, route }) => {
     <Provider>
       <View style={styles.container}>
         <Appbar title="Store Requests" />
-        
+
         <View style={styles.content}>
           <Searchbar
             placeholder="Search by store or order ID"
@@ -152,80 +191,98 @@ const StoreRequestsScreen = ({ navigation, route }) => {
             value={searchQuery}
             style={styles.searchbar}
           />
-          
+
           <View style={styles.filterContainer}>
             <Text style={styles.filterLabel}>Filter by status:</Text>
             <View style={styles.chipGroup}>
-              <Chip 
+              <Chip
                 selected={statusFilter === ''}
                 onPress={() => setStatusFilter('')}
-                style={styles.filterChip}
-              >
+                style={styles.filterChip}>
                 All
               </Chip>
-              <Chip 
+              <Chip
                 selected={statusFilter === 'PENDING'}
                 onPress={() => setStatusFilter('PENDING')}
-                style={styles.filterChip}
-              >
+                style={styles.filterChip}>
                 Pending
               </Chip>
-              <Chip 
+              <Chip
                 selected={statusFilter === 'PARTIALLY_FULFILLED'}
                 onPress={() => setStatusFilter('PARTIALLY_FULFILLED')}
-                style={styles.filterChip}
-              >
+                style={styles.filterChip}>
                 Partial
               </Chip>
-              <Chip 
+              <Chip
                 selected={statusFilter === 'COMPLETED'}
                 onPress={() => setStatusFilter('COMPLETED')}
-                style={styles.filterChip}
-              >
+                style={styles.filterChip}>
                 Completed
               </Chip>
             </View>
           </View>
-          
+
           <ScrollView
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-          >
+            }>
             {filteredRequests.length > 0 ? (
-              filteredRequests.map((request) => (
-                <Card 
-                  key={request.id} 
+              filteredRequests.map(request => (
+                <Card
+                  key={request.id}
                   style={styles.card}
-                  onPress={() => navigation.navigate('RequestDetails', { requestId: request.id })}
-                >
+                  onPress={() =>
+                    navigation.navigate('RequestDetails', {
+                      requestId: request.id,
+                    })
+                  }>
                   <Card.Content>
                     <View style={styles.cardHeader}>
                       <View>
-                        <Title>{request.storeName} {getPriorityIcon(request.priority || 'NORMAL')}</Title>
-                        <Paragraph>Request #{request.id.slice(-6)} - {formatDate(request.requestDate)}</Paragraph>
+                        <Title>
+                          {request.storeName}{' '}
+                          {getPriorityIcon(request.priority || 'NORMAL')}
+                        </Title>
+                        <Paragraph>
+                          Request #{request.id.slice(-6)} -{' '}
+                          {formatDate(request.requestDate)}
+                        </Paragraph>
                       </View>
-                      <Chip 
-                        style={[styles.statusChip, { backgroundColor: getStatusColor(request.status) }]}
-                      >
+                      <Chip
+                        style={[
+                          styles.statusChip,
+                          {backgroundColor: getStatusColor(request.status)},
+                        ]}>
                         {request.status}
                       </Chip>
                     </View>
-                    
+
                     <View style={styles.itemInfo}>
-                      <Text style={styles.infoText}>Items: {request.items}</Text>
-                      <Text style={styles.infoText}>Quantity: {request.totalQuantity}</Text>
+                      <Text style={styles.infoText}>
+                        Items: {request.items}
+                      </Text>
+                      <Text style={styles.infoText}>
+                        Quantity: {request.totalQuantity}
+                      </Text>
                     </View>
                   </Card.Content>
-                  
+
                   <Card.Actions>
-                    <Button 
-                      mode="contained" 
-                      onPress={() => navigation.navigate('RequestDetails', { requestId: request.id })}
+                    <Button
+                      mode="contained"
+                      onPress={() =>
+                        navigation.navigate('RequestDetails', {
+                          requestId: request.id,
+                        })
+                      }
                       style={styles.actionButton}
-                      disabled={request.status === REQUEST_STATUS.FULFILLED || request.status === REQUEST_STATUS.CANCELLED}
-                    >
-                      {request.status === REQUEST_STATUS.PENDING ? 'Process' : 'View Details'}
+                      disabled={
+                        request.status === REQUEST_STATUS.FULFILLED ||
+                        request.status === REQUEST_STATUS.CANCELLED
+                      }>
+                      {request.status === REQUEST_STATUS.PENDING
+                        ? 'Process'
+                        : 'View Details'}
                     </Button>
                   </Card.Actions>
                 </Card>
@@ -233,7 +290,9 @@ const StoreRequestsScreen = ({ navigation, route }) => {
             ) : (
               <Card style={styles.emptyCard}>
                 <Card.Content>
-                  <Text style={styles.emptyText}>No requests match your filters</Text>
+                  <Text style={styles.emptyText}>
+                    No requests match your filters
+                  </Text>
                 </Card.Content>
               </Card>
             )}

@@ -1,20 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { generateClient } from 'aws-amplify/api';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import {generateClient} from 'aws-amplify/api';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Appbar from '../../components/Appbar';
 import colors from '../../themes/colors';
 
 const client = generateClient();
 
-const ReportsScreen = ({ navigation, route }) => {
-  const { store } = route.params;
-
-
-
-
-
-
+const ReportsScreen = ({navigation, route}) => {
+  const {store} = route.params;
 
   return (
     <View style={styles.container}>
@@ -25,7 +25,11 @@ const ReportsScreen = ({ navigation, route }) => {
           style={styles.reportCard}
           onPress={() => navigation.navigate('SummaryReport', {store})}>
           <View style={styles.iconContainer}>
-            <Ionicons name="document-text-outline" size={28} color={colors.primary} />
+            <Ionicons
+              name="document-text-outline"
+              size={28}
+              color={colors.primary}
+            />
           </View>
           <Text style={styles.reportText}>Reports Summary</Text>
         </TouchableOpacity>
@@ -52,7 +56,11 @@ const ReportsScreen = ({ navigation, route }) => {
           style={styles.reportCard}
           onPress={() => navigation.navigate('RemainingStockReport', {store})}>
           <View style={styles.iconContainer}>
-            <Ionicons name="bar-chart-outline" size={28} color={colors.primary} />
+            <Ionicons
+              name="bar-chart-outline"
+              size={28}
+              color={colors.primary}
+            />
           </View>
           <Text style={styles.reportText}>Remaining Stock Report</Text>
         </TouchableOpacity>
@@ -61,7 +69,11 @@ const ReportsScreen = ({ navigation, route }) => {
           style={styles.reportCard}
           onPress={() => navigation.navigate('TopSellingReport', {store})}>
           <View style={styles.iconContainer}>
-            <Ionicons name="trending-up-outline" size={28} color={colors.primary} />
+            <Ionicons
+              name="trending-up-outline"
+              size={28}
+              color={colors.primary}
+            />
           </View>
           <Text style={styles.reportText}>Top Selling Products</Text>
         </TouchableOpacity>
@@ -87,10 +99,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 2
+    elevation: 2,
   },
   iconContainer: {
     width: 40,
@@ -99,13 +111,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f6ff',
-    borderRadius: 8
+    borderRadius: 8,
   },
   reportText: {
     fontSize: 16,
     color: '#333',
-    fontWeight: '500'
-  }
+    fontWeight: '500',
+  },
 });
 
 export default ReportsScreen;

@@ -1,29 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { 
-  Text, 
-  TextInput, 
-  Button, 
-  Card, 
-  Title, 
-  Divider, 
-  Switch, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import {
+  Text,
+  TextInput,
+  Button,
+  Card,
+  Title,
+  Divider,
+  Switch,
   ActivityIndicator,
   HelperText,
   Portal,
   Dialog,
-  List
+  List,
 } from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
-import { generateClient } from 'aws-amplify/api';
-import { createWarehouseProduct } from '../../graphql/mutations';
-import { listWarehouseProducts } from '../../graphql/queries';
+import {colors} from '../../constants/theme';
+import {generateClient} from 'aws-amplify/api';
+import {createWarehouseProduct} from '../../graphql/mutations';
+import {listWarehouseProducts} from '../../graphql/queries';
 
-const WarehouseProductAddScreen = ({ navigation, route }) => {
+const WarehouseProductAddScreen = ({navigation, route}) => {
   // Initialize Amplify client
   const client = generateClient();
-  
+
   // Form state
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
@@ -41,7 +48,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
   const [reorderQuantity, setReorderQuantity] = useState('');
   const [location, setLocation] = useState('');
   const [isActive, setIsActive] = useState(true);
-  
+
   // UI state
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -51,25 +58,27 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
   const [uniqueCategories, setUniqueCategories] = useState([]);
 
   // Check if SKU exists
-  const checkSku = async (skuValue) => {
-    if (!skuValue) return;
-    
+  const checkSku = async skuValue => {
+    if (!skuValue) {
+      return;
+    }
+
     setSkuLoading(true);
     try {
       const result = await client.graphql({
         query: listWarehouseProducts,
         variables: {
-          filter: { sku: { eq: skuValue } }
-        }
+          filter: {sku: {eq: skuValue}},
+        },
       });
-      
+
       const exists = result.data.listWarehouseProducts.items.length > 0;
       setSkuExists(exists);
-      
+
       if (exists) {
         setErrors({
           ...errors,
-          sku: 'This SKU already exists'
+          sku: 'This SKU already exists',
         });
       } else {
         const newErrors = {...errors};
@@ -88,10 +97,10 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
     const fetchCategories = async () => {
       try {
         const result = await client.graphql({
-          query: listWarehouseProducts
+          query: listWarehouseProducts,
         });
         const products = result.data.listWarehouseProducts.items;
-        
+
         // Extract unique categories
         const categories = new Set();
         products.forEach(product => {
@@ -99,55 +108,65 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
             categories.add(product.category);
           }
         });
-        
+
         setUniqueCategories(Array.from(categories));
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
     };
-    
+
     fetchCategories();
   }, []);
 
   // Validate form fields
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!name) newErrors.name = 'Product name is required';
+
+    if (!name) {
+      newErrors.name = 'Product name is required';
+    }
     if (!sku) {
       newErrors.sku = 'SKU is required';
     } else if (skuExists) {
       newErrors.sku = 'This SKU already exists';
     }
-    
+
     if (!purchasePrice) {
       newErrors.purchasePrice = 'Purchase price is required';
-    } else if (isNaN(parseFloat(purchasePrice)) || parseFloat(purchasePrice) < 0) {
+    } else if (
+      isNaN(parseFloat(purchasePrice)) ||
+      parseFloat(purchasePrice) < 0
+    ) {
       newErrors.purchasePrice = 'Enter a valid purchase price';
     }
-    
+
     if (!sellingPrice) {
       newErrors.sellingPrice = 'Selling price is required';
-    } else if (isNaN(parseFloat(sellingPrice)) || parseFloat(sellingPrice) < 0) {
+    } else if (
+      isNaN(parseFloat(sellingPrice)) ||
+      parseFloat(sellingPrice) < 0
+    ) {
       newErrors.sellingPrice = 'Enter a valid selling price';
     }
-    
+
     if (!totalStock) {
       newErrors.totalStock = 'Total stock is required';
     } else if (isNaN(parseFloat(totalStock)) || parseFloat(totalStock) < 0) {
       newErrors.totalStock = 'Enter a valid stock quantity';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
       const productData = {
         name,
@@ -167,20 +186,18 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
         reorderQuantity: reorderQuantity ? parseFloat(reorderQuantity) : null,
         location: location || null,
         isActive,
-        lastRestockDate: new Date().toISOString()
+        lastRestockDate: new Date().toISOString(),
       };
-      
+
       const response = await client.graphql({
         query: createWarehouseProduct,
-        variables: { input: productData }
+        variables: {input: productData},
       });
       console.log('Product created successfully:', response);
-      
-      Alert.alert(
-        'Success',
-        'Product added to warehouse successfully',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+
+      Alert.alert('Success', 'Product added to warehouse successfully', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
     } catch (error) {
       console.error('Error adding product:', error);
       Alert.alert('Error', 'Failed to add product. Please try again.');
@@ -190,28 +207,27 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
   };
 
   // Select category from dialog
-  const selectCategory = (selectedCategory) => {
+  const selectCategory = selectedCategory => {
     setCategory(selectedCategory);
     setCategoriesDialogVisible(false);
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={100}
-    >
-      <Appbar 
-        title="Add Warehouse Product" 
-        hasBackButton 
+      keyboardVerticalOffset={100}>
+      <Appbar
+        title="Add Warehouse Product"
+        hasBackButton
         onBack={() => navigation.goBack()}
       />
-      
+
       <ScrollView style={styles.content}>
         <Card style={styles.formCard}>
           <Card.Content>
             <Title>Basic Information</Title>
-            
+
             <TextInput
               label="Product Name *"
               value={name}
@@ -221,7 +237,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               mode="outlined"
             />
             {errors.name && <HelperText type="error">{errors.name}</HelperText>}
-            
+
             <TextInput
               label="Brand"
               value={brand}
@@ -229,7 +245,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <TextInput
               label="Description"
               value={description}
@@ -239,10 +255,10 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <Divider style={styles.divider} />
             <Title>Pricing & Inventory</Title>
-            
+
             <View style={styles.row}>
               <View style={styles.halfInput}>
                 <TextInput
@@ -255,9 +271,11 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                   mode="outlined"
                   left={<TextInput.Affix text="$" />}
                 />
-                {errors.purchasePrice && <HelperText type="error">{errors.purchasePrice}</HelperText>}
+                {errors.purchasePrice && (
+                  <HelperText type="error">{errors.purchasePrice}</HelperText>
+                )}
               </View>
-              
+
               <View style={styles.halfInput}>
                 <TextInput
                   label="Selling Price *"
@@ -269,10 +287,12 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                   mode="outlined"
                   left={<TextInput.Affix text="$" />}
                 />
-                {errors.sellingPrice && <HelperText type="error">{errors.sellingPrice}</HelperText>}
+                {errors.sellingPrice && (
+                  <HelperText type="error">{errors.sellingPrice}</HelperText>
+                )}
               </View>
             </View>
-            
+
             <TextInput
               label="Initial Stock *"
               value={totalStock}
@@ -282,8 +302,10 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               error={!!errors.totalStock}
               mode="outlined"
             />
-            {errors.totalStock && <HelperText type="error">{errors.totalStock}</HelperText>}
-            
+            {errors.totalStock && (
+              <HelperText type="error">{errors.totalStock}</HelperText>
+            )}
+
             <View style={styles.row}>
               <View style={styles.halfInput}>
                 <TextInput
@@ -295,7 +317,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                   mode="outlined"
                 />
               </View>
-              
+
               <View style={styles.halfInput}>
                 <TextInput
                   label="Reorder Quantity"
@@ -307,14 +329,14 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                 />
               </View>
             </View>
-            
+
             <Divider style={styles.divider} />
             <Title>Product Details</Title>
-            
+
             <TextInput
               label="SKU *"
               value={sku}
-              onChangeText={(value) => {
+              onChangeText={value => {
                 setSku(value);
                 if (value.length > 2) {
                   checkSku(value);
@@ -324,17 +346,17 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               error={!!errors.sku}
               mode="outlined"
               right={
-                skuLoading ? 
-                <TextInput.Icon icon="loading" /> : 
-                skuExists ? 
-                <TextInput.Icon icon="alert" color="#F44336" /> :
-                sku.length > 2 ? 
-                <TextInput.Icon icon="check-circle" color="#4CAF50" /> : 
-                null
+                skuLoading ? (
+                  <TextInput.Icon icon="loading" />
+                ) : skuExists ? (
+                  <TextInput.Icon icon="alert" color="#F44336" />
+                ) : sku.length > 2 ? (
+                  <TextInput.Icon icon="check-circle" color="#4CAF50" />
+                ) : null
               }
             />
             {errors.sku && <HelperText type="error">{errors.sku}</HelperText>}
-            
+
             <TextInput
               label="Barcode"
               value={barcode}
@@ -342,7 +364,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <TextInput
               label="Category"
               value={category}
@@ -350,13 +372,13 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
               right={
-                <TextInput.Icon 
-                  icon="menu-down" 
-                  onPress={() => setCategoriesDialogVisible(true)} 
+                <TextInput.Icon
+                  icon="menu-down"
+                  onPress={() => setCategoriesDialogVisible(true)}
                 />
               }
             />
-            
+
             <TextInput
               label="Subcategory"
               value={subcategory}
@@ -364,7 +386,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <TextInput
               label="Location in Warehouse"
               value={location}
@@ -373,10 +395,10 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               mode="outlined"
               placeholder="e.g., Aisle 5, Shelf 3"
             />
-            
+
             <Divider style={styles.divider} />
             <Title>Supplier Information</Title>
-            
+
             <TextInput
               label="Supplier"
               value={supplier}
@@ -384,7 +406,7 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <TextInput
               label="Supplier Contact"
               value={supplierContact}
@@ -393,9 +415,9 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
               mode="outlined"
               placeholder="Phone or email"
             />
-            
+
             <Divider style={styles.divider} />
-            
+
             <View style={styles.switchContainer}>
               <Text>Product Active</Text>
               <Switch
@@ -404,25 +426,23 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                 color={colors.primary}
               />
             </View>
-            
+
             <Button
               mode="contained"
               onPress={handleSubmit}
               style={styles.submitButton}
               loading={loading}
-              disabled={loading}
-            >
+              disabled={loading}>
               Add Product
             </Button>
           </Card.Content>
         </Card>
       </ScrollView>
-      
+
       <Portal>
         <Dialog
           visible={categoriesDialogVisible}
-          onDismiss={() => setCategoriesDialogVisible(false)}
-        >
+          onDismiss={() => setCategoriesDialogVisible(false)}>
           <Dialog.Title>Select Category</Dialog.Title>
           <Dialog.Content>
             <ScrollView style={styles.dialogContent}>
@@ -433,10 +453,14 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
                     title={cat}
                     onPress={() => selectCategory(cat)}
                     style={styles.listItem}
-                    right={props => 
-                      category === cat ? 
-                      <List.Icon {...props} icon="check" color={colors.primary} /> : 
-                      null
+                    right={props =>
+                      category === cat ? (
+                        <List.Icon
+                          {...props}
+                          icon="check"
+                          color={colors.primary}
+                        />
+                      ) : null
                     }
                   />
                 ))
@@ -446,7 +470,9 @@ const WarehouseProductAddScreen = ({ navigation, route }) => {
             </ScrollView>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setCategoriesDialogVisible(false)}>Cancel</Button>
+            <Button onPress={() => setCategoriesDialogVisible(false)}>
+              Cancel
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -501,7 +527,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#757575',
     paddingVertical: 16,
-  }
+  },
 });
 
 export default WarehouseProductAddScreen;

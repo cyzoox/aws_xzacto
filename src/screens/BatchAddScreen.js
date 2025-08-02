@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   ScrollView,
@@ -8,40 +8,44 @@ import {
   TouchableOpacity,
   Text,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { Button, DataTable, Portal, Modal, IconButton } from 'react-native-paper';
-import { createProductWithDetails } from '../redux/slices/productSlice';
-import { fetchCategories } from '../redux/slices/categorySlice';
-import { useStore } from '../context/StoreContext';
+import {useDispatch, useSelector} from 'react-redux';
+import {Button, DataTable, Portal, Modal, IconButton} from 'react-native-paper';
+import {createProductWithDetails} from '../redux/slices/productSlice';
+import {fetchCategories} from '../redux/slices/categorySlice';
+import {useStore} from '../context/StoreContext';
 import Appbar from '../components/Appbar';
 import colors from '../themes/colors';
 
 const INITIAL_ROWS = 5; // Initial number of empty rows
 
-const BatchAddScreen = ({ navigation, route }) => {
+const BatchAddScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
-  const { items: categories } = useSelector(state => state.categories);
-  
+  const {items: categories} = useSelector(state => state.categories);
+
   // Get store directly from route params if available
   const storeFromParams = route.params?.store;
-  
+
   // Still use StoreContext as fallback
-  const { currentStore: contextStore } = useStore();
-  
+  const {currentStore: contextStore} = useStore();
+
   // Use store from params if available, otherwise fall back to context
   const currentStore = storeFromParams || contextStore;
 
   // State for products table with initial empty rows
-  const [products, setProducts] = useState(Array(INITIAL_ROWS).fill().map(() => ({
-    id: Date.now().toString() + Math.random(),
-    name: '',
-    brand: '',
-    oprice: '',
-    sprice: '',
-    stock: '',
-    category: '',
-    sku: '',
-  })));
+  const [products, setProducts] = useState(
+    Array(INITIAL_ROWS)
+      .fill()
+      .map(() => ({
+        id: Date.now().toString() + Math.random(),
+        name: '',
+        brand: '',
+        oprice: '',
+        sprice: '',
+        stock: '',
+        category: '',
+        sku: '',
+      })),
+  );
   const [page, setPage] = useState(0);
   const itemsPerPage = 10;
 
@@ -50,14 +54,14 @@ const BatchAddScreen = ({ navigation, route }) => {
 
   // Columns configuration
   const columns = [
-    { key: 'name', title: 'Name', numeric: false },
-    { key: 'brand', title: 'Brand', numeric: false },
-    { key: 'oprice', title: 'Original Price', numeric: true },
-    { key: 'sprice', title: 'Selling Price', numeric: true },
-    { key: 'stock', title: 'Stock', numeric: true },
-    { key: 'category', title: 'Category', numeric: false },
-    { key: 'sku', title: 'SKU', numeric: false },
-    { key: 'actions', title: 'Actions', numeric: false },
+    {key: 'name', title: 'Name', numeric: false},
+    {key: 'brand', title: 'Brand', numeric: false},
+    {key: 'oprice', title: 'Original Price', numeric: true},
+    {key: 'sprice', title: 'Selling Price', numeric: true},
+    {key: 'stock', title: 'Stock', numeric: true},
+    {key: 'category', title: 'Category', numeric: false},
+    {key: 'sku', title: 'SKU', numeric: false},
+    {key: 'actions', title: 'Actions', numeric: false},
   ];
 
   // Load categories on mount
@@ -69,27 +73,32 @@ const BatchAddScreen = ({ navigation, route }) => {
 
   // Add a new empty row
   const addRow = () => {
-    setProducts(prev => [...prev, {
-      id: Date.now().toString() + Math.random(),
-      name: '',
-      brand: '',
-      oprice: '',
-      sprice: '',
-      stock: '',
-      category: '',
-      sku: '',
-    }]);
+    setProducts(prev => [
+      ...prev,
+      {
+        id: Date.now().toString() + Math.random(),
+        name: '',
+        brand: '',
+        oprice: '',
+        sprice: '',
+        stock: '',
+        category: '',
+        sku: '',
+      },
+    ]);
   };
 
   // Update product data
   const updateProduct = (id, field, value) => {
-    setProducts(prev => prev.map(product => 
-      product.id === id ? { ...product, [field]: value } : product
-    ));
+    setProducts(prev =>
+      prev.map(product =>
+        product.id === id ? {...product, [field]: value} : product,
+      ),
+    );
   };
 
   // Remove product from table
-  const removeProduct = (id) => {
+  const removeProduct = id => {
     setProducts(prev => prev.filter(product => product.id !== id));
   };
 
@@ -97,16 +106,20 @@ const BatchAddScreen = ({ navigation, route }) => {
   const saveProducts = async () => {
     // Check if store is available
     if (!currentStore?.id) {
-      Alert.alert('Error', 'Store information is missing. Cannot save products.');
+      Alert.alert(
+        'Error',
+        'Store information is missing. Cannot save products.',
+      );
       return;
     }
     // Filter out empty rows and validate
-    const validProducts = products.filter(product => 
-      product.name && 
-      product.oprice && 
-      product.sprice && 
-      product.stock && 
-      product.category
+    const validProducts = products.filter(
+      product =>
+        product.name &&
+        product.oprice &&
+        product.sprice &&
+        product.stock &&
+        product.category,
     );
 
     if (validProducts.length === 0) {
@@ -135,10 +148,10 @@ const BatchAddScreen = ({ navigation, route }) => {
             categoryId: product.category,
             sku: product.sku || '',
             storeId: currentStore?.id || '',
-            isActive: true
+            isActive: true,
           },
           variants: [],
-          addons: []
+          addons: [],
         };
 
         await dispatch(createProductWithDetails(productData));
@@ -186,8 +199,7 @@ const BatchAddScreen = ({ navigation, route }) => {
                 <DataTable.Title
                   key={column.key}
                   numeric={column.numeric}
-                  style={styles.cell}
-                >
+                  style={styles.cell}>
                   {column.title}
                 </DataTable.Title>
               ))}
@@ -205,7 +217,9 @@ const BatchAddScreen = ({ navigation, route }) => {
                             <TextInput
                               style={styles.cellInput}
                               value={product.name}
-                              onChangeText={(text) => updateProduct(product.id, 'name', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'name', text)
+                              }
                               placeholder="Name"
                             />
                           </DataTable.Cell>
@@ -217,7 +231,9 @@ const BatchAddScreen = ({ navigation, route }) => {
                             <TextInput
                               style={styles.cellInput}
                               value={product.brand}
-                              onChangeText={(text) => updateProduct(product.id, 'brand', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'brand', text)
+                              }
                               placeholder="Brand"
                             />
                           </DataTable.Cell>
@@ -225,11 +241,16 @@ const BatchAddScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'oprice') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
                               value={product.oprice}
-                              onChangeText={(text) => updateProduct(product.id, 'oprice', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'oprice', text)
+                              }
                               placeholder="0.00"
                               keyboardType="decimal-pad"
                             />
@@ -238,11 +259,16 @@ const BatchAddScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'sprice') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
                               value={product.sprice}
-                              onChangeText={(text) => updateProduct(product.id, 'sprice', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'sprice', text)
+                              }
                               placeholder="0.00"
                               keyboardType="decimal-pad"
                             />
@@ -251,11 +277,16 @@ const BatchAddScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'stock') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
                               value={product.stock}
-                              onChangeText={(text) => updateProduct(product.id, 'stock', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'stock', text)
+                              }
                               placeholder="0"
                               keyboardType="decimal-pad"
                             />
@@ -268,7 +299,9 @@ const BatchAddScreen = ({ navigation, route }) => {
                             <TextInput
                               style={styles.cellInput}
                               value={product.sku}
-                              onChangeText={(text) => updateProduct(product.id, 'sku', text)}
+                              onChangeText={text =>
+                                updateProduct(product.id, 'sku', text)
+                              }
                               placeholder="SKU"
                             />
                           </DataTable.Cell>
@@ -285,14 +318,22 @@ const BatchAddScreen = ({ navigation, route }) => {
                                     key={category.id}
                                     style={[
                                       styles.categoryChip,
-                                      product.category === category.id && styles.selectedCategoryChip
+                                      product.category === category.id &&
+                                        styles.selectedCategoryChip,
                                     ]}
-                                    onPress={() => updateProduct(product.id, 'category', category.id)}
-                                  >
-                                    <Text style={[
-                                      styles.categoryChipText,
-                                      product.category === category.id && styles.selectedCategoryChipText
-                                    ]}>
+                                    onPress={() =>
+                                      updateProduct(
+                                        product.id,
+                                        'category',
+                                        category.id,
+                                      )
+                                    }>
+                                    <Text
+                                      style={[
+                                        styles.categoryChipText,
+                                        product.category === category.id &&
+                                          styles.selectedCategoryChipText,
+                                      ]}>
                                       {category.name}
                                     </Text>
                                   </TouchableOpacity>
@@ -305,8 +346,7 @@ const BatchAddScreen = ({ navigation, route }) => {
                         <DataTable.Cell
                           key={column.key}
                           numeric={column.numeric}
-                          style={styles.cell}
-                        >
+                          style={styles.cell}>
                           {renderCell(product, column)}
                         </DataTable.Cell>
                       );
@@ -318,11 +358,7 @@ const BatchAddScreen = ({ navigation, route }) => {
         </ScrollView>
 
         <View style={styles.actions}>
-          <Button 
-            mode="outlined" 
-            onPress={addRow} 
-            icon="plus"
-          >
+          <Button mode="outlined" onPress={addRow} icon="plus">
             Add Row
           </Button>
         </View>
@@ -340,8 +376,7 @@ const BatchAddScreen = ({ navigation, route }) => {
             onPress={saveProducts}
             loading={saving}
             disabled={saving || products.length === 0}
-            style={styles.saveButton}
-          >
+            style={styles.saveButton}>
             Save All Products
           </Button>
         </View>
@@ -415,7 +450,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,

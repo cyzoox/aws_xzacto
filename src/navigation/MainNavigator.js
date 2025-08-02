@@ -1,7 +1,7 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import { TouchableOpacity, Text } from 'react-native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {createStackNavigator} from '@react-navigation/stack';
+import {TouchableOpacity, Text} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Import screens
@@ -14,7 +14,7 @@ const Stack = createStackNavigator();
 
 // Tab screen options helper
 const getTabScreenOptions = (iconName, label) => ({
-  tabBarIcon: ({ color, size }) => (
+  tabBarIcon: ({color, size}) => (
     <Icon name={iconName} color={color} size={size} />
   ),
   tabBarLabel: label,
@@ -41,8 +41,7 @@ const MainNavigator = () => {
       screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
-      }}
-    >
+      }}>
       <Tab.Screen
         name="Dashboard"
         component={SuperAdminNavigator}
@@ -60,10 +59,10 @@ const MainNavigator = () => {
 // Store management stack
 const StoreStack = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen 
-      name="StoreManagement" 
-      component={StoreManagementScreen} 
-      options={{ title: 'Store Management' }}
+    <Stack.Screen
+      name="StoreManagement"
+      component={StoreManagementScreen}
+      options={{title: 'Store Management'}}
     />
   </Stack.Navigator>
 );

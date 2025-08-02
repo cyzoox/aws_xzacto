@@ -13,10 +13,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {generateClient} from 'aws-amplify/api';
 import {listStaff} from '../graphql/queries';
-import { authService } from '../services/authService';
-import { getCurrentUser } from '@aws-amplify/auth';
-import { createStaff, createAccount } from '../graphql/mutations';
-import { listSubscriptionPlans } from '../graphql/queries';
+import {authService} from '../services/authService';
+import {getCurrentUser} from '@aws-amplify/auth';
+import {createStaff, createAccount} from '../graphql/mutations';
+import {listSubscriptionPlans} from '../graphql/queries';
 
 const client = generateClient();
 
@@ -25,31 +25,35 @@ const RoleSelectionScreen = ({navigation}) => {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(true);
   const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
- 
+
   const [modalVisible, setModalVisible] = useState(false);
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPin, setNewAdminPin] = useState('');
-  
+
   // Check for existing login session and SuperAdmin on component mount
   useEffect(() => {
     let isMounted = true; // Track if component is mounted
-    
+
     const initialize = async () => {
       try {
         // Check if user is already logged in
         const staffData = await authService.checkExistingLogin();
-        
+
         if (staffData) {
           console.log('Found existing login session for:', staffData.name);
-          
-          if (!isMounted) return; // Check if still mounted
-          
+
+          if (!isMounted) {
+            return;
+          } // Check if still mounted
+
           // Update session access time
           authService.updateSessionAccessTime();
-          
+
           // Navigate based on role
-          const primaryRole = Array.isArray(staffData.role) ? staffData.role[0] : staffData.role;
-          
+          const primaryRole = Array.isArray(staffData.role)
+            ? staffData.role[0]
+            : staffData.role;
+
           switch (primaryRole) {
             case 'SuperAdmin':
               navigation.replace('SuperAdmin', {staffData});
@@ -65,39 +69,45 @@ const RoleSelectionScreen = ({navigation}) => {
               break;
             default:
               // If role is invalid, reset to login screen
-              if (isMounted) setLoading(false);
+              if (isMounted) {
+                setLoading(false);
+              }
           }
         } else {
           // No existing session, check if there is a SuperAdmin account
-          if (!isMounted) return; // Check if still mounted
-          
+          if (!isMounted) {
+            return;
+          } // Check if still mounted
+
           // Get the authenticated user ID
           const authUser = await getCurrentUser();
           const authUserId = authUser.userId;
-          
+
           if (isMounted) {
             // setUserId(authUserId);
-            
+
             // Check if there's a SuperAdmin for this user
             await checkForSuperAdmin(authUserId);
-            
+
             setLoading(false);
           }
         }
       } catch (error) {
         console.error('Error during initialization:', error);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
-    
+
     initialize();
-    
+
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
     };
   }, [navigation]);
-  
+
   // Function to check if SuperAdmin exists for the authenticated user
   const checkForSuperAdmin = async authUserId => {
     if (!authUserId) {
@@ -144,20 +154,20 @@ const RoleSelectionScreen = ({navigation}) => {
       return false;
     }
   };
-  
+
   // Function to create a new SuperAdmin account
   const createSuperAdmin = async (adminName, adminPin) => {
-     const authUser = await getCurrentUser();
-     const authUserId = authUser.userId;
+    const authUser = await getCurrentUser();
+    const authUserId = authUser.userId;
     try {
       setLoading(true);
-      
+
       if (!authUserId) {
         Alert.alert('Error', 'Authentication error. Please restart the app.');
         setLoading(false);
         return;
       }
-      
+
       // Check if a SuperAdmin already exists before creating a new one
       // This prevents potential race conditions
       const exists = await checkForSuperAdmin(authUserId);
@@ -166,33 +176,35 @@ const RoleSelectionScreen = ({navigation}) => {
         setLoading(false);
         return;
       }
-      
+
       // Get user's email for the account
       const authUser = await getCurrentUser();
       const userEmail = authUser.signInDetails?.loginId || '';
       console.log('Creating account for user with email:', userEmail);
-      
+
       // Get the free subscription plan as default
       let freePlan = null;
       try {
         const plansResponse = await client.graphql({
           query: listSubscriptionPlans,
           variables: {
-            filter: { name: { eq: "Free" } }
-          }
+            filter: {name: {eq: 'Free'}},
+          },
         });
-        
+
         const plans = plansResponse.data.listSubscriptionPlans.items;
         if (plans && plans.length > 0) {
           freePlan = plans[0];
           console.log('Found free plan:', freePlan.id);
         } else {
-          console.log('No free plan found, creating account without subscription plan');
+          console.log(
+            'No free plan found, creating account without subscription plan',
+          );
         }
       } catch (planError) {
         console.error('Error fetching subscription plans:', planError);
       }
-      
+
       // Create account first
       const accountResponse = await client.graphql({
         query: createAccount,
@@ -208,10 +220,10 @@ const RoleSelectionScreen = ({navigation}) => {
           },
         },
       });
-      
+
       const newAccount = accountResponse.data.createAccount;
       console.log('Account created:', newAccount.id);
-      
+
       // Create SuperAdmin staff with custom name and PIN
       const staffResponse = await client.graphql({
         query: createStaff,
@@ -228,21 +240,24 @@ const RoleSelectionScreen = ({navigation}) => {
           },
         },
       });
-      
+
       console.log('SuperAdmin created:', staffResponse.data.createStaff);
-      
+
       // Set the staff data for login
       const staffData = staffResponse.data.createStaff;
-      
+
       // Save login session using authService
       await authService.saveLoginSession(staffData);
       console.log('Staff login session saved for new SuperAdmin');
-      
+
       // Navigate to SuperAdmin screen
       navigation.replace('SuperAdmin', {staffData});
     } catch (error) {
       console.error('Error creating SuperAdmin:', error);
-      Alert.alert('Error', 'Failed to create SuperAdmin account. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to create SuperAdmin account. Please try again.',
+      );
       setLoading(false);
     }
   };
@@ -256,7 +271,7 @@ const RoleSelectionScreen = ({navigation}) => {
     try {
       setLoading(true);
 
-      console.log('Attempting login with:', { username, pin });
+      console.log('Attempting login with:', {username, pin});
 
       // Query staff with stores connection
       const response = await client.graphql({
@@ -284,9 +299,9 @@ const RoleSelectionScreen = ({navigation}) => {
         `,
         variables: {
           filter: {
-            name: { eq: username }
-          }
-        }
+            name: {eq: username},
+          },
+        },
       });
 
       console.log('Full response:', JSON.stringify(response, null, 2));
@@ -309,11 +324,13 @@ const RoleSelectionScreen = ({navigation}) => {
       // Get assigned store for staff
       const stores = staff.stores?.items || [];
       console.log('Staff stores:', JSON.stringify(stores, null, 2));
-      
+
       // Get primary role to check if it's a warehouse role
-      const primaryRole = Array.isArray(staff.role) ? staff.role[0] : staff.role;
+      const primaryRole = Array.isArray(staff.role)
+        ? staff.role[0]
+        : staff.role;
       console.log('Primary role:', primaryRole);
-      
+
       // For non-warehouse roles, require store assignment
       // We'll temporarily disable this check since it's causing problems for users
       // with valid store assignments
@@ -328,11 +345,14 @@ const RoleSelectionScreen = ({navigation}) => {
         ...staff,
         store_id: stores.length > 0 ? stores[0].store.id : null, // null for warehouse roles with no stores
         // Ensure ownerId is available in staffData - use store's ownerId if staff doesn't have one
-        ownerId: staff.ownerId || (stores.length > 0 && stores[0].store.ownerId) || null
+        ownerId:
+          staff.ownerId ||
+          (stores.length > 0 && stores[0].store.ownerId) ||
+          null,
       };
 
       console.log('Staff data:', staffData);
-      
+
       // Save login session using authService
       await authService.saveLoginSession(staffData);
       console.log('Staff login session saved');
@@ -370,22 +390,21 @@ const RoleSelectionScreen = ({navigation}) => {
       </View>
     );
   }
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Staff Login</Text>
-      
+
       {/* Modal for SuperAdmin creation */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+        onRequestClose={() => setModalVisible(false)}>
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>Create SuperAdmin Account</Text>
-            
+
             <TextInput
               value={newAdminName}
               onChangeText={setNewAdminName}
@@ -394,7 +413,7 @@ const RoleSelectionScreen = ({navigation}) => {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            
+
             <TextInput
               value={newAdminPin}
               onChangeText={setNewAdminPin}
@@ -404,7 +423,7 @@ const RoleSelectionScreen = ({navigation}) => {
               keyboardType="numeric"
               maxLength={5}
             />
-            
+
             <View style={styles.modalButtonContainer}>
               <Pressable
                 style={[styles.button, styles.buttonCancel]}
@@ -412,11 +431,10 @@ const RoleSelectionScreen = ({navigation}) => {
                   setModalVisible(false);
                   setNewAdminName('');
                   setNewAdminPin('');
-                }}
-              >
+                }}>
                 <Text style={styles.buttonText}>Cancel</Text>
               </Pressable>
-              
+
               <Pressable
                 style={[styles.button, styles.createButton]}
                 onPress={() => {
@@ -430,15 +448,14 @@ const RoleSelectionScreen = ({navigation}) => {
                   }
                   setModalVisible(false);
                   createSuperAdmin(newAdminName, newAdminPin);
-                }}
-              >
+                }}>
                 <Text style={styles.buttonText}>Create</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
-      
+
       {hasSuperAdmin ? (
         // Normal login form if SuperAdmin exists
         <>
@@ -474,12 +491,17 @@ const RoleSelectionScreen = ({navigation}) => {
         // Create SuperAdmin button if no SuperAdmin exists
         <>
           <Text style={styles.infoText}>
-            No SuperAdmin account found. You need to create a SuperAdmin account to proceed.
+            No SuperAdmin account found. You need to create a SuperAdmin account
+            to proceed.
           </Text>
           <TouchableOpacity
             onPress={() => setModalVisible(true)}
             disabled={loading}
-            style={[styles.button, styles.createButton, loading && styles.buttonDisabled]}>
+            style={[
+              styles.button,
+              styles.createButton,
+              loading && styles.buttonDisabled,
+            ]}>
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (

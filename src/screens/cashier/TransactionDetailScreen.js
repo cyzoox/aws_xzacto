@@ -21,7 +21,11 @@ import AppHeader from '../../components/AppHeader';
 import AlertwithChild from '../../components/AlertwithChild';
 import SearchInput, {createFilter} from 'react-native-search-filter';
 import {getSaleTransaction, getProduct, listSales} from '../../graphql/queries';
-import {updateSaleTransaction, updateProduct, updateSale} from '../../graphql/mutations';
+import {
+  updateSaleTransaction,
+  updateProduct,
+  updateSale,
+} from '../../graphql/mutations';
 import {generateClient} from 'aws-amplify/api';
 const client = generateClient();
 
@@ -36,7 +40,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [saleItems, setSaleItems] = useState([]);
-  
+
   useEffect(() => {
     fetchTransactionDetails();
   }, []);
@@ -51,16 +55,22 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           id: transactions.id,
         },
       });
-      
+
       const transactionData = result.data.getSaleTransaction;
       setTransactionDetails(transactionData);
-      
+
       // Fetch sales for this transaction
       const salesResult = await fetchSaleItems(transactions.id);
-      
+
       // If no sale items found (old transaction format), fallback to product items from transaction
-      if (salesResult.length === 0 && transactionData?.items && Array.isArray(transactionData.items)) {
-        console.log("No sale records found. Using legacy transaction items format.");
+      if (
+        salesResult.length === 0 &&
+        transactionData?.items &&
+        Array.isArray(transactionData.items)
+      ) {
+        console.log(
+          'No sale records found. Using legacy transaction items format.',
+        );
         await fetchProductDetails(transactionData.items);
       }
     } catch (error) {
@@ -71,24 +81,24 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     }
   };
 
-  const fetchSaleItems = async (transactionId) => {
+  const fetchSaleItems = async transactionId => {
     try {
       // Query sales records associated with this transaction
       const result = await client.graphql({
         query: listSales,
         variables: {
           filter: {
-            transactionID: { eq: transactionId },
+            transactionID: {eq: transactionId},
           },
         },
       });
-      
+
       const sales = result.data.listSales.items;
-      
+
       if (sales && sales.length > 0) {
         // For each sale, fetch the associated product to get the name
         const salesWithProductDetails = await Promise.all(
-          sales.map(async (sale) => {
+          sales.map(async sale => {
             try {
               const productResult = await client.graphql({
                 query: getProduct,
@@ -96,7 +106,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
                   id: sale.productID,
                 },
               });
-              
+
               const product = productResult.data.getProduct;
               return {
                 ...sale,
@@ -109,13 +119,13 @@ const TransactionDetailsScreen = ({navigation, route}) => {
                 productName: 'Unknown Product',
               };
             }
-          })
+          }),
         );
-        
+
         setSaleItems(salesWithProductDetails);
         return salesWithProductDetails;
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error fetching sale items:', error);
@@ -124,10 +134,10 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     }
   };
 
-  const fetchProductDetails = async (productIds) => {
+  const fetchProductDetails = async productIds => {
     try {
       const productDetails = [];
-      
+
       // Fetch details for each product ID in the transaction
       for (const productId of productIds) {
         const result = await client.graphql({
@@ -136,7 +146,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
             id: productId,
           },
         });
-        
+
         const product = result.data.getProduct;
         if (product) {
           // For legacy transactions, we'll assume quantity of 1 for each product
@@ -151,7 +161,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           });
         }
       }
-      
+
       setSaleItems(productDetails);
       return productDetails;
     } catch (error) {
@@ -167,18 +177,20 @@ const TransactionDetailsScreen = ({navigation, route}) => {
   };
 
   const handleVoidItem = async () => {
-    if (!selectedItem) return;
-    
+    if (!selectedItem) {
+      return;
+    }
+
     if (!reason.trim()) {
       setError('Please provide a reason for voiding this item');
       return;
     }
-    
+
     if (code !== staffData?.password) {
       setError('Invalid PIN code');
       return;
     }
-    
+
     setIsLoading(true);
     try {
       // Update the sale status to voided
@@ -192,7 +204,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           },
         },
       });
-      
+
       // Try to restore product stock
       try {
         // Get current product stock
@@ -202,9 +214,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
             id: selectedItem.productID,
           },
         });
-        
+
         const product = productResult.data.getProduct;
-        
+
         if (product) {
           // Update product stock
           await client.graphql({
@@ -220,14 +232,14 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       } catch (stockError) {
         console.error('Error restoring stock:', stockError);
       }
-      
+
       // Check if all sales are now voided
-      const updatedSales = saleItems.map(item => 
-        item.id === selectedItem.id ? {...item, status: 'Voided'} : item
+      const updatedSales = saleItems.map(item =>
+        item.id === selectedItem.id ? {...item, status: 'Voided'} : item,
       );
-      
+
       const allVoided = updatedSales.every(item => item.status === 'Voided');
-      
+
       // Update transaction status if all items are voided
       if (allVoided) {
         await client.graphql({
@@ -244,8 +256,10 @@ const TransactionDetailsScreen = ({navigation, route}) => {
         // Update transaction notes to indicate partial void
         const currentNotes = transactionDetails.notes || '';
         const voidNote = `Item voided: ${selectedItem.productName}. Reason: ${reason}`;
-        const updatedNotes = currentNotes ? `${currentNotes}; ${voidNote}` : voidNote;
-        
+        const updatedNotes = currentNotes
+          ? `${currentNotes}; ${voidNote}`
+          : voidNote;
+
         await client.graphql({
           query: updateSaleTransaction,
           variables: {
@@ -256,16 +270,16 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           },
         });
       }
-      
+
       // Reset state
       setReason('');
       setCode('');
       setPinVisible(false);
       alertVisible(false);
       setSelectedItem(null);
-      
+
       Alert.alert('Success', 'Item has been voided');
-      
+
       // Refresh transaction details
       await fetchTransactionDetails();
     } catch (error) {
@@ -280,24 +294,24 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     // Parse variant and addon data if available
     let variantInfo = null;
     let addonInfo = [];
-    
+
     if (item.variantData) {
       try {
         variantInfo = JSON.parse(item.variantData);
       } catch (e) {
-        console.error("Error parsing variant data:", e);
+        console.error('Error parsing variant data:', e);
       }
     }
-    
+
     if (item.addonData) {
       try {
         const parsed = JSON.parse(item.addonData);
         addonInfo = Array.isArray(parsed) ? parsed : [parsed];
       } catch (e) {
-        console.error("Error parsing addon data:", e);
+        console.error('Error parsing addon data:', e);
       }
     }
-    
+
     return (
       <View style={styles.itemContainer}>
         <View style={styles.itemDetails}>
@@ -312,15 +326,20 @@ const TransactionDetailsScreen = ({navigation, route}) => {
             <Text style={styles.priceText}>
               @ {formatMoney(item.price, {symbol: '₱', precision: 2})}
             </Text>
-            
+
             {/* Display variant if available */}
             {variantInfo && (
               <Text style={styles.variantText}>
                 Variant: {variantInfo.name || 'Unknown'}
-                {variantInfo.price ? ` (+${formatMoney(variantInfo.price, {symbol: '₱', precision: 2})})` : ''}
+                {variantInfo.price
+                  ? ` (+${formatMoney(variantInfo.price, {
+                      symbol: '₱',
+                      precision: 2,
+                    })})`
+                  : ''}
               </Text>
             )}
-            
+
             {/* Display addons if available */}
             {addonInfo.length > 0 && (
               <View style={styles.addonContainer}>
@@ -328,7 +347,12 @@ const TransactionDetailsScreen = ({navigation, route}) => {
                 {addonInfo.map((addon, index) => (
                   <Text key={index} style={styles.addonText}>
                     • {addon.name || 'Unknown addon'}
-                    {addon.price ? ` (+${formatMoney(addon.price, {symbol: '₱', precision: 2})})` : ''}
+                    {addon.price
+                      ? ` (+${formatMoney(addon.price, {
+                          symbol: '₱',
+                          precision: 2,
+                        })})`
+                      : ''}
                   </Text>
                 ))}
               </View>
@@ -394,13 +418,21 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <View style={styles.transactionDetails}>
         <View style={styles.transactionInfo}>
           <Text style={styles.transactionText}>
-            Date: {moment(transactions.createdAt).format('MMM DD, YYYY hh:mm A')}
+            Date:{' '}
+            {moment(transactions.createdAt).format('MMM DD, YYYY hh:mm A')}
           </Text>
           <Text style={styles.transactionText}>
             Receipt #: {transactions.id.substring(0, 8)}
           </Text>
           <Text style={styles.transactionText}>
-            Status: <Text style={{color: transactions.status === 'Completed' ? colors.green : colors.red}}>
+            Status:{' '}
+            <Text
+              style={{
+                color:
+                  transactions.status === 'Completed'
+                    ? colors.green
+                    : colors.red,
+              }}>
               {transactions.status || 'Completed'}
             </Text>
           </Text>
@@ -418,7 +450,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
         <ListItem.Content style={styles.listItemContent}>
           <View style={styles.listItemTextContainer}>
             <Text style={[styles.listItemText, styles.qtyHeader]}>Qty</Text>
-            <Text style={[styles.listItemText, styles.productHeader]}>Product</Text>
+            <Text style={[styles.listItemText, styles.productHeader]}>
+              Product
+            </Text>
           </View>
           <Text style={[styles.listItemText, styles.totalHeader]}>Total</Text>
           <Text style={[styles.listItemText, styles.actionHeader]}>Action</Text>
@@ -432,7 +466,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <ListItem>
         <ListItem.Content style={styles.listItemContent}>
           <Text style={styles.subtotalLabel}>Sub Total</Text>
-          <Text></Text>
+          <Text />
           <Text style={styles.subTotalText}>
             {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
           </Text>
@@ -441,16 +475,20 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <ListItem style={styles.listItem}>
         <ListItem.Content style={styles.listItemContent}>
           <Text style={styles.discountText}>Discount</Text>
-          <Text></Text>
+          <Text />
           <Text style={styles.discountText}>
-            -{formatMoney(transactionDetails?.discount || 0, {symbol: '₱', precision: 2})}
+            -
+            {formatMoney(transactionDetails?.discount || 0, {
+              symbol: '₱',
+              precision: 2,
+            })}
           </Text>
         </ListItem.Content>
       </ListItem>
       <ListItem style={styles.listItem}>
         <ListItem.Content style={styles.listItemContent}>
           <Text style={styles.totalText}>Total</Text>
-          <Text></Text>
+          <Text />
           <Text style={styles.totalText}>
             {formatMoney(transactionDetails?.total || calculateTotal(), {
               symbol: '₱',
@@ -462,7 +500,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <ListItem style={styles.listItem}>
         <ListItem.Content style={styles.listItemContent}>
           <Text style={styles.paymentLabel}>Amount Received</Text>
-          <Text></Text>
+          <Text />
           <Text style={styles.paymentText}>
             {formatMoney(transactionDetails?.cash_received || 0, {
               symbol: '₱',
@@ -474,11 +512,11 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <ListItem style={styles.listItem}>
         <ListItem.Content style={styles.listItemContent}>
           <Text style={styles.changeLabel}>Change</Text>
-          <Text></Text>
+          <Text />
           <Text style={styles.changeText}>
             {formatMoney(transactionDetails?.change || 0, {
-              symbol: '₱', 
-              precision: 2
+              symbol: '₱',
+              precision: 2,
             })}
           </Text>
         </ListItem.Content>
@@ -561,19 +599,21 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       <FlatList
         data={saleItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No items found for this transaction</Text>
+            <Text style={styles.emptyText}>
+              No items found for this transaction
+            </Text>
           </View>
         }
       />
-      
+
       {/* Void Item Alert */}
       {renderVoidItemAlert()}
-      
+
       {/* PIN Confirmation */}
       {renderPinConfirmation()}
     </View>

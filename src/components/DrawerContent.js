@@ -1,29 +1,26 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, Text } from 'react-native';
-import {
-  DrawerItem,
-  DrawerContentScrollView,
-} from '@react-navigation/drawer';
+import React, {useState} from 'react';
+import {View, StyleSheet, Image, TouchableOpacity, Text} from 'react-native';
+import {DrawerItem, DrawerContentScrollView} from '@react-navigation/drawer';
 import colors from '../themes/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Alert from './Alert';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export function DrawerContent(props) {
-  const { staffData } = props;
+  const {staffData} = props;
   const [alerts, setAlert] = useState(false);
   const [switch_alerts, setSwitchAlert] = useState(false);
   const [switchStore, setSwitchStore] = useState(false);
   const [activeItem, setActiveItem] = useState('Dashboard');
-  
+
   // Check if user is SuperAdmin
   const isSuperAdmin = staffData?.role?.includes('SuperAdmin');
-  
-  const onSwitch = async() => {
+
+  const onSwitch = async () => {
     await AsyncStorage.removeItem('@store');
     await AsyncStorage.removeItem('@currency');
     props.navigation.goBack();
-  }
+  };
 
   const logout = async () => {
     try {
@@ -31,7 +28,7 @@ export function DrawerContent(props) {
       await AsyncStorage.removeItem('staffSession');
       await AsyncStorage.removeItem('@store');
       await AsyncStorage.removeItem('@currency');
-      
+
       // Navigate back to role selection
       props.navigation.replace('RoleSelection');
     } catch (error) {
@@ -42,22 +39,19 @@ export function DrawerContent(props) {
 
   const onCancelAlert = () => {
     setAlert(false);
-  }
+  };
 
   const onCancelSwitchAlert = () => {
-    setSwitchAlert(false)
-  }
+    setSwitchAlert(false);
+  };
   // Handler for drawer item press with navigation
   const handleItemPress = (screen, itemName) => {
     setActiveItem(itemName);
     props.navigation.navigate(screen);
   };
-  
+
   return (
-    <DrawerContentScrollView 
-      {...props}
-      style={styles.container}
-    >
+    <DrawerContentScrollView {...props} style={styles.container}>
       <Alert
         visible={alerts}
         onCancel={onCancelAlert}
@@ -74,7 +68,7 @@ export function DrawerContent(props) {
         content="Do you really want to switch store?"
         confirmTitle="Yes"
       />
-      
+
       <View style={styles.drawerContent}>
         {/* Header section with colored background */}
         <View style={styles.headerBackground}>
@@ -85,16 +79,15 @@ export function DrawerContent(props) {
                 {staffData ? staffData.name : 'No Branch'}
               </Text>
             </View>
-            
+
             <View style={styles.divider} />
-            
+
             <TouchableOpacity
               style={styles.attendantInfo}
-              onPress={() => props.navigation.navigate('Attendance')}
-            >
+              onPress={() => props.navigation.navigate('Attendance')}>
               <View style={styles.avatarContainer}>
-                <Image 
-                  source={require('../../assets/assets/cashier.png')} 
+                <Image
+                  source={require('../../assets/assets/cashier.png')}
                   style={styles.avatarImage}
                 />
               </View>
@@ -106,7 +99,12 @@ export function DrawerContent(props) {
                   {staffData ? staffData.role : 'Tap to Change'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color={colors.white} style={styles.arrowIcon} />
+              <Ionicons
+                name="chevron-forward"
+                size={24}
+                color={colors.white}
+                style={styles.arrowIcon}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -114,90 +112,227 @@ export function DrawerContent(props) {
           {/* Main Navigation */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>MAIN MENU</Text>
-            
-            <TouchableOpacity 
-              style={[styles.menuItem, activeItem === 'Home' && styles.activeMenuItem]}
-              onPress={() => handleItemPress('Home', 'Home')}
-            >
-              <Ionicons name="home-outline" size={22} color={activeItem === 'Home' ? colors.primary : colors.charcoalGrey} />
-              <Text style={[styles.menuItemText, activeItem === 'Home' && styles.activeMenuItemText]}>Home</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Home' && styles.activeMenuItem,
+              ]}
+              onPress={() => handleItemPress('Home', 'Home')}>
+              <Ionicons
+                name="home-outline"
+                size={22}
+                color={
+                  activeItem === 'Home' ? colors.primary : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Home' && styles.activeMenuItemText,
+                ]}>
+                Home
+              </Text>
             </TouchableOpacity>
 
             {/* Staff Management (only for Admin) */}
             {isSuperAdmin && (
-              <TouchableOpacity 
-                style={[styles.menuItem, activeItem === 'Staff Management' && styles.activeMenuItem]}
-                onPress={() => handleItemPress('Staff Management', 'Staff Management')}
-              >
-                <Ionicons name="people-outline" size={22} color={activeItem === 'Staff Management' ? colors.primary : colors.charcoalGrey} />
-                <Text style={[styles.menuItemText, activeItem === 'Staff Management' && styles.activeMenuItemText]}>Staff Management</Text>
+              <TouchableOpacity
+                style={[
+                  styles.menuItem,
+                  activeItem === 'Staff Management' && styles.activeMenuItem,
+                ]}
+                onPress={() =>
+                  handleItemPress('Staff Management', 'Staff Management')
+                }>
+                <Ionicons
+                  name="people-outline"
+                  size={22}
+                  color={
+                    activeItem === 'Staff Management'
+                      ? colors.primary
+                      : colors.charcoalGrey
+                  }
+                />
+                <Text
+                  style={[
+                    styles.menuItemText,
+                    activeItem === 'Staff Management' &&
+                      styles.activeMenuItemText,
+                  ]}>
+                  Staff Management
+                </Text>
               </TouchableOpacity>
             )}
-            
-            <TouchableOpacity 
-              style={[styles.menuItem, activeItem === 'Printer Settings' && styles.activeMenuItem]}
-              onPress={() => handleItemPress('Printer Settings', 'Printer Settings')}
-            >
-              <Ionicons name="print-outline" size={22} color={activeItem === 'Printer Settings' ? colors.primary : colors.charcoalGrey} />
-              <Text style={[styles.menuItemText, activeItem === 'Printer Settings' && styles.activeMenuItemText]}>Printer Settings</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Printer Settings' && styles.activeMenuItem,
+              ]}
+              onPress={() =>
+                handleItemPress('Printer Settings', 'Printer Settings')
+              }>
+              <Ionicons
+                name="print-outline"
+                size={22}
+                color={
+                  activeItem === 'Printer Settings'
+                    ? colors.primary
+                    : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Printer Settings' &&
+                    styles.activeMenuItemText,
+                ]}>
+                Printer Settings
+              </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.menuItem, activeItem === 'Expenses' && styles.activeMenuItem]}
-              onPress={() => handleItemPress('Expenses', 'Expenses')}
-            >
-              <Ionicons name="cash-outline" size={22} color={activeItem === 'Expenses' ? colors.primary : colors.charcoalGrey} />
-              <Text style={[styles.menuItemText, activeItem === 'Expenses' && styles.activeMenuItemText]}>Expenses</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Expenses' && styles.activeMenuItem,
+              ]}
+              onPress={() => handleItemPress('Expenses', 'Expenses')}>
+              <Ionicons
+                name="cash-outline"
+                size={22}
+                color={
+                  activeItem === 'Expenses'
+                    ? colors.primary
+                    : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Expenses' && styles.activeMenuItemText,
+                ]}>
+                Expenses
+              </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.menuItem, activeItem === 'Transactions' && styles.activeMenuItem]}
-              onPress={() => handleItemPress('Transactions', 'Transactions')}
-            >
-              <Ionicons name="swap-horizontal-outline" size={22} color={activeItem === 'Transactions' ? colors.primary : colors.charcoalGrey} />
-              <Text style={[styles.menuItemText, activeItem === 'Transactions' && styles.activeMenuItemText]}>Transactions</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Transactions' && styles.activeMenuItem,
+              ]}
+              onPress={() => handleItemPress('Transactions', 'Transactions')}>
+              <Ionicons
+                name="swap-horizontal-outline"
+                size={22}
+                color={
+                  activeItem === 'Transactions'
+                    ? colors.primary
+                    : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Transactions' && styles.activeMenuItemText,
+                ]}>
+                Transactions
+              </Text>
             </TouchableOpacity>
           </View>
-          
+
           {/* Admin Products Section */}
           {isSuperAdmin && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>PRODUCTS</Text>
-              
-              <TouchableOpacity 
-                style={[styles.menuItem, activeItem === 'Products Dashboard' && styles.activeMenuItem]}
-                onPress={() => handleItemPress('Products Dashboard', 'Products Dashboard')}
-              >
-                <Ionicons name="grid-outline" size={22} color={activeItem === 'Products Dashboard' ? colors.primary : colors.charcoalGrey} />
-                <Text style={[styles.menuItemText, activeItem === 'Products Dashboard' && styles.activeMenuItemText]}>Products Dashboard</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.menuItem,
+                  activeItem === 'Products Dashboard' && styles.activeMenuItem,
+                ]}
+                onPress={() =>
+                  handleItemPress('Products Dashboard', 'Products Dashboard')
+                }>
+                <Ionicons
+                  name="grid-outline"
+                  size={22}
+                  color={
+                    activeItem === 'Products Dashboard'
+                      ? colors.primary
+                      : colors.charcoalGrey
+                  }
+                />
+                <Text
+                  style={[
+                    styles.menuItemText,
+                    activeItem === 'Products Dashboard' &&
+                      styles.activeMenuItemText,
+                  ]}>
+                  Products Dashboard
+                </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.menuItem, activeItem === 'Create Product' && styles.activeMenuItem]}
-                onPress={() => handleItemPress('Create Product', 'Create Product')}
-              >
-                <Ionicons name="add-circle-outline" size={22} color={activeItem === 'Create Product' ? colors.primary : colors.charcoalGrey} />
-                <Text style={[styles.menuItemText, activeItem === 'Create Product' && styles.activeMenuItemText]}>Create Product</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.menuItem,
+                  activeItem === 'Create Product' && styles.activeMenuItem,
+                ]}
+                onPress={() =>
+                  handleItemPress('Create Product', 'Create Product')
+                }>
+                <Ionicons
+                  name="add-circle-outline"
+                  size={22}
+                  color={
+                    activeItem === 'Create Product'
+                      ? colors.primary
+                      : colors.charcoalGrey
+                  }
+                />
+                <Text
+                  style={[
+                    styles.menuItemText,
+                    activeItem === 'Create Product' &&
+                      styles.activeMenuItemText,
+                  ]}>
+                  Create Product
+                </Text>
               </TouchableOpacity>
             </View>
           )}
-          
+
           {/* Account Section */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>ACCOUNT</Text>
-            
-            <TouchableOpacity 
-              style={[styles.menuItem, activeItem === 'Staff Profile' && styles.activeMenuItem]}
-              onPress={() => handleItemPress('Staff Profile', 'Staff Profile')}
-            >
-              <Ionicons name="person-outline" size={22} color={activeItem === 'Staff Profile' ? colors.primary : colors.charcoalGrey} />
-              <Text style={[styles.menuItemText, activeItem === 'Staff Profile' && styles.activeMenuItemText]}>Staff Profile</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Staff Profile' && styles.activeMenuItem,
+              ]}
+              onPress={() => handleItemPress('Staff Profile', 'Staff Profile')}>
+              <Ionicons
+                name="person-outline"
+                size={22}
+                color={
+                  activeItem === 'Staff Profile'
+                    ? colors.primary
+                    : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Staff Profile' && styles.activeMenuItemText,
+                ]}>
+                Staff Profile
+              </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.logoutButton}
-              onPress={() => setAlert(true)}
-            >
+              onPress={() => setAlert(true)}>
               <Ionicons name="log-out-outline" size={22} color={colors.white} />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>

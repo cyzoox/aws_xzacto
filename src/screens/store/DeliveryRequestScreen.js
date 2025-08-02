@@ -1,18 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, Title, TextInput, Button, Card, DataTable, IconButton, FAB, Chip, ActivityIndicator } from 'react-native-paper';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  Text,
+  Title,
+  TextInput,
+  Button,
+  Card,
+  DataTable,
+  IconButton,
+  FAB,
+  Chip,
+  ActivityIndicator,
+} from 'react-native-paper';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { colors } from '../../constants/theme';
-import { generateClient } from 'aws-amplify/api';
-import { listWarehouseProducts, listRequestItems } from '../../graphql/queries';
-import { createInventoryRequest, createRequestItem } from '../../graphql/mutations';
+import {colors} from '../../constants/theme';
+import {generateClient} from 'aws-amplify/api';
+import {listWarehouseProducts, listRequestItems} from '../../graphql/queries';
+import {
+  createInventoryRequest,
+  createRequestItem,
+} from '../../graphql/mutations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Initialize API client
 const client = generateClient();
 
-const DeliveryRequestScreen = ({ navigation, route }) => {
-  const { storeId, storeName } = route.params || {};
+const DeliveryRequestScreen = ({navigation, route}) => {
+  const {storeId, storeName} = route.params || {};
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [requestItems, setRequestItems] = useState([]);
@@ -23,7 +43,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [staffData, setStaffData] = useState(null);
-  
+
   // Fetch warehouse products when the component mounts
   useEffect(() => {
     fetchWarehouseProducts();
@@ -55,14 +75,14 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
         query: listWarehouseProducts,
         variables: {
           filter: {
-            isActive: { eq: true }
-          }
-        }
+            isActive: {eq: true},
+          },
+        },
       });
 
       const warehouseProducts = result.data.listWarehouseProducts.items || [];
       console.log('Fetched warehouse products:', warehouseProducts.length);
-      
+
       // Map warehouse products to the format expected by the UI
       const formattedProducts = warehouseProducts.map(product => ({
         id: product.id,
@@ -71,9 +91,9 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
         stock: product.availableStock || 0,
         category: product.category || '',
         sku: product.sku || '',
-        selling_price: product.sellingPrice || 0
+        selling_price: product.sellingPrice || 0,
       }));
-      
+
       setProducts(formattedProducts);
     } catch (err) {
       console.error('Error fetching warehouse products:', err);
@@ -84,21 +104,27 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
   };
 
   // Filter products based on search
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (product.sku && product.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredProducts = products.filter(
+    product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.sku &&
+        product.sku.toLowerCase().includes(searchQuery.toLowerCase())),
   );
-  
+
   // Add product to request
-  const addToRequest = (product) => {
-    const existingItem = requestItems.find(item => item.productId === product.id);
-    
+  const addToRequest = product => {
+    const existingItem = requestItems.find(
+      item => item.productId === product.id,
+    );
+
     if (existingItem) {
-      setRequestItems(requestItems.map(item => 
-        item.productId === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+      setRequestItems(
+        requestItems.map(item =>
+          item.productId === product.id
+            ? {...item, quantity: item.quantity + 1}
+            : item,
+        ),
+      );
     } else {
       setRequestItems([
         ...requestItems,
@@ -106,25 +132,27 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
           productId: product.id,
           name: product.name,
           sku: product.sku,
-          quantity: 1
-        }
+          quantity: 1,
+        },
       ]);
     }
   };
-  
+
   // Update quantity
   const updateQuantity = (productId, quantity) => {
     if (quantity <= 0) {
-      setRequestItems(requestItems.filter(item => item.productId !== productId));
+      setRequestItems(
+        requestItems.filter(item => item.productId !== productId),
+      );
     } else {
-      setRequestItems(requestItems.map(item => 
-        item.productId === productId
-          ? { ...item, quantity }
-          : item
-      ));
+      setRequestItems(
+        requestItems.map(item =>
+          item.productId === productId ? {...item, quantity} : item,
+        ),
+      );
     }
   };
-  
+
   // Submit request
   const submitRequest = async () => {
     if (requestItems.length === 0) {
@@ -157,34 +185,34 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
         requestedBy: staffData.id, // Using staff ID
         priority: priority,
         notes: notes.trim(),
-        ownerId: staffData.ownerId // Using owner ID for permissions
+        ownerId: staffData.ownerId, // Using owner ID for permissions
       };
 
       console.log('Creating inventory request with:', requestInput);
 
       const requestResponse = await client.graphql({
         query: createInventoryRequest,
-        variables: { input: requestInput }
+        variables: {input: requestInput},
       });
 
       const requestId = requestResponse.data.createInventoryRequest.id;
       console.log('Created inventory request with ID:', requestId);
 
       // Create request items
-      const itemPromises = requestItems.map(async (item) => {
+      const itemPromises = requestItems.map(async item => {
         const itemInput = {
           requestId: requestId,
           warehouseProductId: item.productId,
           requestedQuantity: item.quantity,
           fulfilledQuantity: 0,
-          status: 'PENDING'
+          status: 'PENDING',
         };
 
         console.log('Creating request item:', itemInput);
 
         return client.graphql({
           query: createRequestItem,
-          variables: { input: itemInput }
+          variables: {input: itemInput},
         });
       });
 
@@ -197,9 +225,9 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
           query: listRequestItems,
           variables: {
             filter: {
-              requestId: { eq: requestId }
-            }
-          }
+              requestId: {eq: requestId},
+            },
+          },
         });
 
         const createdItems = verifyResponse.data.listRequestItems.items;
@@ -215,9 +243,9 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
+            onPress: () => navigation.goBack(),
+          },
+        ],
       );
     } catch (err) {
       console.error('Error submitting request:', err);
@@ -235,12 +263,11 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+          onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Inventory Request</Text>
-        <View style={{ width: 40 }} /> {/* Empty view for balance */}
+        <View style={{width: 40}} /> {/* Empty view for balance */}
       </View>
       <View style={styles.content}>
         <ScrollView>
@@ -261,7 +288,9 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
               {loadingProducts ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={styles.loadingText}>Loading warehouse products...</Text>
+                  <Text style={styles.loadingText}>
+                    Loading warehouse products...
+                  </Text>
                 </View>
               ) : error ? (
                 <View style={styles.errorContainer}>
@@ -269,9 +298,8 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                   <Button
                     mode="contained"
                     onPress={fetchWarehouseProducts}
-                    style={styles.retryButton}
-                  >
-                    <Text style={{ color: 'white' }}>Retry</Text>
+                    style={styles.retryButton}>
+                    <Text style={{color: 'white'}}>Retry</Text>
                   </Button>
                 </View>
               ) : (
@@ -281,7 +309,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                     <DataTable.Title numeric>Stock</DataTable.Title>
                     <DataTable.Title numeric>Action</DataTable.Title>
                   </DataTable.Header>
-                  
+
                   {filteredProducts.length > 0 ? (
                     filteredProducts.map(product => (
                       <DataTable.Row key={product.id}>
@@ -292,8 +320,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                             mode="contained"
                             onPress={() => addToRequest(product)}
                             style={styles.addButton}
-                            disabled={product.stock <= 0}
-                          >
+                            disabled={product.stock <= 0}>
                             Add
                           </Button>
                         </DataTable.Cell>
@@ -302,19 +329,19 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                   ) : (
                     <DataTable.Row>
                       <DataTable.Cell>No products found</DataTable.Cell>
-                      <DataTable.Cell numeric></DataTable.Cell>
-                      <DataTable.Cell numeric></DataTable.Cell>
+                      <DataTable.Cell numeric />
+                      <DataTable.Cell numeric />
                     </DataTable.Row>
                   )}
                 </DataTable>
               )}
             </Card.Content>
           </Card>
-          
+
           <Card style={styles.card}>
             <Card.Content>
               <Title>Your Request</Title>
-              
+
               {requestItems.length > 0 ? (
                 <>
                   <DataTable>
@@ -323,7 +350,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                       <DataTable.Title numeric>Quantity</DataTable.Title>
                       <DataTable.Title>Actions</DataTable.Title>
                     </DataTable.Header>
-                    
+
                     {requestItems.map(item => (
                       <DataTable.Row key={item.productId}>
                         <DataTable.Cell>{item.name}</DataTable.Cell>
@@ -332,24 +359,28 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                           <IconButton
                             icon="minus"
                             size={20}
-                            onPress={() => updateQuantity(item.productId, item.quantity - 1)}
+                            onPress={() =>
+                              updateQuantity(item.productId, item.quantity - 1)
+                            }
                           />
                           <IconButton
                             icon="plus"
                             size={20}
-                            onPress={() => updateQuantity(item.productId, item.quantity + 1)}
+                            onPress={() =>
+                              updateQuantity(item.productId, item.quantity + 1)
+                            }
                           />
                         </DataTable.Cell>
                       </DataTable.Row>
                     ))}
                   </DataTable>
-                  
+
                   <View style={styles.summaryContainer}>
                     <Text style={styles.summaryText}>
                       Total Items: {totalItems}
                     </Text>
                   </View>
-                  
+
                   <TextInput
                     label="Notes (optional)"
                     value={notes}
@@ -359,30 +390,51 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                     style={styles.notesInput}
                     placeholder="Add any special instructions or notes"
                   />
-                  
+
                   <View style={styles.priorityContainer}>
                     <Text style={styles.priorityLabel}>Priority:</Text>
                     <View style={styles.chipsContainer}>
                       <Chip
                         selected={priority === 'LOW'}
                         onPress={() => setPriority('LOW')}
-                        style={[styles.chip, priority === 'LOW' && styles.selectedChip]}
-                      >
-                        <Text style={{color: priority === 'LOW' ? 'white' : 'black'}}>Low</Text>
+                        style={[
+                          styles.chip,
+                          priority === 'LOW' && styles.selectedChip,
+                        ]}>
+                        <Text
+                          style={{
+                            color: priority === 'LOW' ? 'white' : 'black',
+                          }}>
+                          Low
+                        </Text>
                       </Chip>
                       <Chip
                         selected={priority === 'NORMAL'}
                         onPress={() => setPriority('NORMAL')}
-                        style={[styles.chip, priority === 'NORMAL' && styles.selectedChip]}
-                      >
-                        <Text style={{color: priority === 'NORMAL' ? 'white' : 'black'}}>Normal</Text>
+                        style={[
+                          styles.chip,
+                          priority === 'NORMAL' && styles.selectedChip,
+                        ]}>
+                        <Text
+                          style={{
+                            color: priority === 'NORMAL' ? 'white' : 'black',
+                          }}>
+                          Normal
+                        </Text>
                       </Chip>
                       <Chip
                         selected={priority === 'HIGH'}
                         onPress={() => setPriority('HIGH')}
-                        style={[styles.chip, priority === 'HIGH' && styles.selectedChip]}
-                      >
-                        <Text style={{color: priority === 'HIGH' ? 'white' : 'black'}}>High</Text>
+                        style={[
+                          styles.chip,
+                          priority === 'HIGH' && styles.selectedChip,
+                        ]}>
+                        <Text
+                          style={{
+                            color: priority === 'HIGH' ? 'white' : 'black',
+                          }}>
+                          High
+                        </Text>
                       </Chip>
                     </View>
                   </View>
@@ -393,7 +445,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                 </Text>
               )}
             </Card.Content>
-            
+
             {requestItems.length > 0 && (
               <Card.Actions style={styles.cardActions}>
                 <Button
@@ -401,8 +453,7 @@ const DeliveryRequestScreen = ({ navigation, route }) => {
                   onPress={submitRequest}
                   loading={submitting}
                   disabled={submitting}
-                  style={styles.submitButton}
-                >
+                  style={styles.submitButton}>
                   <Text style={{color: 'white'}}>Submit Request</Text>
                 </Button>
               </Card.Actions>

@@ -15,7 +15,7 @@ const ModalInputForm = ({
   onSave,
   fullScreen,
   displayComponent,
-})=> {
+}) => {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -70,5 +70,5 @@ const ModalInputForm = ({
       </TouchableOpacity>
     </>
   );
-}
+};
 export default ModalInputForm;

@@ -1,50 +1,73 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Card, Title, DataTable, Button, Chip, Divider, List } from 'react-native-paper';
+import React, {useState} from 'react';
+import {View, StyleSheet, ScrollView} from 'react-native';
+import {
+  Text,
+  Card,
+  Title,
+  DataTable,
+  Button,
+  Chip,
+  Divider,
+  List,
+} from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
+import {colors} from '../../constants/theme';
 
 // This would come from your data store in production
-const getOrderById = (orderId) => {
+const getOrderById = orderId => {
   return {
     id: orderId,
     store: {
       id: 'store1',
       name: 'Main Store',
-      location: '123 Main St'
+      location: '123 Main St',
     },
     status: 'PENDING',
     createdAt: '2025-04-01T10:30:00Z',
     items: [
-      { id: '1', productId: '1', name: 'Coffee Mug', quantity: 10, fulfilled: 0 },
-      { id: '2', productId: '2', name: 'Wireless Mouse', quantity: 5, fulfilled: 0 },
-      { id: '3', productId: '6', name: 'Bluetooth Speaker', quantity: 3, fulfilled: 0 },
+      {id: '1', productId: '1', name: 'Coffee Mug', quantity: 10, fulfilled: 0},
+      {
+        id: '2',
+        productId: '2',
+        name: 'Wireless Mouse',
+        quantity: 5,
+        fulfilled: 0,
+      },
+      {
+        id: '3',
+        productId: '6',
+        name: 'Bluetooth Speaker',
+        quantity: 3,
+        fulfilled: 0,
+      },
     ],
     notes: 'Please deliver by Wednesday',
-    priority: 'NORMAL'
+    priority: 'NORMAL',
   };
 };
 
-const OrderDetailsScreen = ({ navigation, route }) => {
-  const { orderId } = route.params || { orderId: 'ord-001' };
+const OrderDetailsScreen = ({navigation, route}) => {
+  const {orderId} = route.params || {orderId: 'ord-001'};
   const [order, setOrder] = useState(getOrderById(orderId));
   const [processing, setProcessing] = useState(false);
-  
+
   // Update item fulfillment
   const updateFulfillment = (itemId, value) => {
     setOrder({
       ...order,
-      items: order.items.map(item => 
-        item.id === itemId 
-          ? { ...item, fulfilled: Math.min(value, item.quantity) } 
-          : item
-      )
+      items: order.items.map(item =>
+        item.id === itemId
+          ? {...item, fulfilled: Math.min(value, item.quantity)}
+          : item,
+      ),
     });
   };
-  
+
   // Check if all items are fully fulfilled
-  const allFulfilled = order.items.every(item => item.fulfilled === item.quantity);
-  
+  const allFulfilled = order.items.every(
+    item => item.fulfilled === item.quantity,
+  );
+
   // Process the order
   const processOrder = () => {
     setProcessing(true);
@@ -52,25 +75,30 @@ const OrderDetailsScreen = ({ navigation, route }) => {
     setTimeout(() => {
       setOrder({
         ...order,
-        status: allFulfilled ? 'COMPLETED' : 'PARTIALLY_FULFILLED'
+        status: allFulfilled ? 'COMPLETED' : 'PARTIALLY_FULFILLED',
       });
       setProcessing(false);
     }, 1000);
   };
-  
+
   // Format date
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     return new Date(dateString).toLocaleString();
   };
-  
+
   // Get status chip color
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     switch (status) {
-      case 'PENDING': return '#FFA000';
-      case 'PARTIALLY_FULFILLED': return '#2196F3';
-      case 'COMPLETED': return '#4CAF50';
-      case 'CANCELLED': return '#F44336';
-      default: return '#757575';
+      case 'PENDING':
+        return '#FFA000';
+      case 'PARTIALLY_FULFILLED':
+        return '#2196F3';
+      case 'COMPLETED':
+        return '#4CAF50';
+      case 'CANCELLED':
+        return '#F44336';
+      default:
+        return '#757575';
     }
   };
 
@@ -80,42 +108,46 @@ const OrderDetailsScreen = ({ navigation, route }) => {
         title={`Order #${orderId.slice(-6)}`}
         onBackPress={() => navigation.goBack()}
       />
-      
+
       <ScrollView style={styles.content}>
         <Card style={styles.card}>
           <Card.Content>
             <View style={styles.header}>
               <View>
                 <Title style={styles.title}>Order Details</Title>
-                <Text style={styles.date}>Created: {formatDate(order.createdAt)}</Text>
+                <Text style={styles.date}>
+                  Created: {formatDate(order.createdAt)}
+                </Text>
               </View>
-              <Chip 
-                style={[styles.statusChip, { backgroundColor: getStatusColor(order.status) }]}
-              >
+              <Chip
+                style={[
+                  styles.statusChip,
+                  {backgroundColor: getStatusColor(order.status)},
+                ]}>
                 {order.status}
               </Chip>
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             <List.Item
               title="Store"
               description={order.store.name}
               left={props => <List.Icon {...props} icon="store" />}
             />
-            
+
             <List.Item
               title="Location"
               description={order.store.location}
               left={props => <List.Icon {...props} icon="map-marker" />}
             />
-            
+
             <List.Item
               title="Priority"
               description={order.priority}
               left={props => <List.Icon {...props} icon="flag" />}
             />
-            
+
             {order.notes && (
               <List.Item
                 title="Notes"
@@ -123,11 +155,11 @@ const OrderDetailsScreen = ({ navigation, route }) => {
                 left={props => <List.Icon {...props} icon="note-text" />}
               />
             )}
-            
+
             <Divider style={styles.divider} />
-            
+
             <Title style={styles.subtitle}>Requested Items</Title>
-            
+
             <DataTable>
               <DataTable.Header>
                 <DataTable.Title>Item</DataTable.Title>
@@ -135,7 +167,7 @@ const OrderDetailsScreen = ({ navigation, route }) => {
                 <DataTable.Title numeric>Fulfilled</DataTable.Title>
                 <DataTable.Title>Actions</DataTable.Title>
               </DataTable.Header>
-              
+
               {order.items.map(item => (
                 <DataTable.Row key={item.id}>
                   <DataTable.Cell>{item.name}</DataTable.Cell>
@@ -143,28 +175,31 @@ const OrderDetailsScreen = ({ navigation, route }) => {
                   <DataTable.Cell numeric>{item.fulfilled}</DataTable.Cell>
                   <DataTable.Cell>
                     <View style={styles.actions}>
-                      <Button 
-                        mode="text" 
-                        compact 
+                      <Button
+                        mode="text"
+                        compact
                         disabled={item.fulfilled <= 0}
-                        onPress={() => updateFulfillment(item.id, item.fulfilled - 1)}
-                      >
+                        onPress={() =>
+                          updateFulfillment(item.id, item.fulfilled - 1)
+                        }>
                         -
                       </Button>
-                      <Button 
-                        mode="text" 
-                        compact 
+                      <Button
+                        mode="text"
+                        compact
                         disabled={item.fulfilled >= item.quantity}
-                        onPress={() => updateFulfillment(item.id, item.fulfilled + 1)}
-                      >
+                        onPress={() =>
+                          updateFulfillment(item.id, item.fulfilled + 1)
+                        }>
                         +
                       </Button>
-                      <Button 
-                        mode="text" 
-                        compact 
+                      <Button
+                        mode="text"
+                        compact
                         disabled={item.fulfilled >= item.quantity}
-                        onPress={() => updateFulfillment(item.id, item.quantity)}
-                      >
+                        onPress={() =>
+                          updateFulfillment(item.id, item.quantity)
+                        }>
                         Max
                       </Button>
                     </View>
@@ -173,15 +208,14 @@ const OrderDetailsScreen = ({ navigation, route }) => {
               ))}
             </DataTable>
           </Card.Content>
-          
+
           <Card.Actions style={styles.cardActions}>
-            <Button 
-              mode="contained" 
+            <Button
+              mode="contained"
               loading={processing}
               disabled={processing || order.status === 'COMPLETED'}
               onPress={processOrder}
-              style={styles.processButton}
-            >
+              style={styles.processButton}>
               {order.status === 'PENDING' ? 'Process Order' : 'Update Order'}
             </Button>
           </Card.Actions>

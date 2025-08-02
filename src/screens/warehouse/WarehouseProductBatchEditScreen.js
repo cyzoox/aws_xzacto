@@ -1,56 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { 
-  Text, 
-  Card, 
-  Title, 
-  Paragraph, 
-  Divider, 
-  Button, 
-  Checkbox, 
-  TextInput, 
+import React, {useState, useEffect} from 'react';
+import {View, StyleSheet, ScrollView, Alert} from 'react-native';
+import {
+  Text,
+  Card,
+  Title,
+  Paragraph,
+  Divider,
+  Button,
+  Checkbox,
+  TextInput,
   Switch,
   ActivityIndicator,
   HelperText,
-  Chip
+  Chip,
 } from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
-import { API, graphqlOperation } from 'aws-amplify';
-import { getWarehouseProduct } from '../../graphql/queries';
-import { updateWarehouseProduct } from '../../graphql/mutations';
+import {colors} from '../../constants/theme';
+import {API, graphqlOperation} from 'aws-amplify';
+import {getWarehouseProduct} from '../../graphql/queries';
+import {updateWarehouseProduct} from '../../graphql/mutations';
 
-const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
-  const { selectedProducts = [] } = route.params || {};
-  
+const WarehouseProductBatchEditScreen = ({navigation, route}) => {
+  const {selectedProducts = []} = route.params || {};
+
   // State
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Batch edit options
   const [editSellingPrice, setEditSellingPrice] = useState(false);
   const [newSellingPrice, setNewSellingPrice] = useState('');
-  const [sellingPriceAdjustmentType, setSellingPriceAdjustmentType] = useState('fixed'); // fixed, percentage
-  
+  const [sellingPriceAdjustmentType, setSellingPriceAdjustmentType] =
+    useState('fixed'); // fixed, percentage
+
   const [editPurchasePrice, setEditPurchasePrice] = useState(false);
   const [newPurchasePrice, setNewPurchasePrice] = useState('');
-  const [purchasePriceAdjustmentType, setPurchasePriceAdjustmentType] = useState('fixed'); // fixed, percentage
-  
+  const [purchasePriceAdjustmentType, setPurchasePriceAdjustmentType] =
+    useState('fixed'); // fixed, percentage
+
   const [editCategory, setEditCategory] = useState(false);
   const [newCategory, setNewCategory] = useState('');
-  
+
   const [editReorderPoint, setEditReorderPoint] = useState(false);
   const [newReorderPoint, setNewReorderPoint] = useState('');
-  
+
   const [editReorderQuantity, setEditReorderQuantity] = useState(false);
   const [newReorderQuantity, setNewReorderQuantity] = useState('');
-  
+
   const [editActive, setEditActive] = useState(false);
   const [newActive, setNewActive] = useState(true);
-  
+
   const [errors, setErrors] = useState({});
-  
+
   // Fetch products data
   useEffect(() => {
     const fetchProducts = async () => {
@@ -58,20 +60,22 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
         setLoading(false);
         return;
       }
-      
+
       try {
         const productsData = await Promise.all(
-          selectedProducts.map(async (productId) => {
+          selectedProducts.map(async productId => {
             try {
-              const result = await API.graphql(graphqlOperation(getWarehouseProduct, { id: productId }));
+              const result = await API.graphql(
+                graphqlOperation(getWarehouseProduct, {id: productId}),
+              );
               return result.data.getWarehouseProduct;
             } catch (error) {
               console.error(`Error fetching product ${productId}:`, error);
               return null;
             }
-          })
+          }),
         );
-        
+
         // Filter out null values
         const validProducts = productsData.filter(p => p !== null);
         setProducts(validProducts);
@@ -82,127 +86,149 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
         setLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, [selectedProducts]);
-  
+
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (editSellingPrice) {
       if (!newSellingPrice) {
         newErrors.sellingPrice = 'New selling price is required';
-      } else if (isNaN(parseFloat(newSellingPrice)) || parseFloat(newSellingPrice) < 0) {
+      } else if (
+        isNaN(parseFloat(newSellingPrice)) ||
+        parseFloat(newSellingPrice) < 0
+      ) {
         newErrors.sellingPrice = 'Enter a valid selling price';
       }
     }
-    
+
     if (editPurchasePrice) {
       if (!newPurchasePrice) {
         newErrors.purchasePrice = 'New purchase price is required';
-      } else if (isNaN(parseFloat(newPurchasePrice)) || parseFloat(newPurchasePrice) < 0) {
+      } else if (
+        isNaN(parseFloat(newPurchasePrice)) ||
+        parseFloat(newPurchasePrice) < 0
+      ) {
         newErrors.purchasePrice = 'Enter a valid purchase price';
       }
     }
-    
+
     if (editCategory && !newCategory) {
       newErrors.category = 'New category is required';
     }
-    
+
     if (editReorderPoint) {
       if (!newReorderPoint) {
         newErrors.reorderPoint = 'New reorder point is required';
-      } else if (isNaN(parseFloat(newReorderPoint)) || parseFloat(newReorderPoint) < 0) {
+      } else if (
+        isNaN(parseFloat(newReorderPoint)) ||
+        parseFloat(newReorderPoint) < 0
+      ) {
         newErrors.reorderPoint = 'Enter a valid reorder point';
       }
     }
-    
+
     if (editReorderQuantity) {
       if (!newReorderQuantity) {
         newErrors.reorderQuantity = 'New reorder quantity is required';
-      } else if (isNaN(parseFloat(newReorderQuantity)) || parseFloat(newReorderQuantity) < 0) {
+      } else if (
+        isNaN(parseFloat(newReorderQuantity)) ||
+        parseFloat(newReorderQuantity) < 0
+      ) {
         newErrors.reorderQuantity = 'Enter a valid reorder quantity';
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   // Apply batch edit
   const applyBatchEdit = async () => {
-    if (!validateForm()) return;
-    
-    if (!editSellingPrice && !editPurchasePrice && !editCategory && 
-        !editReorderPoint && !editReorderQuantity && !editActive) {
+    if (!validateForm()) {
+      return;
+    }
+
+    if (
+      !editSellingPrice &&
+      !editPurchasePrice &&
+      !editCategory &&
+      !editReorderPoint &&
+      !editReorderQuantity &&
+      !editActive
+    ) {
       Alert.alert('No Changes', 'Please select at least one field to update');
       return;
     }
-    
+
     const confirmMessage = `Are you sure you want to update ${products.length} products?`;
-    
-    Alert.alert(
-      'Confirm Batch Edit',
-      confirmMessage,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes, Update', onPress: processBatchUpdate }
-      ]
-    );
+
+    Alert.alert('Confirm Batch Edit', confirmMessage, [
+      {text: 'Cancel', style: 'cancel'},
+      {text: 'Yes, Update', onPress: processBatchUpdate},
+    ]);
   };
-  
+
   // Process batch update
   const processBatchUpdate = async () => {
     setSubmitting(true);
-    
+
     try {
-      const updatePromises = products.map(async (product) => {
-        const updateData = { id: product.id };
-        
+      const updatePromises = products.map(async product => {
+        const updateData = {id: product.id};
+
         if (editSellingPrice) {
           if (sellingPriceAdjustmentType === 'fixed') {
             updateData.sellingPrice = parseFloat(newSellingPrice);
-          } else { // percentage
+          } else {
+            // percentage
             const adjustmentPercent = parseFloat(newSellingPrice) / 100;
-            updateData.sellingPrice = product.sellingPrice * (1 + adjustmentPercent);
+            updateData.sellingPrice =
+              product.sellingPrice * (1 + adjustmentPercent);
           }
         }
-        
+
         if (editPurchasePrice) {
           if (purchasePriceAdjustmentType === 'fixed') {
             updateData.purchasePrice = parseFloat(newPurchasePrice);
-          } else { // percentage
+          } else {
+            // percentage
             const adjustmentPercent = parseFloat(newPurchasePrice) / 100;
-            updateData.purchasePrice = product.purchasePrice * (1 + adjustmentPercent);
+            updateData.purchasePrice =
+              product.purchasePrice * (1 + adjustmentPercent);
           }
         }
-        
+
         if (editCategory) {
           updateData.category = newCategory;
         }
-        
+
         if (editReorderPoint) {
           updateData.reorderPoint = parseFloat(newReorderPoint);
         }
-        
+
         if (editReorderQuantity) {
           updateData.reorderQuantity = parseFloat(newReorderQuantity);
         }
-        
+
         if (editActive) {
           updateData.isActive = newActive;
         }
-        
-        return API.graphql(graphqlOperation(updateWarehouseProduct, { input: updateData }));
+
+        return API.graphql(
+          graphqlOperation(updateWarehouseProduct, {input: updateData}),
+        );
       });
-      
+
       await Promise.all(updatePromises);
-      
+
       Alert.alert(
         'Success',
         `Successfully updated ${products.length} products`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{text: 'OK', onPress: () => navigation.goBack()}],
       );
     } catch (error) {
       console.error('Error updating products:', error);
@@ -211,38 +237,38 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
       setSubmitting(false);
     }
   };
-  
+
   // Reset form
   const resetForm = () => {
     setEditSellingPrice(false);
     setNewSellingPrice('');
     setSellingPriceAdjustmentType('fixed');
-    
+
     setEditPurchasePrice(false);
     setNewPurchasePrice('');
     setPurchasePriceAdjustmentType('fixed');
-    
+
     setEditCategory(false);
     setNewCategory('');
-    
+
     setEditReorderPoint(false);
     setNewReorderPoint('');
-    
+
     setEditReorderQuantity(false);
     setNewReorderQuantity('');
-    
+
     setEditActive(false);
     setNewActive(true);
-    
+
     setErrors({});
   };
-  
+
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <Appbar 
-          title="Batch Edit Products" 
-          hasBackButton 
+        <Appbar
+          title="Batch Edit Products"
+          hasBackButton
           onBack={() => navigation.goBack()}
         />
         <ActivityIndicator size="large" color={colors.primary} />
@@ -250,13 +276,13 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
       </View>
     );
   }
-  
+
   if (products.length === 0) {
     return (
       <View style={styles.container}>
-        <Appbar 
-          title="Batch Edit Products" 
-          hasBackButton 
+        <Appbar
+          title="Batch Edit Products"
+          hasBackButton
           onBack={() => navigation.goBack()}
         />
         <View style={styles.content}>
@@ -266,11 +292,10 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
               <Paragraph style={styles.errorText}>
                 Please go back and select products to edit.
               </Paragraph>
-              <Button 
-                mode="contained" 
+              <Button
+                mode="contained"
                 onPress={() => navigation.goBack()}
-                style={styles.backButton}
-              >
+                style={styles.backButton}>
                 Go Back
               </Button>
             </Card.Content>
@@ -279,19 +304,21 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
       </View>
     );
   }
-  
+
   return (
     <View style={styles.container}>
-      <Appbar 
-        title="Batch Edit Products" 
-        hasBackButton 
+      <Appbar
+        title="Batch Edit Products"
+        hasBackButton
         onBack={() => navigation.goBack()}
       />
       <ScrollView style={styles.content}>
         <Card style={styles.summaryCard}>
           <Card.Content>
             <Title>Selected Products</Title>
-            <Paragraph>You've selected {products.length} products for batch editing</Paragraph>
+            <Paragraph>
+              You've selected {products.length} products for batch editing
+            </Paragraph>
             <ScrollView horizontal style={styles.chipsContainer}>
               {products.map(product => (
                 <Chip key={product.id} style={styles.chip}>
@@ -301,16 +328,16 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
             </ScrollView>
           </Card.Content>
         </Card>
-        
+
         <Card style={styles.card}>
           <Card.Content>
             <Title>Batch Edit Options</Title>
             <Paragraph style={styles.subtitle}>
               Select the fields you want to update for all selected products
             </Paragraph>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Selling Price */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -320,25 +347,39 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Selling Price</Text>
               </View>
-              
+
               {editSellingPrice && (
                 <View style={styles.optionContent}>
                   <View style={styles.radioRow}>
                     <Checkbox
-                      status={sellingPriceAdjustmentType === 'fixed' ? 'checked' : 'unchecked'}
+                      status={
+                        sellingPriceAdjustmentType === 'fixed'
+                          ? 'checked'
+                          : 'unchecked'
+                      }
                       onPress={() => setSellingPriceAdjustmentType('fixed')}
                     />
                     <Text style={styles.radioLabel}>Set Fixed Price</Text>
-                    
+
                     <Checkbox
-                      status={sellingPriceAdjustmentType === 'percentage' ? 'checked' : 'unchecked'}
-                      onPress={() => setSellingPriceAdjustmentType('percentage')}
+                      status={
+                        sellingPriceAdjustmentType === 'percentage'
+                          ? 'checked'
+                          : 'unchecked'
+                      }
+                      onPress={() =>
+                        setSellingPriceAdjustmentType('percentage')
+                      }
                     />
                     <Text style={styles.radioLabel}>Adjust by Percentage</Text>
                   </View>
-                  
+
                   <TextInput
-                    label={sellingPriceAdjustmentType === 'fixed' ? 'New Selling Price' : 'Percentage Adjustment'}
+                    label={
+                      sellingPriceAdjustmentType === 'fixed'
+                        ? 'New Selling Price'
+                        : 'Percentage Adjustment'
+                    }
                     value={newSellingPrice}
                     onChangeText={setNewSellingPrice}
                     keyboardType="numeric"
@@ -346,29 +387,34 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                     mode="outlined"
                     error={!!errors.sellingPrice}
                     left={
-                      <TextInput.Affix 
-                        text={sellingPriceAdjustmentType === 'fixed' ? '$' : ''} 
+                      <TextInput.Affix
+                        text={sellingPriceAdjustmentType === 'fixed' ? '$' : ''}
                       />
                     }
                     right={
-                      <TextInput.Affix 
-                        text={sellingPriceAdjustmentType === 'percentage' ? '%' : ''} 
+                      <TextInput.Affix
+                        text={
+                          sellingPriceAdjustmentType === 'percentage' ? '%' : ''
+                        }
                       />
                     }
                   />
-                  {errors.sellingPrice && <HelperText type="error">{errors.sellingPrice}</HelperText>}
-                  
+                  {errors.sellingPrice && (
+                    <HelperText type="error">{errors.sellingPrice}</HelperText>
+                  )}
+
                   {sellingPriceAdjustmentType === 'percentage' && (
                     <Text style={styles.helpText}>
-                      Use positive values to increase prices (e.g., 10 for +10%) or negative values to decrease (e.g., -10 for -10%).
+                      Use positive values to increase prices (e.g., 10 for +10%)
+                      or negative values to decrease (e.g., -10 for -10%).
                     </Text>
                   )}
                 </View>
               )}
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Purchase Price */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -378,25 +424,39 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Purchase Price</Text>
               </View>
-              
+
               {editPurchasePrice && (
                 <View style={styles.optionContent}>
                   <View style={styles.radioRow}>
                     <Checkbox
-                      status={purchasePriceAdjustmentType === 'fixed' ? 'checked' : 'unchecked'}
+                      status={
+                        purchasePriceAdjustmentType === 'fixed'
+                          ? 'checked'
+                          : 'unchecked'
+                      }
                       onPress={() => setPurchasePriceAdjustmentType('fixed')}
                     />
                     <Text style={styles.radioLabel}>Set Fixed Price</Text>
-                    
+
                     <Checkbox
-                      status={purchasePriceAdjustmentType === 'percentage' ? 'checked' : 'unchecked'}
-                      onPress={() => setPurchasePriceAdjustmentType('percentage')}
+                      status={
+                        purchasePriceAdjustmentType === 'percentage'
+                          ? 'checked'
+                          : 'unchecked'
+                      }
+                      onPress={() =>
+                        setPurchasePriceAdjustmentType('percentage')
+                      }
                     />
                     <Text style={styles.radioLabel}>Adjust by Percentage</Text>
                   </View>
-                  
+
                   <TextInput
-                    label={purchasePriceAdjustmentType === 'fixed' ? 'New Purchase Price' : 'Percentage Adjustment'}
+                    label={
+                      purchasePriceAdjustmentType === 'fixed'
+                        ? 'New Purchase Price'
+                        : 'Percentage Adjustment'
+                    }
                     value={newPurchasePrice}
                     onChangeText={setNewPurchasePrice}
                     keyboardType="numeric"
@@ -404,29 +464,38 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                     mode="outlined"
                     error={!!errors.purchasePrice}
                     left={
-                      <TextInput.Affix 
-                        text={purchasePriceAdjustmentType === 'fixed' ? '$' : ''} 
+                      <TextInput.Affix
+                        text={
+                          purchasePriceAdjustmentType === 'fixed' ? '$' : ''
+                        }
                       />
                     }
                     right={
-                      <TextInput.Affix 
-                        text={purchasePriceAdjustmentType === 'percentage' ? '%' : ''} 
+                      <TextInput.Affix
+                        text={
+                          purchasePriceAdjustmentType === 'percentage'
+                            ? '%'
+                            : ''
+                        }
                       />
                     }
                   />
-                  {errors.purchasePrice && <HelperText type="error">{errors.purchasePrice}</HelperText>}
-                  
+                  {errors.purchasePrice && (
+                    <HelperText type="error">{errors.purchasePrice}</HelperText>
+                  )}
+
                   {purchasePriceAdjustmentType === 'percentage' && (
                     <Text style={styles.helpText}>
-                      Use positive values to increase prices (e.g., 10 for +10%) or negative values to decrease (e.g., -10 for -10%).
+                      Use positive values to increase prices (e.g., 10 for +10%)
+                      or negative values to decrease (e.g., -10 for -10%).
                     </Text>
                   )}
                 </View>
               )}
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Category */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -436,7 +505,7 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Category</Text>
               </View>
-              
+
               {editCategory && (
                 <View style={styles.optionContent}>
                   <TextInput
@@ -447,13 +516,15 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                     mode="outlined"
                     error={!!errors.category}
                   />
-                  {errors.category && <HelperText type="error">{errors.category}</HelperText>}
+                  {errors.category && (
+                    <HelperText type="error">{errors.category}</HelperText>
+                  )}
                 </View>
               )}
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Reorder Point */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -463,7 +534,7 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Reorder Point</Text>
               </View>
-              
+
               {editReorderPoint && (
                 <View style={styles.optionContent}>
                   <TextInput
@@ -475,13 +546,15 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                     mode="outlined"
                     error={!!errors.reorderPoint}
                   />
-                  {errors.reorderPoint && <HelperText type="error">{errors.reorderPoint}</HelperText>}
+                  {errors.reorderPoint && (
+                    <HelperText type="error">{errors.reorderPoint}</HelperText>
+                  )}
                 </View>
               )}
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Reorder Quantity */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -491,7 +564,7 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Reorder Quantity</Text>
               </View>
-              
+
               {editReorderQuantity && (
                 <View style={styles.optionContent}>
                   <TextInput
@@ -503,13 +576,17 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                     mode="outlined"
                     error={!!errors.reorderQuantity}
                   />
-                  {errors.reorderQuantity && <HelperText type="error">{errors.reorderQuantity}</HelperText>}
+                  {errors.reorderQuantity && (
+                    <HelperText type="error">
+                      {errors.reorderQuantity}
+                    </HelperText>
+                  )}
                 </View>
               )}
             </View>
-            
+
             <Divider style={styles.divider} />
-            
+
             {/* Active Status */}
             <View style={styles.optionContainer}>
               <View style={styles.checkboxRow}>
@@ -519,12 +596,15 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
                 />
                 <Text style={styles.optionLabel}>Update Active Status</Text>
               </View>
-              
+
               {editActive && (
                 <View style={styles.switchContainer}>
                   <Text>Set all products to:</Text>
                   <View style={styles.switchRow}>
-                    <Text style={newActive ? styles.activeText : styles.inactiveText}>
+                    <Text
+                      style={
+                        newActive ? styles.activeText : styles.inactiveText
+                      }>
                       {newActive ? 'Active' : 'Inactive'}
                     </Text>
                     <Switch
@@ -538,24 +618,22 @@ const WarehouseProductBatchEditScreen = ({ navigation, route }) => {
             </View>
           </Card.Content>
         </Card>
-        
+
         <View style={styles.buttonsContainer}>
-          <Button 
-            mode="contained" 
+          <Button
+            mode="contained"
             onPress={applyBatchEdit}
             style={styles.applyButton}
             loading={submitting}
-            disabled={submitting}
-          >
+            disabled={submitting}>
             Apply Changes
           </Button>
-          
-          <Button 
-            mode="outlined" 
+
+          <Button
+            mode="outlined"
             onPress={resetForm}
             style={styles.resetButton}
-            disabled={submitting}
-          >
+            disabled={submitting}>
             Reset Form
           </Button>
         </View>

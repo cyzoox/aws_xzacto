@@ -1,24 +1,31 @@
-import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Dimensions, Alert } from "react-native";
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Modal from "react-native-modal";
+import Modal from 'react-native-modal';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import List from "../../components/List";
-import Spacer from "../../components/Spacer";
-import colors from "../../themes/colors";
-import AppHeader from "../../components/AppHeader";
+import List from '../../components/List';
+import Spacer from '../../components/Spacer';
+import colors from '../../themes/colors';
+import AppHeader from '../../components/AppHeader';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
-import ProductsCashier from "../../components/ProductsCashier";
-import { listCartItems } from "../../graphql/queries";
-import { generateClient } from 'aws-amplify/api';
+import ProductsCashier from '../../components/ProductsCashier';
+import {listCartItems} from '../../graphql/queries';
+import {generateClient} from 'aws-amplify/api';
 
 const client = generateClient();
 
-const CashierScreen = ({ navigation, route }) => {
-  const { staffData } = route.params;
+const CashierScreen = ({navigation, route}) => {
+  const {staffData} = route.params;
   const [modalVisible, setModalVisible] = useState(false);
-  const [orientation, setOrientation] = useState("portrait");
+  const [orientation, setOrientation] = useState('portrait');
   const [cart, setCart] = useState([]);
   const [selected, setSelected] = useState(0);
   const [discount_name, setDiscountName] = useState('');
@@ -26,15 +33,15 @@ const CashierScreen = ({ navigation, route }) => {
 
   const handleLogout = () => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
+      'Logout',
+      'Are you sure you want to logout?',
       [
         {
-          text: "Cancel",
-          style: "cancel"
+          text: 'Cancel',
+          style: 'cancel',
         },
-        { 
-          text: "Logout", 
+        {
+          text: 'Logout',
           onPress: async () => {
             try {
               // Clear all session data
@@ -42,20 +49,20 @@ const CashierScreen = ({ navigation, route }) => {
               await AsyncStorage.removeItem('staffSession');
               await AsyncStorage.removeItem('@store');
               await AsyncStorage.removeItem('@currency');
-              
+
               // Navigate to role selection screen
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'RoleSelection' }],
+                routes: [{name: 'RoleSelection'}],
               });
             } catch (error) {
               console.error('Error during logout:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
-          }
-        }
+          },
+        },
       ],
-      { cancelable: true }
+      {cancelable: true},
     );
   };
 
@@ -65,26 +72,28 @@ const CashierScreen = ({ navigation, route }) => {
   };
 
   const fetchList = async () => {
-    console.log(`Fetching cart items for store ${staffData.store_id}, cashier ${staffData.id}`);
+    console.log(
+      `Fetching cart items for store ${staffData.store_id}, cashier ${staffData.id}`,
+    );
     try {
       // Add a controller to prevent hanging requests
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-      
+
       const result = await client.graphql({
         query: listCartItems,
-        variables: { 
-          filter: { 
-            storeId: { eq: staffData.store_id },
-            cashierId: { eq: staffData.id }
+        variables: {
+          filter: {
+            storeId: {eq: staffData.store_id},
+            cashierId: {eq: staffData.id},
           },
-          limit: 100 // Make sure we get all items
+          limit: 100, // Make sure we get all items
         },
-        abortSignal: controller.signal
+        abortSignal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       const cartItems = result.data.listCartItems.items;
       console.log(`Found ${cartItems.length} cart items in database`);
       setCart(cartItems);
@@ -96,11 +105,14 @@ const CashierScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     const handleOrientationChange = () => {
-      const { height, width } = Dimensions.get("window");
-      setOrientation(height >= width ? "portrait" : "landscape");
+      const {height, width} = Dimensions.get('window');
+      setOrientation(height >= width ? 'portrait' : 'landscape');
     };
 
-    const subscription = Dimensions.addEventListener("change", handleOrientationChange);
+    const subscription = Dimensions.addEventListener(
+      'change',
+      handleOrientationChange,
+    );
 
     handleOrientationChange();
     fetchList();
@@ -118,10 +130,13 @@ const CashierScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (route.params?.refreshCart) {
-      console.log('Refreshing cart due to refreshCart flag, timestamp:', route.params?.timestamp);
+      console.log(
+        'Refreshing cart due to refreshCart flag, timestamp:',
+        route.params?.timestamp,
+      );
       // Immediately show empty cart for better perceived performance
       setCart([]);
-      
+
       // Add a small delay to ensure database operations complete
       setTimeout(() => {
         fetchList();
@@ -129,12 +144,14 @@ const CashierScreen = ({ navigation, route }) => {
     }
   }, [route.params?.refreshCart, route.params?.timestamp]);
 
-  const calculateTotal = () => cart.reduce((total, item) => total + item.quantity * item.sprice, 0);
-  const calculateQty = () => cart.reduce((total, item) => total + item.quantity, 0);
+  const calculateTotal = () =>
+    cart.reduce((total, item) => total + item.quantity * item.sprice, 0);
+  const calculateQty = () =>
+    cart.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <View style={{ flex: 1 }}>
-      <AppHeader 
+    <View style={{flex: 1}}>
+      <AppHeader
         centerText="Home"
         leftComponent={
           <TouchableOpacity onPress={() => navigation.openDrawer()}>
@@ -147,19 +164,22 @@ const CashierScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         }
       />
-      <ProductsCashier 
-        route={route} 
+      <ProductsCashier
+        route={route}
         cart={cart}
         setCart={setCart}
         onCartUpdate={fetchList}
       />
       <View style={styles.bottomView}>
-        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.checkoutBtn}>
+        <TouchableOpacity
+          onPress={() => setModalVisible(true)}
+          style={styles.checkoutBtn}>
           <Text style={styles.checkoutText}>
-            Subtotal {formatMoney(calculateTotal(), { symbol: '₱', precision: 2 })}
+            Subtotal{' '}
+            {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
           </Text>
           <Text style={styles.checkoutText}>
-            Qty {formatMoney(calculateQty(), { symbol: '', precision: 2 })}
+            Qty {formatMoney(calculateQty(), {symbol: '', precision: 2})}
           </Text>
         </TouchableOpacity>
       </View>
@@ -174,12 +194,11 @@ const CashierScreen = ({ navigation, route }) => {
         style={[
           styles.modalView,
           {
-            height: orientation === "portrait" ? "50%" : "100%",
-            width: orientation === "portrait" ? "100%" : "50%",
-            alignSelf: orientation === "portrait" ? "center" : "flex-start",
+            height: orientation === 'portrait' ? '50%' : '100%',
+            width: orientation === 'portrait' ? '100%' : '50%',
+            alignSelf: orientation === 'portrait' ? 'center' : 'flex-start',
           },
-        ]}
-      >
+        ]}>
         <View style={styles.containerStyle}>
           <View style={styles.content}>
             <List
@@ -198,10 +217,12 @@ const CashierScreen = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={[
                     styles.payButton,
-                    { backgroundColor: cart.length === 0 ? colors.charcoalGrey : colors.accent },
+                    {
+                      backgroundColor:
+                        cart.length === 0 ? colors.charcoalGrey : colors.accent,
+                    },
                   ]}
-                  onPress={() => cart.length !== 0 && onClickPay()}
-                >
+                  onPress={() => cart.length !== 0 && onClickPay()}>
                   <Text style={styles.payButtonText}>P A Y</Text>
                 </TouchableOpacity>
               </View>
@@ -215,14 +236,14 @@ const CashierScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   modalView: {
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
     margin: 0,
   },
   containerStyle: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     borderRadius: 10,
     padding: 10,
-    justifyContent: "center",
+    justifyContent: 'center',
     flex: 1,
   },
   content: {
@@ -247,7 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 30,
     shadowColor: '#EBECF0',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: {width: 0, height: 5},
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 1,
@@ -258,9 +279,9 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   payButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "white",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
   },
   payButton: {
     marginRight: 2,
@@ -268,7 +289,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   payButtonText: {
-    textAlign: "center",
+    textAlign: 'center',
   },
 });
 

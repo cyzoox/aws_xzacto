@@ -1,17 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   FlatList,
   ActivityIndicator,
   Alert,
   Dimensions,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import Appbar from '../../components/Appbar';
-import { TextInput, Button, Modal, Portal, Provider, SegmentedControl } from 'react-native-paper';
+import {
+  TextInput,
+  Button,
+  Modal,
+  Portal,
+  Provider,
+  SegmentedControl,
+} from 'react-native-paper';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -19,51 +26,51 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import DataTable from '../../components/DataTable';
-import { Grid, Col, Row } from 'react-native-easy-grid';
+import {Grid, Col, Row} from 'react-native-easy-grid';
 import colors from '../../themes/colors';
 
 // GraphQL
-import { listSaleTransactions, getSaleTransaction } from '../../graphql/queries';
-import { generateClient } from 'aws-amplify/api';
+import {listSaleTransactions, getSaleTransaction} from '../../graphql/queries';
+import {generateClient} from 'aws-amplify/api';
 const client = generateClient();
 
-const { width } = Dimensions.get('window');
+const {width} = Dimensions.get('window');
 
-const BillsAndReceipt = ({ navigation, route }) => {
-  const { store } = route.params;
-  
+const BillsAndReceipt = ({navigation, route}) => {
+  const {store} = route.params;
+
   // State for transactions
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'cashier', 'item'
-  
+
   // State for filtering
   const [filterPeriod, setFilterPeriod] = useState('today');
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [dateType, setDateType] = useState('start');
   const [startDate, setStartDate] = useState(moment().startOf('day').toDate());
   const [endDate, setEndDate] = useState(moment().endOf('day').toDate());
-  
+
   // State for transaction details modal
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState(null);
-  
+
   // State for cashier reports
   const [cashierReports, setCashierReports] = useState({});
-  
+
   // State for item reports
   const [itemReports, setItemReports] = useState({});
-  
+
   useEffect(() => {
     fetchTransactions();
   }, []);
-  
+
   useEffect(() => {
     filterTransactionsByDate();
   }, [filterPeriod, startDate, endDate, transactions, viewMode]);
-  
+
   // Fetch all transactions for the store
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -72,19 +79,18 @@ const BillsAndReceipt = ({ navigation, route }) => {
         query: listSaleTransactions,
         variables: {
           filter: {
-            storeID: { eq: store.id }
-          }
-        }
+            storeID: {eq: store.id},
+          },
+        },
       });
-      
+
       // Sort transactions by creation date (newest first)
       const sortedTransactions = result.data.listSaleTransactions.items.sort(
-        (a, b) => moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf()
+        (a, b) => moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf(),
       );
-      
+
       setTransactions(sortedTransactions);
       generateReports(sortedTransactions);
-      
     } catch (error) {
       console.error('Error fetching transactions:', error);
       Alert.alert('Error', 'Failed to load transactions. Please try again.');
@@ -92,13 +98,13 @@ const BillsAndReceipt = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
-  
+
   // Generate reports from transaction data
-  const generateReports = (transactionData) => {
+  const generateReports = transactionData => {
     // Generate cashier reports
     const cashierData = {};
     const itemData = {};
-    
+
     transactionData.forEach(transaction => {
       // Process cashier data
       if (transaction.staffID) {
@@ -107,45 +113,49 @@ const BillsAndReceipt = ({ navigation, route }) => {
             id: transaction.staffID,
             name: transaction.staffName || 'Unknown',
             salesCount: 0,
-            totalSales: 0
+            totalSales: 0,
           };
         }
-        
+
         cashierData[transaction.staffID].salesCount += 1;
         cashierData[transaction.staffID].totalSales += transaction.total || 0;
       }
-      
+
       // Process item data
       if (transaction.items && Array.isArray(transaction.items)) {
         transaction.items.forEach(item => {
-          const itemId = typeof item === 'object' ? item.id || item.productId : item;
-          const itemName = typeof item === 'object' ? item.name || item.productName : item.productName;
+          const itemId =
+            typeof item === 'object' ? item.id || item.productId : item;
+          const itemName =
+            typeof item === 'object'
+              ? item.name || item.productName
+              : item.productName;
           const quantity = typeof item === 'object' ? item.quantity || 1 : 1;
           const price = typeof item === 'object' ? item.price || 0 : 0;
-          
+
           if (!itemData[itemId]) {
             itemData[itemId] = {
               id: itemId,
               name: itemName,
               totalSold: 0,
-              totalRevenue: 0
+              totalRevenue: 0,
             };
           }
-          
+
           itemData[itemId].totalSold += quantity;
           itemData[itemId].totalRevenue += price * quantity;
         });
       }
     });
-    
+
     setCashierReports(cashierData);
     setItemReports(itemData);
   };
-  
+
   // Filter transactions based on date range
   const filterTransactionsByDate = () => {
     let start, end;
-    
+
     switch (filterPeriod) {
       case 'today':
         start = moment().startOf('day');
@@ -171,22 +181,22 @@ const BillsAndReceipt = ({ navigation, route }) => {
         start = moment().startOf('day');
         end = moment().endOf('day');
     }
-    
+
     const filtered = transactions.filter(transaction => {
       const transactionDate = moment(transaction.createdAt);
       return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
     });
-    
+
     setFilteredTransactions(filtered);
   };
-  
+
   // Handle date picker changes
   const onDateChange = (event, selectedDate) => {
     if (event.type === 'dismissed') {
       setDatePickerVisible(false);
       return;
     }
-    
+
     if (selectedDate) {
       if (dateType === 'start') {
         setStartDate(moment(selectedDate).startOf('day').toDate());
@@ -194,26 +204,26 @@ const BillsAndReceipt = ({ navigation, route }) => {
         setEndDate(moment(selectedDate).endOf('day').toDate());
       }
     }
-    
+
     setDatePickerVisible(false);
     setFilterPeriod('custom');
   };
-  
+
   // Show date picker
-  const showDatePicker = (type) => {
+  const showDatePicker = type => {
     setDateType(type);
     setDatePickerVisible(true);
   };
-  
+
   // Fetch transaction details
-  const fetchTransactionDetails = async (transactionId) => {
+  const fetchTransactionDetails = async transactionId => {
     setIsLoading(true);
     try {
       const result = await client.graphql({
         query: getSaleTransaction,
-        variables: { id: transactionId }
+        variables: {id: transactionId},
       });
-      
+
       setTransactionDetails(result.data.getSaleTransaction);
       setDetailsModalVisible(true);
     } catch (error) {
@@ -223,156 +233,223 @@ const BillsAndReceipt = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
-  
+
   // Print transaction receipt
-  const printReceipt = (transaction) => {
+  const printReceipt = transaction => {
     // In a real app, this would interface with a printer
     // For this example, we'll just show an alert
-    Alert.alert('Print Receipt', `Printing receipt for transaction ${transaction.id.substring(0, 8)}`);
+    Alert.alert(
+      'Print Receipt',
+      `Printing receipt for transaction ${transaction.id.substring(0, 8)}`,
+    );
   };
-  
+
   // Calculate summary statistics
   const calculateSummary = () => {
     let totalAmount = 0;
     let totalTransactions = filteredTransactions.length;
-    
+
     filteredTransactions.forEach(transaction => {
       totalAmount += transaction.total || 0;
     });
-    
+
     return {
       totalAmount,
       totalTransactions,
-      averageTransaction: totalTransactions > 0 ? totalAmount / totalTransactions : 0
+      averageTransaction:
+        totalTransactions > 0 ? totalAmount / totalTransactions : 0,
     };
   };
-  
+
   // Render filter buttons
   const renderFilterButtons = () => (
     <View style={styles.filterContainer}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <TouchableOpacity
-          style={[styles.filterButton, filterPeriod === 'today' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterPeriod === 'today' && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterPeriod('today')}>
-          <Text style={[styles.filterButtonText, filterPeriod === 'today' && styles.filterButtonTextActive]}>Today</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterPeriod === 'today' && styles.filterButtonTextActive,
+            ]}>
+            Today
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterPeriod === 'yesterday' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterPeriod === 'yesterday' && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterPeriod('yesterday')}>
-          <Text style={[styles.filterButtonText, filterPeriod === 'yesterday' && styles.filterButtonTextActive]}>Yesterday</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterPeriod === 'yesterday' && styles.filterButtonTextActive,
+            ]}>
+            Yesterday
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterPeriod === 'thisWeek' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterPeriod === 'thisWeek' && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterPeriod('thisWeek')}>
-          <Text style={[styles.filterButtonText, filterPeriod === 'thisWeek' && styles.filterButtonTextActive]}>This Week</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterPeriod === 'thisWeek' && styles.filterButtonTextActive,
+            ]}>
+            This Week
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterPeriod === 'thisMonth' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterPeriod === 'thisMonth' && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterPeriod('thisMonth')}>
-          <Text style={[styles.filterButtonText, filterPeriod === 'thisMonth' && styles.filterButtonTextActive]}>This Month</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterPeriod === 'thisMonth' && styles.filterButtonTextActive,
+            ]}>
+            This Month
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterPeriod === 'custom' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterPeriod === 'custom' && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterPeriod('custom')}>
-          <Text style={[styles.filterButtonText, filterPeriod === 'custom' && styles.filterButtonTextActive]}>Custom</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterPeriod === 'custom' && styles.filterButtonTextActive,
+            ]}>
+            Custom
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
-  
+
   // Render custom date range selector
-  const renderCustomDateRange = () => (
+  const renderCustomDateRange = () =>
     filterPeriod === 'custom' && (
       <View style={styles.dateRangeContainer}>
         <TouchableOpacity
           style={styles.datePickerButton}
-          onPress={() => showDatePicker('start')}
-        >
+          onPress={() => showDatePicker('start')}>
           <Text style={styles.datePickerLabel}>From:</Text>
           <Text style={styles.datePickerText}>
             {moment(startDate).format('MMM DD, YYYY')}
           </Text>
         </TouchableOpacity>
-        
+
         <Text style={styles.dateRangeSeparator}>-</Text>
-        
+
         <TouchableOpacity
           style={styles.datePickerButton}
-          onPress={() => showDatePicker('end')}
-        >
+          onPress={() => showDatePicker('end')}>
           <Text style={styles.datePickerLabel}>To:</Text>
           <Text style={styles.datePickerText}>
             {moment(endDate).format('MMM DD, YYYY')}
           </Text>
         </TouchableOpacity>
       </View>
-    )
-  );
-  
+    );
+
   // Render summary statistics
   const renderSummary = () => {
     const summary = calculateSummary();
-    
+
     return (
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryValue}>{summary.totalTransactions}</Text>
           <Text style={styles.summaryLabel}>Total Bills</Text>
         </View>
-        
+
         <View style={styles.summaryCard}>
           <Text style={styles.summaryValue}>
-            {formatMoney(summary.totalAmount, { symbol: '₱', precision: 2 })}
+            {formatMoney(summary.totalAmount, {symbol: '₱', precision: 2})}
           </Text>
           <Text style={styles.summaryLabel}>Total Sales</Text>
         </View>
-        
+
         <View style={styles.summaryCard}>
           <Text style={styles.summaryValue}>
-            {formatMoney(summary.averageTransaction, { symbol: '₱', precision: 2 })}
+            {formatMoney(summary.averageTransaction, {
+              symbol: '₱',
+              precision: 2,
+            })}
           </Text>
           <Text style={styles.summaryLabel}>Avg. Bill</Text>
         </View>
       </View>
     );
   };
-  
+
   // Render view mode selector
   const renderViewModeSelector = () => (
     <View style={styles.viewModeContainer}>
       <TouchableOpacity
-        style={[styles.modeButton, viewMode === 'all' && styles.activeModeButton]}
-        onPress={() => setViewMode('all')}
-      >
-        <Text style={[styles.modeButtonText, viewMode === 'all' && styles.activeModeButtonText]}>
+        style={[
+          styles.modeButton,
+          viewMode === 'all' && styles.activeModeButton,
+        ]}
+        onPress={() => setViewMode('all')}>
+        <Text
+          style={[
+            styles.modeButtonText,
+            viewMode === 'all' && styles.activeModeButtonText,
+          ]}>
           All Transactions
         </Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
-        style={[styles.modeButton, viewMode === 'cashier' && styles.activeModeButton]}
-        onPress={() => setViewMode('cashier')}
-      >
-        <Text style={[styles.modeButtonText, viewMode === 'cashier' && styles.activeModeButtonText]}>
+        style={[
+          styles.modeButton,
+          viewMode === 'cashier' && styles.activeModeButton,
+        ]}
+        onPress={() => setViewMode('cashier')}>
+        <Text
+          style={[
+            styles.modeButtonText,
+            viewMode === 'cashier' && styles.activeModeButtonText,
+          ]}>
           Cashier Reports
         </Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
-        style={[styles.modeButton, viewMode === 'item' && styles.activeModeButton]}
-        onPress={() => setViewMode('item')}
-      >
-        <Text style={[styles.modeButtonText, viewMode === 'item' && styles.activeModeButtonText]}>
+        style={[
+          styles.modeButton,
+          viewMode === 'item' && styles.activeModeButton,
+        ]}
+        onPress={() => setViewMode('item')}>
+        <Text
+          style={[
+            styles.modeButtonText,
+            viewMode === 'item' && styles.activeModeButtonText,
+          ]}>
           Item Reports
         </Text>
       </TouchableOpacity>
     </View>
   );
-  
+
   // Render transaction table
   const renderTransactionTable = () => (
     <DataTable
@@ -387,57 +464,67 @@ const BillsAndReceipt = ({ navigation, route }) => {
       ]}
       alignment="center">
       {isLoading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+          style={{marginTop: 20}}
+        />
+      ) : filteredTransactions.length > 0 ? (
+        <FlatList
+          keyExtractor={item => item.id}
+          data={filteredTransactions}
+          style={{marginTop: 10, borderRadius: 5}}
+          renderItem={renderTransactionItem}
+        />
       ) : (
-        filteredTransactions.length > 0 ? (
-          <FlatList
-            keyExtractor={(item) => item.id}
-            data={filteredTransactions}
-            style={{ marginTop: 10, borderRadius: 5 }}
-            renderItem={renderTransactionItem}
-          />
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>No transactions found</Text>
-          </View>
-        )
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>No transactions found</Text>
+        </View>
       )}
     </DataTable>
   );
 
   // Render transaction item
-  const renderTransactionItem = ({ item }) => (
+  const renderTransactionItem = ({item}) => (
     <Grid>
-      <Row style={{ height: 30, backgroundColor: colors.white }}>
-        <Col style={[styles.colStyle, { alignItems: 'center' }]}>
+      <Row style={{height: 30, backgroundColor: colors.white}}>
+        <Col style={[styles.colStyle, {alignItems: 'center'}]}>
           <Text style={styles.textColor}>
             {moment(item.createdAt).format('hh:mm A')}
           </Text>
         </Col>
-        <Col style={[styles.colStyle, { alignItems: 'center' }]}>
+        <Col style={[styles.colStyle, {alignItems: 'center'}]}>
           <Text style={styles.textColor}>
             {moment(item.createdAt).format('DD MMM YYYY')}
           </Text>
         </Col>
-        <Col style={[styles.colStyle, { alignItems: 'center' }]}>
+        <Col style={[styles.colStyle, {alignItems: 'center'}]}>
           <Text style={styles.textColor}>{item.id.substring(0, 8)}</Text>
         </Col>
-        <Col style={[styles.colStyle, { alignItems: 'center' }]}>
+        <Col style={[styles.colStyle, {alignItems: 'center'}]}>
           <Text style={styles.textColor}>{item.staffName}</Text>
         </Col>
-        <Col style={[styles.colStyle, { alignItems: 'center' }]}>
+        <Col style={[styles.colStyle, {alignItems: 'center'}]}>
           <Text style={styles.textColor}>
-            {formatMoney(item.total, { symbol: '₱', precision: 2 })}
+            {formatMoney(item.total, {symbol: '₱', precision: 2})}
           </Text>
         </Col>
-        <Col style={[styles.colStyle, { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }]}>
+        <Col
+          style={[
+            styles.colStyle,
+            {
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+            },
+          ]}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => fetchTransactionDetails(item.id)}>
             <Ionicons name="eye-outline" size={16} color={colors.white} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            style={[styles.actionButton, {backgroundColor: colors.primary}]}
             onPress={() => printReceipt(item)}>
             <Ionicons name="print-outline" size={16} color={colors.white} />
           </TouchableOpacity>
@@ -448,8 +535,10 @@ const BillsAndReceipt = ({ navigation, route }) => {
 
   // Render cashier report
   const renderCashierReport = () => {
-    const cashierList = Object.values(cashierReports).sort((a, b) => b.totalSales - a.totalSales);
-    
+    const cashierList = Object.values(cashierReports).sort(
+      (a, b) => b.totalSales - a.totalSales,
+    );
+
     return (
       <DataTable
         total={calculateSummary().totalAmount}
@@ -461,42 +550,52 @@ const BillsAndReceipt = ({ navigation, route }) => {
         ]}
         alignment="center">
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+            style={{marginTop: 20}}
+          />
+        ) : cashierList.length > 0 ? (
+          <FlatList
+            keyExtractor={item => item.id}
+            data={cashierList}
+            style={{marginTop: 10, borderRadius: 5}}
+            renderItem={({item}) => (
+              <Grid>
+                <Row style={{height: 30, backgroundColor: colors.white}}>
+                  <Col
+                    style={[styles.colStyle, {alignItems: 'center', flex: 2}]}>
+                    <Text style={styles.textColor}>{item.name}</Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>{item.salesCount}</Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>
+                      {formatMoney(item.totalSales, {
+                        symbol: '₱',
+                        precision: 2,
+                      })}
+                    </Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>
+                      {formatMoney(
+                        item.salesCount > 0
+                          ? item.totalSales / item.salesCount
+                          : 0,
+                        {symbol: '₱', precision: 2},
+                      )}
+                    </Text>
+                  </Col>
+                </Row>
+              </Grid>
+            )}
+          />
         ) : (
-          cashierList.length > 0 ? (
-            <FlatList
-              keyExtractor={(item) => item.id}
-              data={cashierList}
-              style={{ marginTop: 10, borderRadius: 5 }}
-              renderItem={({ item }) => (
-                <Grid>
-                  <Row style={{ height: 30, backgroundColor: colors.white }}>
-                    <Col style={[styles.colStyle, { alignItems: 'center', flex: 2 }]}>
-                      <Text style={styles.textColor}>{item.name}</Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>{item.salesCount}</Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>
-                        {formatMoney(item.totalSales, { symbol: '₱', precision: 2 })}
-                      </Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>
-                        {formatMoney(item.salesCount > 0 ? item.totalSales / item.salesCount : 0, 
-                          { symbol: '₱', precision: 2 })}
-                      </Text>
-                    </Col>
-                  </Row>
-                </Grid>
-              )}
-            />
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No cashier data available</Text>
-            </View>
-          )
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No cashier data available</Text>
+          </View>
         )}
       </DataTable>
     );
@@ -504,8 +603,10 @@ const BillsAndReceipt = ({ navigation, route }) => {
 
   // Render item report
   const renderItemReport = () => {
-    const itemList = Object.values(itemReports).sort((a, b) => b.totalSold - a.totalSold);
-    
+    const itemList = Object.values(itemReports).sort(
+      (a, b) => b.totalSold - a.totalSold,
+    );
+
     return (
       <DataTable
         total={itemList.reduce((sum, item) => sum + item.totalRevenue, 0)}
@@ -517,42 +618,52 @@ const BillsAndReceipt = ({ navigation, route }) => {
         ]}
         alignment="center">
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+            style={{marginTop: 20}}
+          />
+        ) : itemList.length > 0 ? (
+          <FlatList
+            keyExtractor={item => item.id}
+            data={itemList}
+            style={{marginTop: 10, borderRadius: 5}}
+            renderItem={({item}) => (
+              <Grid>
+                <Row style={{height: 30, backgroundColor: colors.white}}>
+                  <Col
+                    style={[styles.colStyle, {alignItems: 'center', flex: 2}]}>
+                    <Text style={styles.textColor}>{item.name}</Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>{item.totalSold}</Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>
+                      {formatMoney(item.totalRevenue, {
+                        symbol: '₱',
+                        precision: 2,
+                      })}
+                    </Text>
+                  </Col>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
+                    <Text style={styles.textColor}>
+                      {formatMoney(
+                        item.totalSold > 0
+                          ? item.totalRevenue / item.totalSold
+                          : 0,
+                        {symbol: '₱', precision: 2},
+                      )}
+                    </Text>
+                  </Col>
+                </Row>
+              </Grid>
+            )}
+          />
         ) : (
-          itemList.length > 0 ? (
-            <FlatList
-              keyExtractor={(item) => item.id}
-              data={itemList}
-              style={{ marginTop: 10, borderRadius: 5 }}
-              renderItem={({ item }) => (
-                <Grid>
-                  <Row style={{ height: 30, backgroundColor: colors.white }}>
-                    <Col style={[styles.colStyle, { alignItems: 'center', flex: 2 }]}>
-                      <Text style={styles.textColor}>{item.name}</Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>{item.totalSold}</Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>
-                        {formatMoney(item.totalRevenue, { symbol: '₱', precision: 2 })}
-                      </Text>
-                    </Col>
-                    <Col style={[styles.colStyle, { alignItems: 'center' }]}>
-                      <Text style={styles.textColor}>
-                        {formatMoney(item.totalSold > 0 ? item.totalRevenue / item.totalSold : 0, 
-                          { symbol: '₱', precision: 2 })}
-                      </Text>
-                    </Col>
-                  </Row>
-                </Grid>
-              )}
-            />
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No product data available</Text>
-            </View>
-          )
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No product data available</Text>
+          </View>
         )}
       </DataTable>
     );
@@ -567,56 +678,104 @@ const BillsAndReceipt = ({ navigation, route }) => {
           setDetailsModalVisible(false);
           setTransactionDetails(null);
         }}
-        contentContainerStyle={styles.modalContainer}
-      >
+        contentContainerStyle={styles.modalContainer}>
         {transactionDetails ? (
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Transaction Details</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.printButton}
-                onPress={() => printReceipt(transactionDetails)}
-              >
+                onPress={() => printReceipt(transactionDetails)}>
                 <Ionicons name="print-outline" size={20} color={colors.white} />
                 <Text style={styles.printButtonText}>Print</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.receiptHeader}>
               <Text style={styles.storeName}>{store.name || 'Store Name'}</Text>
-              <Text style={styles.receiptText}>Receipt #{transactionDetails.id.substring(0, 8)}</Text>
               <Text style={styles.receiptText}>
-                {moment(transactionDetails.createdAt).format('DD MMM YYYY, hh:mm A')}
+                Receipt #{transactionDetails.id.substring(0, 8)}
               </Text>
-              <Text style={styles.receiptText}>Cashier: {transactionDetails.staffName}</Text>
+              <Text style={styles.receiptText}>
+                {moment(transactionDetails.createdAt).format(
+                  'DD MMM YYYY, hh:mm A',
+                )}
+              </Text>
+              <Text style={styles.receiptText}>
+                Cashier: {transactionDetails.staffName}
+              </Text>
             </View>
-            
+
             <View style={styles.itemsContainer}>
               <View style={styles.itemHeader}>
-                <Text style={[styles.itemHeaderText, { flex: 3 }]}>Item</Text>
-                <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'center' }]}>Qty</Text>
-                <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Price</Text>
-                <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Total</Text>
+                <Text style={[styles.itemHeaderText, {flex: 3}]}>Item</Text>
+                <Text
+                  style={[
+                    styles.itemHeaderText,
+                    {flex: 1, textAlign: 'center'},
+                  ]}>
+                  Qty
+                </Text>
+                <Text
+                  style={[
+                    styles.itemHeaderText,
+                    {flex: 1, textAlign: 'right'},
+                  ]}>
+                  Price
+                </Text>
+                <Text
+                  style={[
+                    styles.itemHeaderText,
+                    {flex: 1, textAlign: 'right'},
+                  ]}>
+                  Total
+                </Text>
               </View>
-              
-              {transactionDetails.items && Array.isArray(transactionDetails.items) ? (
+
+              {transactionDetails.items &&
+              Array.isArray(transactionDetails.items) ? (
                 transactionDetails.items.map((item, index) => {
                   // Use the updated model structure with productName field
-                  const itemData = typeof item === 'object' ? item : { id: item, name: item.productName, quantity: 1, price: 0 };
+                  const itemData =
+                    typeof item === 'object'
+                      ? item
+                      : {
+                          id: item,
+                          name: item.productName,
+                          quantity: 1,
+                          price: 0,
+                        };
                   return (
                     <View key={index} style={styles.itemRow}>
-                      <Text style={[styles.itemText, { flex: 3 }]}>
+                      <Text style={[styles.itemText, {flex: 3}]}>
                         {itemData.name || itemData.productName}
                       </Text>
-                      <Text style={[styles.itemText, { flex: 1, textAlign: 'center' }]}>
+                      <Text
+                        style={[
+                          styles.itemText,
+                          {flex: 1, textAlign: 'center'},
+                        ]}>
                         {itemData.quantity || 1}
                       </Text>
-                      <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
-                        {formatMoney(itemData.price || 0, { symbol: '₱', precision: 2 })}
+                      <Text
+                        style={[
+                          styles.itemText,
+                          {flex: 1, textAlign: 'right'},
+                        ]}>
+                        {formatMoney(itemData.price || 0, {
+                          symbol: '₱',
+                          precision: 2,
+                        })}
                       </Text>
-                      <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
-                        {formatMoney((itemData.price || 0) * (itemData.quantity || 1), 
-                          { symbol: '₱', precision: 2 })}
+                      <Text
+                        style={[
+                          styles.itemText,
+                          {flex: 1, textAlign: 'right'},
+                        ]}>
+                        {formatMoney(
+                          (itemData.price || 0) * (itemData.quantity || 1),
+                          {symbol: '₱', precision: 2},
+                        )}
                       </Text>
                     </View>
                   );
@@ -625,39 +784,51 @@ const BillsAndReceipt = ({ navigation, route }) => {
                 <Text style={styles.noItemsText}>No items found</Text>
               )}
             </View>
-            
+
             <View style={styles.totalContainer}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal:</Text>
                 <Text style={styles.totalValue}>
-                  {formatMoney(transactionDetails.subtotal || transactionDetails.total || 0, 
-                    { symbol: '₱', precision: 2 })}
+                  {formatMoney(
+                    transactionDetails.subtotal ||
+                      transactionDetails.total ||
+                      0,
+                    {symbol: '₱', precision: 2},
+                  )}
                 </Text>
               </View>
-              
+
               {transactionDetails.discount > 0 && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Discount:</Text>
                   <Text style={styles.totalValue}>
-                    {formatMoney(transactionDetails.discount || 0, { symbol: '₱', precision: 2 })}
+                    {formatMoney(transactionDetails.discount || 0, {
+                      symbol: '₱',
+                      precision: 2,
+                    })}
                   </Text>
                 </View>
               )}
-              
+
               <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { fontWeight: 'bold' }]}>TOTAL:</Text>
-                <Text style={[styles.totalValue, { fontWeight: 'bold' }]}>
-                  {formatMoney(transactionDetails.total || 0, { symbol: '₱', precision: 2 })}
+                <Text style={[styles.totalLabel, {fontWeight: 'bold'}]}>
+                  TOTAL:
+                </Text>
+                <Text style={[styles.totalValue, {fontWeight: 'bold'}]}>
+                  {formatMoney(transactionDetails.total || 0, {
+                    symbol: '₱',
+                    precision: 2,
+                  })}
                 </Text>
               </View>
-              
+
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Payment Method:</Text>
                 <Text style={styles.totalValue}>
                   {transactionDetails.payment_status || 'Cash'}
                 </Text>
               </View>
-              
+
               {transactionDetails.status === 'Voided' && (
                 <View style={styles.voidedContainer}>
                   <Text style={styles.voidedText}>
@@ -666,22 +837,23 @@ const BillsAndReceipt = ({ navigation, route }) => {
                 </View>
               )}
             </View>
-            
+
             <Button
               mode="outlined"
               onPress={() => {
                 setDetailsModalVisible(false);
                 setTransactionDetails(null);
               }}
-              style={styles.closeButton}
-            >
+              style={styles.closeButton}>
               Close
             </Button>
           </View>
         ) : (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading transaction details...</Text>
+            <Text style={styles.loadingText}>
+              Loading transaction details...
+            </Text>
           </View>
         )}
       </Modal>
@@ -701,27 +873,27 @@ const BillsAndReceipt = ({ navigation, route }) => {
             </TouchableOpacity>
           }
         />
-        
+
         {/* View Mode Selector */}
         {renderViewModeSelector()}
-        
+
         {/* Filters and Date Range */}
         {renderFilterButtons()}
         {renderCustomDateRange()}
-        
+
         {/* Summary Statistics */}
         {renderSummary()}
-        
+
         {/* Main Content */}
         <View style={styles.contentContainer}>
           {viewMode === 'all' && renderTransactionTable()}
           {viewMode === 'cashier' && renderCashierReport()}
           {viewMode === 'item' && renderItemReport()}
         </View>
-        
+
         {/* Transaction Details Modal */}
         {renderTransactionDetailsModal()}
-        
+
         {/* Date picker */}
         {datePickerVisible && (
           <DateTimePicker
@@ -808,7 +980,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
@@ -1009,7 +1181,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: colors.charcoalGrey,
     fontSize: 14,
-  }
+  },
 });
 
 export default BillsAndReceipt;

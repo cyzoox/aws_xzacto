@@ -1,1 +1,1 @@
-export { default as CustomerScreen } from './CustomerScreen';
+export {default as CustomerScreen} from './CustomerScreen';

@@ -1,31 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
-import { Card, Button, Overlay } from 'react-native-elements';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
+import {Card, Button, Overlay} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useSelector, useDispatch } from 'react-redux';
+import {useSelector, useDispatch} from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
-import Appbar from "../components/Appbar";
-import colors from "../themes/colors";
+import Appbar from '../components/Appbar';
+import colors from '../themes/colors';
 import {
   fetchSubscriptionPlans,
   fetchAccountByOwnerId,
   upgradeSubscription,
   createDefaultFreePlan,
-  syncSubscriptionActions
+  syncSubscriptionActions,
 } from '../store/slices/subscriptionSlice';
-import { generateClient } from 'aws-amplify/api';
-import { listSubscriptionPlans } from '../graphql/queries';
-import { createSubscriptionPlan } from '../graphql/mutations';
-
-
+import {generateClient} from 'aws-amplify/api';
+import {listSubscriptionPlans} from '../graphql/queries';
+import {createSubscriptionPlan} from '../graphql/mutations';
 
 // Initialize the API client
 const client = generateClient();
 
-const SubscriptionScreen = ({ navigation, route }) => {
+const SubscriptionScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
-  const subscriptionState = useSelector(state => state.subscription) || { plans: [], loading: false, error: null };
-  const { currentAccount = null, loading = false, error = null, syncStatus = 'idle' } = subscriptionState;
+  const subscriptionState = useSelector(state => state.subscription) || {
+    plans: [],
+    loading: false,
+    error: null,
+  };
+  const {
+    currentAccount = null,
+    loading = false,
+    error = null,
+    syncStatus = 'idle',
+  } = subscriptionState;
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
@@ -35,35 +51,34 @@ const SubscriptionScreen = ({ navigation, route }) => {
   const [offlineChanges, setOfflineChanges] = useState(false);
 
   // Check if user is SuperAdmin
-  const isSuperAdmin = staffData && 
-                       staffData.role && 
-                       (Array.isArray(staffData.role) 
-                        ? staffData.role.includes('SuperAdmin') 
-                        : staffData.role === 'SuperAdmin');
+  const isSuperAdmin =
+    staffData &&
+    staffData.role &&
+    (Array.isArray(staffData.role)
+      ? staffData.role.includes('SuperAdmin')
+      : staffData.role === 'SuperAdmin');
 
   useEffect(() => {
     console.log('SubscriptionScreen mounted - isSuperAdmin:', isSuperAdmin);
     console.log('Initial Redux state:', subscriptionState);
-    
-  
-      const unsubscribe = NetInfo.addEventListener(state => {
-        console.log('Network state changed:', state.isConnected);
-        setIsConnected(state.isConnected);
-        
-        // If connection status changes to online and we had offline changes
-        if (state.isConnected && offlineChanges) {
-          syncOfflineChanges();
-        }
-      });
-      
-      loadData();
-      
-      return () => {
-        unsubscribe();
-      };
-    
+
+    const unsubscribe = NetInfo.addEventListener(state => {
+      console.log('Network state changed:', state.isConnected);
+      setIsConnected(state.isConnected);
+
+      // If connection status changes to online and we had offline changes
+      if (state.isConnected && offlineChanges) {
+        syncOfflineChanges();
+      }
+    });
+
+    loadData();
+
+    return () => {
+      unsubscribe();
+    };
   }, [isSuperAdmin]);
-  
+
   // Check for errors
   useEffect(() => {
     if (error) {
@@ -73,35 +88,36 @@ const SubscriptionScreen = ({ navigation, route }) => {
 
   const loadData = async () => {
     console.log('Loading subscription data...');
-    
+
     try {
       setLoadingPlans(true);
-      
+
       // Fetch subscription plans directly using GraphQL
       console.log('Fetching subscription plans with GraphQL...');
       const plansResult = await client.graphql({
-        query: listSubscriptionPlans
+        query: listSubscriptionPlans,
       });
-      
+
       let fetchedPlans = plansResult.data.listSubscriptionPlans.items || [];
       console.log('Fetched plans:', fetchedPlans);
-      
+
       // If no plans exist, create temporary subscription plans
       if (fetchedPlans.length === 0 && isConnected) {
         console.log('No plans exist and online - creating temporary plans');
         await createTemporaryPlans();
-        
+
         // Fetch again after creating temporary plans
         const updatedPlansResult = await client.graphql({
-          query: listSubscriptionPlans
+          query: listSubscriptionPlans,
         });
-        fetchedPlans = updatedPlansResult.data.listSubscriptionPlans.items || [];
+        fetchedPlans =
+          updatedPlansResult.data.listSubscriptionPlans.items || [];
       }
-      
+
       // Sort plans by price
       fetchedPlans.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
       setPlans(fetchedPlans);
-      
+
       // Fetch account by owner ID
       if (staffData && staffData.ownerId) {
         console.log('Fetching account for owner ID:', staffData.ownerId);
@@ -114,7 +130,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
       setLoadingPlans(false);
     }
   };
-  
+
   // Create a set of temporary subscription plans and save them to AWS
   const createTemporaryPlans = async () => {
     console.log('Creating subscription plans in AWS...');
@@ -122,51 +138,74 @@ const SubscriptionScreen = ({ navigation, route }) => {
       // Define subscription plans
       const subscriptionPlans = [
         {
-          name: "Free",
-          description: "Basic features for small businesses just starting out",
+          name: 'Free',
+          description: 'Basic features for small businesses just starting out',
           price: 0,
-          interval: "monthly",
+          interval: 'monthly',
           storeLimit: 2,
           staffPerStoreLimit: 3,
           adminPerStoreLimit: 1,
-          features: ["Basic POS", "Basic Inventory", "Single User Reports"],
-          isActive: true
+          features: ['Basic POS', 'Basic Inventory', 'Single User Reports'],
+          isActive: true,
         },
         {
-          name: "Starter",
-          description: "Great for growing businesses that need more functionality",
+          name: 'Starter',
+          description:
+            'Great for growing businesses that need more functionality',
           price: 29.99,
-          interval: "monthly",
+          interval: 'monthly',
           storeLimit: 5,
           staffPerStoreLimit: 10,
           adminPerStoreLimit: 3,
-          features: ["Advanced POS", "Full Inventory Management", "Basic Analytics", "Customer Database", "Email Support"],
-          isActive: true
+          features: [
+            'Advanced POS',
+            'Full Inventory Management',
+            'Basic Analytics',
+            'Customer Database',
+            'Email Support',
+          ],
+          isActive: true,
         },
         {
-          name: "Professional",
-          description: "Full-featured solution for established businesses",
+          name: 'Professional',
+          description: 'Full-featured solution for established businesses',
           price: 59.99,
-          interval: "monthly",
+          interval: 'monthly',
           storeLimit: 10,
           staffPerStoreLimit: 25,
           adminPerStoreLimit: 5,
-          features: ["Premium POS", "Advanced Inventory", "Business Analytics", "Customer Loyalty", "Priority Support", "Multi-location"],
-          isActive: true
+          features: [
+            'Premium POS',
+            'Advanced Inventory',
+            'Business Analytics',
+            'Customer Loyalty',
+            'Priority Support',
+            'Multi-location',
+          ],
+          isActive: true,
         },
         {
-          name: "Enterprise",
-          description: "Ultimate solution for large businesses with multiple locations",
+          name: 'Enterprise',
+          description:
+            'Ultimate solution for large businesses with multiple locations',
           price: 99.99,
-          interval: "monthly",
+          interval: 'monthly',
           storeLimit: -1, // Unlimited
           staffPerStoreLimit: -1, // Unlimited
           adminPerStoreLimit: -1, // Unlimited
-          features: ["Enterprise POS", "Enterprise Inventory", "Advanced Analytics", "VIP Support", "Custom Integration", "Dedicated Account Manager", "API Access"],
-          isActive: true
+          features: [
+            'Enterprise POS',
+            'Enterprise Inventory',
+            'Advanced Analytics',
+            'VIP Support',
+            'Custom Integration',
+            'Dedicated Account Manager',
+            'API Access',
+          ],
+          isActive: true,
         },
       ];
-      
+
       // Create each plan in sequence using GraphQL mutations
       for (const plan of subscriptionPlans) {
         console.log(`Creating subscription plan: ${plan.name}...`);
@@ -174,9 +213,9 @@ const SubscriptionScreen = ({ navigation, route }) => {
           // Create plan using GraphQL mutation
           await client.graphql({
             query: createSubscriptionPlan,
-            variables: { 
-              input: plan 
-            }
+            variables: {
+              input: plan,
+            },
           });
           console.log(`Successfully created plan: ${plan.name}`);
         } catch (error) {
@@ -187,57 +226,68 @@ const SubscriptionScreen = ({ navigation, route }) => {
           }
         }
       }
-      
+
       // Show success message
       Alert.alert('Success', 'Subscription plans have been created in AWS!');
-      
+
       // Refetch plans after creating them
       dispatch(fetchSubscriptionPlans());
-      
-      Alert.alert('Success', 'Created temporary subscription plans for testing');
+
+      Alert.alert(
+        'Success',
+        'Created temporary subscription plans for testing',
+      );
     } catch (error) {
       console.error('Error creating temporary subscription plans:', error);
       Alert.alert('Error', 'Failed to create temporary subscription plans');
     }
   };
-  
+
   const syncOfflineChanges = async () => {
     dispatch(syncSubscriptionActions())
       .unwrap()
       .then(() => {
         setOfflineChanges(false);
-        Alert.alert('Sync Complete', 'Your offline changes have been synchronized');
+        Alert.alert(
+          'Sync Complete',
+          'Your offline changes have been synchronized',
+        );
       })
       .catch(err => {
         console.error('Failed to sync offline changes:', err);
       });
   };
-  
+
   const createFreePlan = () => {
     if (!isConnected) {
-      Alert.alert('Offline Mode', 'Cannot create new subscription plans while offline.');
+      Alert.alert(
+        'Offline Mode',
+        'Cannot create new subscription plans while offline.',
+      );
       return;
     }
-    
+
     dispatch(createDefaultFreePlan());
   };
 
-  const handleUpgradePress = (plan) => {
+  const handleUpgradePress = plan => {
     setSelectedPlan(plan);
     setUpgradeOverlayVisible(true);
   };
 
   const confirmUpgrade = async () => {
-    if (!selectedPlan || !currentAccount) return;
-    
+    if (!selectedPlan || !currentAccount) {
+      return;
+    }
+
     // Prepare upgrade data
     const upgradeData = {
       accountId: currentAccount.id,
       currentPlanId: currentAccount.subscriptionPlanId,
       newPlanId: selectedPlan.id,
-      staffId: staffData.id
+      staffId: staffData.id,
     };
-    
+
     // Dispatch upgrade action
     dispatch(upgradeSubscription(upgradeData))
       .unwrap()
@@ -246,39 +296,50 @@ const SubscriptionScreen = ({ navigation, route }) => {
         if (!isConnected) {
           setOfflineChanges(true);
         }
-        
+
         Alert.alert(
-          'Success', 
-          `Subscription ${isConnected ? 'upgraded' : 'will be upgraded when online'} to ${selectedPlan.name} plan`
+          'Success',
+          `Subscription ${
+            isConnected ? 'upgraded' : 'will be upgraded when online'
+          } to ${selectedPlan.name} plan`,
         );
       })
-      .catch((err) => {
+      .catch(err => {
         console.error('Error upgrading subscription:', err);
         Alert.alert('Error', 'Failed to upgrade subscription');
       });
-    
+
     setUpgradeOverlayVisible(false);
   };
 
   const renderCurrentPlan = () => {
-    if (!currentAccount || !currentAccount.subscriptionPlan) return null;
-    
+    if (!currentAccount || !currentAccount.subscriptionPlan) {
+      return null;
+    }
+
     const plan = currentAccount.subscriptionPlan;
-    
+
     return (
       <Card containerStyle={styles.currentPlanCard}>
         <Card.Title h4>Current Plan: {plan.name}</Card.Title>
         <Card.Divider />
         <View style={styles.planDetails}>
           <Text style={styles.planDetailText}>Stores: {plan.storeLimit}</Text>
-          <Text style={styles.planDetailText}>Staff per store: {plan.staffPerStoreLimit}</Text>
-          <Text style={styles.planDetailText}>Admins per store: {plan.adminPerStoreLimit}</Text>
+          <Text style={styles.planDetailText}>
+            Staff per store: {plan.staffPerStoreLimit}
+          </Text>
+          <Text style={styles.planDetailText}>
+            Admins per store: {plan.adminPerStoreLimit}
+          </Text>
           <Text style={styles.planDetailText}>
             Status: {currentAccount.subscriptionStatus}
           </Text>
           {currentAccount.subscriptionEndDate && (
             <Text style={styles.planDetailText}>
-              Expires: {new Date(currentAccount.subscriptionEndDate).toLocaleDateString()}
+              Expires:{' '}
+              {new Date(
+                currentAccount.subscriptionEndDate,
+              ).toLocaleDateString()}
             </Text>
           )}
         </View>
@@ -286,56 +347,61 @@ const SubscriptionScreen = ({ navigation, route }) => {
     );
   };
 
-  const renderPlanItem = ({ item }) => {
+  const renderPlanItem = ({item}) => {
     console.log('Rendering plan item:', item);
-    const isCurrentPlan = currentAccount && currentAccount.subscriptionPlanId === item.id;
-    
+    const isCurrentPlan =
+      currentAccount && currentAccount.subscriptionPlanId === item.id;
+
     // Format feature names for display
-    const formatFeatureName = (feature) => {
+    const formatFeatureName = feature => {
       return feature
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
     };
-    
+
     // Get color scheme based on plan type
-    const getPlanColors = (planName) => {
+    const getPlanColors = planName => {
       const name = planName.toLowerCase();
-      
+
       if (name.includes('free')) {
         return {
           backgroundColor: '#4CAF50', // Green
-          secondaryColor: '#E8F5E9'
+          secondaryColor: '#E8F5E9',
         };
       } else if (name.includes('starter')) {
         return {
           backgroundColor: '#2196F3', // Blue
-          secondaryColor: '#E3F2FD'
+          secondaryColor: '#E3F2FD',
         };
       } else if (name.includes('professional')) {
         return {
           backgroundColor: '#9C27B0', // Purple
-          secondaryColor: '#F3E5F5'
+          secondaryColor: '#F3E5F5',
         };
       } else if (name.includes('enterprise')) {
         return {
           backgroundColor: '#FF5722', // Orange/Red
-          secondaryColor: '#FBE9E7'
+          secondaryColor: '#FBE9E7',
         };
       } else {
         return {
           backgroundColor: '#FF9800', // Default Orange
-          secondaryColor: '#FFF3E0'
+          secondaryColor: '#FFF3E0',
         };
       }
     };
-    
+
     const planColors = getPlanColors(item.name);
-    
+
     return (
       <View style={styles.planCardOuterContainer}>
         {/* Fixed Header */}
-        <View style={[styles.planHeader, { backgroundColor: planColors.backgroundColor }]}>
+        <View
+          style={[
+            styles.planHeader,
+            {backgroundColor: planColors.backgroundColor},
+          ]}>
           {isCurrentPlan && (
             <View style={styles.currentPlanBadge}>
               <Text style={styles.currentPlanBadgeText}>CURRENT</Text>
@@ -351,31 +417,57 @@ const SubscriptionScreen = ({ navigation, route }) => {
         {/* Limits section */}
         <View style={styles.planLimits}>
           <View style={styles.limitItem}>
-            <View style={[styles.limitIconContainer, { backgroundColor: planColors.secondaryColor }]}>
+            <View
+              style={[
+                styles.limitIconContainer,
+                {backgroundColor: planColors.secondaryColor},
+              ]}>
               <Icon name="store" size={18} color={planColors.backgroundColor} />
             </View>
             <View style={styles.limitTextContainer}>
-              <Text style={styles.limitValue}>{item.storeLimit === -1 ? '∞' : item.storeLimit}</Text>
+              <Text style={styles.limitValue}>
+                {item.storeLimit === -1 ? '∞' : item.storeLimit}
+              </Text>
               <Text style={styles.limitLabel}>Stores</Text>
             </View>
           </View>
-          
+
           <View style={styles.limitItem}>
-            <View style={[styles.limitIconContainer, { backgroundColor: planColors.secondaryColor }]}>
-              <Icon name="person" size={18} color={planColors.backgroundColor} />
+            <View
+              style={[
+                styles.limitIconContainer,
+                {backgroundColor: planColors.secondaryColor},
+              ]}>
+              <Icon
+                name="person"
+                size={18}
+                color={planColors.backgroundColor}
+              />
             </View>
             <View style={styles.limitTextContainer}>
-              <Text style={styles.limitValue}>{item.staffPerStoreLimit === -1 ? '∞' : item.staffPerStoreLimit}</Text>
+              <Text style={styles.limitValue}>
+                {item.staffPerStoreLimit === -1 ? '∞' : item.staffPerStoreLimit}
+              </Text>
               <Text style={styles.limitLabel}>Staff/Store</Text>
             </View>
           </View>
-          
+
           <View style={styles.limitItem}>
-            <View style={[styles.limitIconContainer, { backgroundColor: planColors.secondaryColor }]}>
-              <Icon name="supervisor-account" size={18} color={planColors.backgroundColor} />
+            <View
+              style={[
+                styles.limitIconContainer,
+                {backgroundColor: planColors.secondaryColor},
+              ]}>
+              <Icon
+                name="supervisor-account"
+                size={18}
+                color={planColors.backgroundColor}
+              />
             </View>
             <View style={styles.limitTextContainer}>
-              <Text style={styles.limitValue}>{item.adminPerStoreLimit === -1 ? '∞' : item.adminPerStoreLimit}</Text>
+              <Text style={styles.limitValue}>
+                {item.adminPerStoreLimit === -1 ? '∞' : item.adminPerStoreLimit}
+              </Text>
               <Text style={styles.limitLabel}>Admins/Store</Text>
             </View>
           </View>
@@ -384,24 +476,36 @@ const SubscriptionScreen = ({ navigation, route }) => {
         {/* Scrollable features section */}
         <ScrollView style={styles.featuresContainer}>
           <Text style={styles.featuresTitle}>What's included:</Text>
-          
-          {item.features && item.features.map((feature, index) => (
-            <View key={index} style={styles.featureItem}>
-              <Icon name="check-circle" size={16} color={planColors.backgroundColor} style={styles.featureIcon} />
-              <Text style={styles.featureText}>{typeof feature === 'string' && feature.includes('_') ? formatFeatureName(feature) : feature}</Text>
-            </View>
-          ))}
-          
+
+          {item.features &&
+            item.features.map((feature, index) => (
+              <View key={index} style={styles.featureItem}>
+                <Icon
+                  name="check-circle"
+                  size={16}
+                  color={planColors.backgroundColor}
+                  style={styles.featureIcon}
+                />
+                <Text style={styles.featureText}>
+                  {typeof feature === 'string' && feature.includes('_')
+                    ? formatFeatureName(feature)
+                    : feature}
+                </Text>
+              </View>
+            ))}
+
           <Text style={styles.planDescription}>{item.description}</Text>
         </ScrollView>
-        
+
         {/* Fixed upgrade button */}
         <View style={styles.upgradeButtonContainer}>
           <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: planColors.backgroundColor }]}
+            style={[
+              styles.upgradeButton,
+              {backgroundColor: planColors.backgroundColor},
+            ]}
             onPress={() => handleUpgradePress(item)}
-            disabled={isCurrentPlan}
-          >
+            disabled={isCurrentPlan}>
             <Text style={styles.upgradeButtonText}>
               {isCurrentPlan ? 'Current Plan' : 'Upgrade'}
             </Text>
@@ -418,7 +522,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
         subtitle={offlineChanges ? 'Pending changes to sync' : ''}
         onBack={() => navigation.goBack()}
       />
-      
+
       {!isConnected && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>
@@ -429,13 +533,11 @@ const SubscriptionScreen = ({ navigation, route }) => {
 
       {syncStatus === 'syncing' && (
         <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>
-            Syncing your changes...
-          </Text>
+          <Text style={styles.offlineText}>Syncing your changes...</Text>
         </View>
       )}
-      
-      {(loading || loadingPlans) ? (
+
+      {loading || loadingPlans ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading subscription data...</Text>
@@ -443,9 +545,9 @@ const SubscriptionScreen = ({ navigation, route }) => {
       ) : (
         <View style={styles.mainContent}>
           {/* Current Plan Section */}
-          
+
           {renderCurrentPlan()}
-{/*           
+          {/*
           <View style={styles.headerRow}>
             <Text style={styles.sectionTitle}>Available Plans</Text>
             <Button
@@ -454,59 +556,57 @@ const SubscriptionScreen = ({ navigation, route }) => {
               buttonStyle={styles.createButton}
             />
           </View> */}
-        
-        {/* Horizontal Scrollable Plans */}
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          contentContainerStyle={styles.horizontalPlansList}
-          data={plans}
-          keyExtractor={(item) => item.id || item.name}
-          renderItem={renderPlanItem}
-          snapToAlignment="start"
-          snapToInterval={296} // Card width (280) + margins (16)
-          decelerationRate="fast"
-          pagingEnabled={false}
-          initialNumToRender={4}
-          maxToRenderPerBatch={4}
-          windowSize={5}
-          removeClippedSubviews={true}
-        />
-      </View>
-    )}
-    
-    <Overlay
-      isVisible={upgradeOverlayVisible}
-      onBackdropPress={() => setUpgradeOverlayVisible(false)}
-      overlayStyle={styles.overlay}
-    >
-      <Text style={styles.overlayTitle}>Confirm Subscription Upgrade</Text>
-      {selectedPlan && (
-        <>
-          <Text style={styles.overlayText}>
-            Are you sure you want to upgrade to the {selectedPlan.name} plan?
-          </Text>
-          <Text style={styles.overlayPrice}>
-            Price: ${selectedPlan.price}/{selectedPlan.interval}
-          </Text>
-          <View style={styles.overlayButtons}>
-            <Button
-              title="Cancel"
-              onPress={() => setUpgradeOverlayVisible(false)}
-              buttonStyle={styles.cancelButton}
-            />
-            <Button
-              title="Confirm"
-              onPress={confirmUpgrade}
-              buttonStyle={styles.confirmButton}
-            />
-          </View>
-        </>
-      )}
-    </Overlay>
-  </View>
-);
 
+          {/* Horizontal Scrollable Plans */}
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={styles.horizontalPlansList}
+            data={plans}
+            keyExtractor={item => item.id || item.name}
+            renderItem={renderPlanItem}
+            snapToAlignment="start"
+            snapToInterval={296} // Card width (280) + margins (16)
+            decelerationRate="fast"
+            pagingEnabled={false}
+            initialNumToRender={4}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews={true}
+          />
+        </View>
+      )}
+
+      <Overlay
+        isVisible={upgradeOverlayVisible}
+        onBackdropPress={() => setUpgradeOverlayVisible(false)}
+        overlayStyle={styles.overlay}>
+        <Text style={styles.overlayTitle}>Confirm Subscription Upgrade</Text>
+        {selectedPlan && (
+          <>
+            <Text style={styles.overlayText}>
+              Are you sure you want to upgrade to the {selectedPlan.name} plan?
+            </Text>
+            <Text style={styles.overlayPrice}>
+              Price: ${selectedPlan.price}/{selectedPlan.interval}
+            </Text>
+            <View style={styles.overlayButtons}>
+              <Button
+                title="Cancel"
+                onPress={() => setUpgradeOverlayVisible(false)}
+                buttonStyle={styles.cancelButton}
+              />
+              <Button
+                title="Confirm"
+                onPress={confirmUpgrade}
+                buttonStyle={styles.confirmButton}
+              />
+            </View>
+          </>
+        )}
+      </Overlay>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -589,11 +689,11 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     backgroundColor: 'white',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    width:350, // Fixed width for even card display
+    width: 350, // Fixed width for even card display
     height: 470, // Fixed height for consistent cards
     position: 'relative', // Needed for absolute positioned elements
   },
@@ -615,7 +715,7 @@ const styles = StyleSheet.create({
   },
   currentPlanCard: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,

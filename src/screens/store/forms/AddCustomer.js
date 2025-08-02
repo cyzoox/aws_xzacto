@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { Overlay, Button } from 'react-native-elements';
-import { TouchableOpacity, View, Text, ScrollView } from 'react-native';
+import React, {useState} from 'react';
+import {Overlay, Button} from 'react-native-elements';
+import {TouchableOpacity, View, Text, ScrollView} from 'react-native';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import colors from '../../../themes/colors';
-import { TextInput } from 'react-native-paper';
+import {TextInput} from 'react-native-paper';
 
-
-export function AddCustomer({ saveCustomer, store }) {
+export function AddCustomer({saveCustomer, store}) {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -18,24 +17,24 @@ export function AddCustomer({ saveCustomer, store }) {
   const onSave = () => {
     // Reset any previous errors
     setError('');
-    
+
     // Input validation
     if (!name || name.trim().length === 0) {
-      setError("Name is required");
+      setError('Name is required');
       return;
     }
-    
+
     // Phone validation only if provided
     if (phone && phone.length < 10) {
-      setError("Please enter a valid phone number or leave it empty");
+      setError('Please enter a valid phone number or leave it empty');
       return;
     }
-    
+
     if (points && isNaN(points)) {
-      setError("Points must be a number");
+      setError('Points must be a number');
       return;
     }
-    
+
     // Call saveCustomer with proper arguments for DataStore
     // Parameter order: name, storeId, storeName, address, points, phone, email
     saveCustomer(
@@ -45,16 +44,16 @@ export function AddCustomer({ saveCustomer, store }) {
       address.trim(),
       parseInt(points) || 0,
       phone.trim(),
-      email.trim()
+      email.trim(),
     );
-    
+
     // Reset form fields
     resetForm();
-    
+
     // Close overlay
     setOverlayVisible(false);
   };
-  
+
   const resetForm = () => {
     setName('');
     setAddress('');
@@ -63,7 +62,6 @@ export function AddCustomer({ saveCustomer, store }) {
     setEmail('');
     setError('');
   };
-  
 
   return (
     <>
@@ -79,11 +77,11 @@ export function AddCustomer({ saveCustomer, store }) {
               marginBottom: 15,
               marginTop: 5,
               fontWeight: 'bold',
-              color: colors.primary
+              color: colors.primary,
             }}>
             Add New Customer
           </Text>
-          
+
           <TextInput
             label="Name"
             placeholder="Customer name"
@@ -96,7 +94,7 @@ export function AddCustomer({ saveCustomer, store }) {
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          
+
           <TextInput
             label="Phone (Optional)"
             placeholder="Phone number"
@@ -109,7 +107,7 @@ export function AddCustomer({ saveCustomer, store }) {
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          
+
           <TextInput
             label="Email (Optional)"
             placeholder="Email address"
@@ -122,7 +120,7 @@ export function AddCustomer({ saveCustomer, store }) {
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          
+
           <TextInput
             label="Address"
             placeholder="Customer address"
@@ -134,7 +132,7 @@ export function AddCustomer({ saveCustomer, store }) {
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          
+
           <TextInput
             label="Points (Optional)"
             placeholder="Customer points"
@@ -147,19 +145,19 @@ export function AddCustomer({ saveCustomer, store }) {
               colors: {primary: colors.accent, underlineColor: 'transparent'},
             }}
           />
-          
+
           {error ? (
             <Text
               style={{
                 textAlign: 'center',
                 color: colors.red,
                 marginVertical: 10,
-                fontWeight: '500'
+                fontWeight: '500',
               }}>
               {error}
             </Text>
           ) : null}
-          
+
           <View
             style={{
               flexDirection: 'row',

@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
-import { Auth } from "aws-amplify"; // For authentication
+import React, {createContext, useState, useEffect, useContext} from 'react';
+import {Auth} from 'aws-amplify'; // For authentication
 
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 
 // GraphQL Queries
 const listStores = `
@@ -52,25 +52,27 @@ const StoreContext = createContext({
 
 const client = generateClient();
 
-export const StoreProvider = ({ children }) => {
+export const StoreProvider = ({children}) => {
   const [stores, setStores] = useState([]);
   const [currentStore, setCurrentStore] = useState(null);
   const [currentStaff, setCurrentStaff] = useState(null);
   const [staffStores, setStaffStores] = useState([]);
   const [formState, setFormState] = useState({
-    name: "",
-    location: "",
-    ownerId: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    location: '',
+    ownerId: '',
+    password: '',
+    confirmPassword: '',
   });
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Initialize staff and stores on mount
   useEffect(() => {
     let isMounted = true;
     const initializeData = async () => {
-      if (!isMounted) return;
+      if (!isMounted) {
+        return;
+      }
       console.log('Initializing store context...');
       try {
         // Get authenticated user
@@ -79,7 +81,7 @@ export const StoreProvider = ({ children }) => {
           console.log('No authenticated user found');
           return;
         }
-        
+
         console.log('Found authenticated user:', user.username);
 
         // Create default store and SuperAdmin staff if no staff exists
@@ -92,7 +94,7 @@ export const StoreProvider = ({ children }) => {
                 role
               }
             }
-          }`
+          }`,
         });
 
         if (staffList.data.listStaff.items.length === 0) {
@@ -100,7 +102,7 @@ export const StoreProvider = ({ children }) => {
           const defaultStore = {
             name: 'Default Store',
             location: 'Main Branch',
-            ownerId: user.username
+            ownerId: user.username,
           };
 
           const storeResult = await client.graphql({
@@ -112,7 +114,7 @@ export const StoreProvider = ({ children }) => {
                 ownerId
               }
             }`,
-            variables: { input: defaultStore }
+            variables: {input: defaultStore},
           });
 
           // Create SuperAdmin staff
@@ -120,7 +122,7 @@ export const StoreProvider = ({ children }) => {
             id: user.username,
             name: user.username,
             role: 'SuperAdmin',
-            password: '00000'
+            password: '00000',
           };
 
           const staffResult = await client.graphql({
@@ -131,7 +133,7 @@ export const StoreProvider = ({ children }) => {
                 role
               }
             }`,
-            variables: { input: defaultStaff }
+            variables: {input: defaultStaff},
           });
 
           // Create StaffStore relationship
@@ -146,24 +148,27 @@ export const StoreProvider = ({ children }) => {
             variables: {
               input: {
                 staffId: staffResult.data.createStaff.id,
-                storeId: storeResult.data.createStore.id
-              }
-            }
+                storeId: storeResult.data.createStore.id,
+              },
+            },
           });
         }
 
         // Get staff record
         const staffData = await client.graphql({
           query: getStaff,
-          variables: { id: user.username }
+          variables: {id: user.username},
         });
 
         let staff = staffData.data.getStaff;
-        
+
         // If no staff found, check if we already created one during this session
         if (!staff) {
-          console.log('No staff record found initially for user:', user.username);
-          
+          console.log(
+            'No staff record found initially for user:',
+            user.username,
+          );
+
           // Look for staff in the staff table regardless of ID match (maybe created with different ID)
           try {
             const allStaffData = await client.graphql({
@@ -175,14 +180,14 @@ export const StoreProvider = ({ children }) => {
                     role
                   }
                 }
-              }`
+              }`,
             });
-            
+
             // Check if any staff might be for the current user (by name)
             const possibleStaff = allStaffData.data.listStaff.items.find(
-              s => s.name === user.username || s.id === user.username
+              s => s.name === user.username || s.id === user.username,
             );
-            
+
             if (possibleStaff) {
               console.log('Found possible matching staff:', possibleStaff);
               staff = possibleStaff;
@@ -191,41 +196,49 @@ export const StoreProvider = ({ children }) => {
             console.log('Error checking for existing staff:', err);
           }
         }
-        
+
         if (staff) {
           console.log('Staff found:', staff);
-          if (!isMounted) return;
-          
+          if (!isMounted) {
+            return;
+          }
+
           setCurrentStaff(staff);
-          
+
           // Fetch all stores
           const storeData = await client.graphql({
             query: listStores,
             variables: {
               filter: {
                 // Filter out deleted stores
-                _deleted: { ne: true }
-              }
-            }
+                _deleted: {ne: true},
+              },
+            },
           });
           const stores = storeData.data.listStores.items;
           console.log('Stores fetched:', stores);
-          if (!isMounted) return;
-          
+          if (!isMounted) {
+            return;
+          }
+
           setStores(stores);
-          
+
           // For SuperAdmin/Admin, set first store as current if none selected
-          if (staff.role.includes('SuperAdmin') || staff.role.includes('Admin')) {
+          if (
+            staff.role.includes('SuperAdmin') ||
+            staff.role.includes('Admin')
+          ) {
             if (!currentStore && stores.length > 0) {
               console.log('Setting default store for admin:', stores[0]);
               setCurrentStore(stores[0]);
             }
           } else {
             // For non-admin roles, set their assigned store
-            const assignedStores = staff.stores?.items
-              ?.filter(s => s.store && !s.store._deleted)
-              ?.map(s => s.store) || [];
-            
+            const assignedStores =
+              staff.stores?.items
+                ?.filter(s => s.store && !s.store._deleted)
+                ?.map(s => s.store) || [];
+
             if (assignedStores.length > 0 && !currentStore) {
               console.log('Setting assigned store:', assignedStores[0]);
               setCurrentStore(assignedStores[0]);
@@ -242,28 +255,31 @@ export const StoreProvider = ({ children }) => {
             }
           } else {
             // Filter stores based on staff's store access
-            const accessibleStores = stores.filter(store => 
-              staff.stores?.some(s => s.id === store.id)
+            const accessibleStores = stores.filter(store =>
+              staff.stores?.some(s => s.id === store.id),
             );
             setStaffStores(accessibleStores);
             // Always set first accessible store as current
             if (accessibleStores.length > 0) {
-              console.log('Setting current store for staff:', accessibleStores[0]);
+              console.log(
+                'Setting current store for staff:',
+                accessibleStores[0],
+              );
               setCurrentStore(accessibleStores[0]);
             }
           }
         } else {
           console.log('No staff record found for user:', user.username);
-          
+
           // Create default store and staff for this user
           try {
             console.log('Creating default store and staff for new user');
-            
+
             // Create default store
             const defaultStore = {
               name: 'Default Store',
               location: 'Main Branch',
-              ownerId: user.username
+              ownerId: user.username,
             };
 
             const storeResult = await client.graphql({
@@ -275,9 +291,9 @@ export const StoreProvider = ({ children }) => {
                   ownerId
                 }
               }`,
-              variables: { input: defaultStore }
+              variables: {input: defaultStore},
             });
-            
+
             console.log('Created default store:', storeResult.data.createStore);
 
             // Create SuperAdmin staff
@@ -285,7 +301,7 @@ export const StoreProvider = ({ children }) => {
               id: user.username,
               name: user.username,
               role: 'SuperAdmin',
-              password: '00000'
+              password: '00000',
             };
 
             const staffResult = await client.graphql({
@@ -296,9 +312,9 @@ export const StoreProvider = ({ children }) => {
                   role
                 }
               }`,
-              variables: { input: defaultStaff }
+              variables: {input: defaultStaff},
             });
-            
+
             console.log('Created staff record:', staffResult.data.createStaff);
 
             // Create StaffStore relationship
@@ -313,17 +329,16 @@ export const StoreProvider = ({ children }) => {
               variables: {
                 input: {
                   staffId: staffResult.data.createStaff.id,
-                  storeId: storeResult.data.createStore.id
-                }
-              }
+                  storeId: storeResult.data.createStore.id,
+                },
+              },
             });
-            
+
             console.log('Created staff-store relationship');
-            
+
             // Reinitialize context with newly created data
             setCurrentStaff(staffResult.data.createStaff);
             await fetchStores();
-            
           } catch (err) {
             console.error('Error creating default store and staff:', err);
           }
@@ -347,7 +362,7 @@ export const StoreProvider = ({ children }) => {
       });
       const stores = storeData.data.listStores.items;
       console.log('Fetched stores:', stores);
-      
+
       setStores(stores);
 
       // Initialize staff stores based on role
@@ -362,11 +377,16 @@ export const StoreProvider = ({ children }) => {
         } else {
           // Filter stores based on StaffStore relationships
           const staffStoreIds = currentStaff.stores?.map(s => s.id) || [];
-          const accessibleStores = stores.filter(store => staffStoreIds.includes(store.id));
+          const accessibleStores = stores.filter(store =>
+            staffStoreIds.includes(store.id),
+          );
           setStaffStores(accessibleStores);
           // Always set first accessible store as current
           if (accessibleStores.length > 0) {
-            console.log('Setting current store for staff:', accessibleStores[0]);
+            console.log(
+              'Setting current store for staff:',
+              accessibleStores[0],
+            );
             setCurrentStore(accessibleStores[0]);
           }
         }
@@ -374,51 +394,53 @@ export const StoreProvider = ({ children }) => {
         console.log('No current staff found');
       }
     } catch (err) {
-      console.error("Error fetching stores:", err);
+      console.error('Error fetching stores:', err);
     }
   }
 
   // Add a new store
   async function addStore() {
     if (formState.password !== formState.confirmPassword) {
-      setErrorMessage("Passwords do not match");
+      setErrorMessage('Passwords do not match');
       return;
     }
 
     if (formState.password.length < 5) {
-      setErrorMessage("Password must be at least 5 characters long");
+      setErrorMessage('Password must be at least 5 characters long');
       return;
     }
 
     try {
-      const { name, location, ownerId, password } = formState;
-      if (!name || !location) return; // Validate required fields
+      const {name, location, ownerId, password} = formState;
+      if (!name || !location) {
+        return;
+      } // Validate required fields
 
-      const newStore = { name, location, ownerId, password };
+      const newStore = {name, location, ownerId, password};
 
       await client.graphql({
         query: createStore,
-        variables: { input: newStore },
+        variables: {input: newStore},
       });
 
       setFormState({
-        store_name: "",
-        branch: "",
+        store_name: '',
+        branch: '',
         owner: formState.owner,
-        password: "",
-        confirmPassword: "",
-        store_type: "",
+        password: '',
+        confirmPassword: '',
+        store_type: '',
       });
-      setErrorMessage("");
+      setErrorMessage('');
       fetchStores(); // Refresh the store list
     } catch (err) {
-      console.error("Error creating store:", err);
+      console.error('Error creating store:', err);
     }
   }
 
   // Update form state
   function setInput(key, value) {
-    setFormState((prevState) => ({ ...prevState, [key]: value }));
+    setFormState(prevState => ({...prevState, [key]: value}));
   }
 
   const contextValue = {
@@ -432,7 +454,7 @@ export const StoreProvider = ({ children }) => {
     errorMessage,
     setInput,
     addStore,
-    fetchStores
+    fetchStores,
   };
 
   console.log('StoreContext value:', contextValue);

@@ -1,4 +1,4 @@
-import React, {useState,useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   TouchableOpacity,
   ImageBackground,
@@ -9,36 +9,39 @@ import {
   Image,
   TouchableWithoutFeedback,
   ScrollView,
-  TextInput
+  TextInput,
 } from 'react-native';
 import FlatGrid from 'react-native-super-grid';
 import {Button, Input} from 'react-native-elements';
 import Modal from 'react-native-modal';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
-import { listCategories, listCartItems, listProducts, listVariants, listAddons } from '../graphql/queries';
-import { createCartItem, updateCartItem } from '../graphql/mutations';
-import { calculateFinalPrice, formatPrice, getProductPriceDisplay } from '../utils/priceCalculations';
-
+import {
+  listCategories,
+  listCartItems,
+  listProducts,
+  listVariants,
+  listAddons,
+} from '../graphql/queries';
+import {createCartItem, updateCartItem} from '../graphql/mutations';
+import {
+  calculateFinalPrice,
+  formatPrice,
+  getProductPriceDisplay,
+} from '../utils/priceCalculations';
 
 const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
-
 
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Alert from './Alert';
 import colors from '../themes/colors';
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 import SearchBar from './SearchBar';
 const client = generateClient();
-export default function ProductsCashier({
-  route,
-  cart,
-  setCart,
-  onCartUpdate
-}) {
-  const { staffData } = route.params;
-    
+export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
+  const {staffData} = route.params;
+
   const [selectedCategory, setSelectedCategory] = useState('All'); // Default to 'All'
   const [searchTerm, setSearchTerm] = useState(''); // Search query
   const [overlay, overlayVisible] = useState(false);
@@ -68,347 +71,335 @@ export default function ProductsCashier({
       overlayVisible(true);
       return;
     }
-   
   };
 
   const onCancelAlert = () => {
     alertVisible(false);
   };
 
-
-
   useEffect(() => {
     fetchCategories();
     fetchProducts();
   }, []); // Initial fetch only
-  
+
   // We'll use the existing fetchProductDetails function defined below
-  
+
   useEffect(() => {
     let filtered = products;
-    
+
     if (selectedCategory !== 'All') {
       // Find the category object that matches the selected category name
       const matchingCategory = category.find(c => c.name === selectedCategory);
-      
+
       if (matchingCategory) {
         // Filter products by categoryId (this is the correct relation field)
-        filtered = filtered.filter(product => product.categoryId === matchingCategory.id);
-        console.log(`Filtering by category: ${selectedCategory} (ID: ${matchingCategory.id}), found ${filtered.length} products`);
+        filtered = filtered.filter(
+          product => product.categoryId === matchingCategory.id,
+        );
+        console.log(
+          `Filtering by category: ${selectedCategory} (ID: ${matchingCategory.id}), found ${filtered.length} products`,
+        );
       } else {
         console.log(`No matching category found for: ${selectedCategory}`);
       }
     }
-    
+
     if (searchTerm) {
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
-  
+
     setFilteredProducts(filtered);
   }, [products, selectedCategory, searchTerm, category]);
 
   const fetchCategories = async () => {
-   try{
-    const result = await client.graphql({
-        query: listCategories,
-        variables: { filter: { storeId: { eq: staffData.store_id } } }
-    });
-    const categoriesList = result.data.listCategories.items;
-    console.log('Categories fetched:', categoriesList.map(c => ({ id: c.id, name: c.name })));
-    setCategories(categoriesList);
-  }catch (err) {
-    console.log('Error fetching category:', err);
-  }
-};
-
-const fetchList = async () => {
-  try {
-    const result = await client.graphql({
-      query: listCartItems,
-      variables: {
-        filter: {
-          storeId: { eq: staffData.store_id},
-          cashierId: { eq: staffData.id }
-        },
-      },
-    });
-
-    // Get the items from the backend
-    const serverItems = result.data.listCartItems.items;
-    
-    // Only update non-pending items to avoid overwriting local changes
-    setCart(prevCart => {
-      const pendingItems = prevCart.filter(item => item.pending);
-      const syncedItems = serverItems.filter(serverItem => 
-        !pendingItems.some(pending => pending.productId === serverItem.productId)
-      );
-      return [...syncedItems, ...pendingItems];
-    });
-  } catch (err) {
-    console.log('Error fetching cart items:', err.message);
-  }
-};
-
-// Helper function to fetch product details (variants and addons)
-const fetchProductDetails = async (productId) => {
-  try {
-    console.log('Fetching product details for:', productId);
-    
-    // Fetch variants
-    const variantsResult = await client.graphql({
-      query: listVariants,
-      variables: {
-        filter: { productId: { eq: productId } }
-      }
-    });
-
-    // Fetch addons
-    const addonsResult = await client.graphql({
-      query: listAddons,
-      variables: {
-        filter: { productId: { eq: productId } }
-      }
-    });
-
-    const variants = variantsResult.data?.listVariants?.items || [];
-    const addons = addonsResult.data?.listAddons?.items || [];
-
-    console.log(`Found ${variants.length} variants and ${addons.length} addons`);
-    console.log('Variants:', JSON.stringify(variants));
-    console.log('Addons:', JSON.stringify(addons));
-
-    return {
-      variants,
-      addons
-    };
-  } catch (error) {
-    console.error('Error fetching product details:', error);
-    return { variants: [], addons: [] };
-  }
-};
-
-const fetchProducts = async () => {
-  try {
-    // Fetch basic product information first
-    const result = await client.graphql({
-      query: listProducts,
-      variables: { 
-        filter: { storeId: { eq: staffData.store_id } }
-      },
-    });
-    
-    const productsList = result.data?.listProducts?.items ?? [];
-    
-    // Log product and category relationship
-    console.log('Products category mapping:', productsList.slice(0, 5).map(p => ({
-      name: p.name,
-      categoryId: p.categoryId
-    })));
-    
-    // Fetch variants and addons for each product
-    const productsWithExtras = await Promise.all(
-      productsList.map(async (product) => {
-        const details = await fetchProductDetails(product.id);
-        
-        return {
-          ...product,
-          variants: { items: details.variants },
-          addons: { items: details.addons }
-        };
-      })
-    );
-
-    console.log('Products with extras count:', productsWithExtras.length);
-    setProducts(productsWithExtras);
-    setFilteredProducts(productsWithExtras);
-  } catch (err) {
-    console.error('Error fetching products:', err);
-  }
-};
-
-
-
-  const addToCart = async (item) => {
-  try {
-    if (!staffData || !staffData.id) {
-      console.error('No staff data available');
-      return;
-    }
-
-    // Check if product has variants or addons
-    const hasVariants = Array.isArray(item.variants?.items) && item.variants.items.length > 0;
-    const hasAddons = Array.isArray(item.addons?.items) && item.addons.items.length > 0;
-    
-    console.log(`Product ${item.name} checking for variants/addons:`, {
-      hasVariants,
-      hasAddons,
-      variants: item.variants,
-      addons: item.addons
-    });
-    
-    if ((hasVariants || hasAddons) && !variantModal) {
-      console.log('Opening variant modal for product:', item.name);
-      
-      // Use the product data we already have directly
-      try {
-        console.log(`Fetching detailed data for product ${item.name} (${item.id})`);
-        
-        // Fetch the complete product data with variants and addons
-        const details = await fetchProductDetails(item.id);
-        console.log('Product details:', details);
-        
-        // Create a complete product object with variants and addons
-        const productWithExtras = {
-          ...item,
-          variants: { items: details.variants },
-          addons: { items: details.addons }
-        };
-        
-        console.log('Enhanced product data:', JSON.stringify(productWithExtras));
-        
-        if (details.variants.length === 0 && details.addons.length === 0) {
-          console.log('No variants or addons found for this product. Adding directly to cart.');
-          addToCart(item);
-          return;
-        }
-        
-        // Now set the selected product and show the modal
-        const enhancedProduct = {
-          ...productWithExtras,
-          variants,
-          addons
-        };
-        
-        setSelectedVariantId(null);  // Reset selected variant
-        setSelectedAddonId(null);   // Reset selected addon
-        setSelectedProduct(enhancedProduct);   // Set the selected product
-        setVariantModal(true);      // Open the modal
-      } catch (err) {
-        console.error('Error fetching product details:', err);
-        // Fallback to using the basic product info
-        setSelectedVariantId(null);  
-        setSelectedAddonId(null);   
-        setSelectedProduct(item);   
-        setVariantModal(true);      
-      }
-      return;
-    }
-
-    // Get selected variant and addon objects (if any)
-    const selectedVariant = selectedVariantId && selectedProduct?.variants?.items
-      ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
-      : null;
-      
-    const selectedAddon = selectedAddonId && selectedProduct?.addons?.items
-      ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
-      : null;
-
-    // Check if this exact product+variant+addon combination exists in cart
-    const cartItem = cart.find(cartItem => 
-      cartItem.productId === item.id && 
-      // For variants: Check if IDs match or both are missing
-      ((selectedVariant && cartItem.variantData && 
-        JSON.parse(cartItem.variantData).id === selectedVariant.id) || 
-       (!selectedVariant && !cartItem.variantData)) &&
-      // For addons: Check if IDs match or both are missing
-      ((selectedAddon && cartItem.addonData && 
-        JSON.parse(cartItem.addonData).id === selectedAddon.id) ||
-       (!selectedAddon && !cartItem.addonData))
-    );
-
-    // Check if enough stock
-    const currentQty = cartItem?.quantity || 0;
-    if (currentQty + 1 > item.stock) {
-      alert('Not enough stock available');
-      return;
-    }
-
-    // Calculate the final price using our utility function
-    // We need to create arrays for the selectedVariant and selectedAddon to match our utility function
-    const selectedVariantArray = selectedVariantId && selectedProduct ? 
-      [selectedProduct.variants.items.find(v => v.id === selectedVariantId)].filter(Boolean) : 
-      [];
-    
-    const selectedAddonArray = selectedAddonId && selectedProduct ? 
-      [selectedProduct.addons.items.find(a => a.id === selectedAddonId)].filter(Boolean) : 
-      [];
-
-    // Now calculate the price with the correct variant and addon data
-    const totalPrice = calculateFinalPrice(item, selectedVariantArray, selectedAddonArray);
-    
-    console.log(`Adding product ${item.name} to cart with price ${totalPrice}:`, {
-      hasSelections: !!(item.selectedVariants || item.selectedAddons),
-      calculatedPrice: item.calculatedPrice,
-      finalPrice: totalPrice
-    });
-
-    // Optimistically update the UI immediately
-    if (cartItem) {
-      // Update existing item in local state
-      const updatedCart = cart.map(item => 
-        item.id === cartItem.id 
-          ? { ...item, quantity: item.quantity + 1 } 
-          : item
-      );
-      setCart(updatedCart);
-    } else {
-      // We already have selectedVariant and selectedAddon from above
-      // Create new item in local state with variant and addon details
-      const newCartItem = {
-        id: `temp-${Date.now()}`, // Temporary ID for optimistic update
-        name: item.name,
-        brand: item.brand,
-        oprice: item.oprice,
-        sprice: totalPrice,
-        productId: item.id,
-        cashierId: staffData.id,
-        category: item.category,
-        unit: item.unit || 'PCS',
-        storeId: item.storeId,
-        quantity: 1,
-        
-        // Store variant and addon data directly in AWSJSON
-        variantData: selectedVariant ? JSON.stringify(selectedVariant) : null,
-        addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
-        // Add direct references for UI rendering (single objects, not arrays)
-        selectedVariant: selectedVariant,
-        selectedAddon: selectedAddon,
-        // Legacy field for backward compatibility
-        addon: selectedVariant ? selectedVariant.name : (selectedAddon ? selectedAddon.name : null),
-        
-        pending: true // Flag to identify optimistic updates
-      };
-      setCart(prevCart => [...prevCart, newCartItem]);
-    }
-
-    // Now sync with the backend
     try {
-      if (cartItem) {
-        // Update existing item in backend (same product + variant + addon combination)
-        await client.graphql({
-          query: updateCartItem,
-          variables: {
-            input: {
-              id: cartItem.id,
-              quantity: cartItem.quantity + 1,
-            },
+      const result = await client.graphql({
+        query: listCategories,
+        variables: {filter: {storeId: {eq: staffData.store_id}}},
+      });
+      const categoriesList = result.data.listCategories.items;
+      console.log(
+        'Categories fetched:',
+        categoriesList.map(c => ({id: c.id, name: c.name})),
+      );
+      setCategories(categoriesList);
+    } catch (err) {
+      console.log('Error fetching category:', err);
+    }
+  };
+
+  const fetchList = async () => {
+    try {
+      const result = await client.graphql({
+        query: listCartItems,
+        variables: {
+          filter: {
+            storeId: {eq: staffData.store_id},
+            cashierId: {eq: staffData.id},
           },
-        });
-      } else {
-        // This is a new product
-        // Get selected variant and addon objects (if any)
-        const selectedVariant = selectedVariantId && selectedProduct?.variants?.items
+        },
+      });
+
+      // Get the items from the backend
+      const serverItems = result.data.listCartItems.items;
+
+      // Only update non-pending items to avoid overwriting local changes
+      setCart(prevCart => {
+        const pendingItems = prevCart.filter(item => item.pending);
+        const syncedItems = serverItems.filter(
+          serverItem =>
+            !pendingItems.some(
+              pending => pending.productId === serverItem.productId,
+            ),
+        );
+        return [...syncedItems, ...pendingItems];
+      });
+    } catch (err) {
+      console.log('Error fetching cart items:', err.message);
+    }
+  };
+
+  // Helper function to fetch product details (variants and addons)
+  const fetchProductDetails = async productId => {
+    try {
+      console.log('Fetching product details for:', productId);
+
+      // Fetch variants
+      const variantsResult = await client.graphql({
+        query: listVariants,
+        variables: {
+          filter: {productId: {eq: productId}},
+        },
+      });
+
+      // Fetch addons
+      const addonsResult = await client.graphql({
+        query: listAddons,
+        variables: {
+          filter: {productId: {eq: productId}},
+        },
+      });
+
+      const variants = variantsResult.data?.listVariants?.items || [];
+      const addons = addonsResult.data?.listAddons?.items || [];
+
+      console.log(
+        `Found ${variants.length} variants and ${addons.length} addons`,
+      );
+      console.log('Variants:', JSON.stringify(variants));
+      console.log('Addons:', JSON.stringify(addons));
+
+      return {
+        variants,
+        addons,
+      };
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      return {variants: [], addons: []};
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      // Fetch basic product information first
+      const result = await client.graphql({
+        query: listProducts,
+        variables: {
+          filter: {storeId: {eq: staffData.store_id}},
+        },
+      });
+
+      const productsList = result.data?.listProducts?.items ?? [];
+
+      // Log product and category relationship
+      console.log(
+        'Products category mapping:',
+        productsList.slice(0, 5).map(p => ({
+          name: p.name,
+          categoryId: p.categoryId,
+        })),
+      );
+
+      // Fetch variants and addons for each product
+      const productsWithExtras = await Promise.all(
+        productsList.map(async product => {
+          const details = await fetchProductDetails(product.id);
+
+          return {
+            ...product,
+            variants: {items: details.variants},
+            addons: {items: details.addons},
+          };
+        }),
+      );
+
+      console.log('Products with extras count:', productsWithExtras.length);
+      setProducts(productsWithExtras);
+      setFilteredProducts(productsWithExtras);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    }
+  };
+
+  const addToCart = async item => {
+    try {
+      if (!staffData || !staffData.id) {
+        console.error('No staff data available');
+        return;
+      }
+
+      // Check if product has variants or addons
+      const hasVariants =
+        Array.isArray(item.variants?.items) && item.variants.items.length > 0;
+      const hasAddons =
+        Array.isArray(item.addons?.items) && item.addons.items.length > 0;
+
+      console.log(`Product ${item.name} checking for variants/addons:`, {
+        hasVariants,
+        hasAddons,
+        variants: item.variants,
+        addons: item.addons,
+      });
+
+      if ((hasVariants || hasAddons) && !variantModal) {
+        console.log('Opening variant modal for product:', item.name);
+
+        // Use the product data we already have directly
+        try {
+          console.log(
+            `Fetching detailed data for product ${item.name} (${item.id})`,
+          );
+
+          // Fetch the complete product data with variants and addons
+          const details = await fetchProductDetails(item.id);
+          console.log('Product details:', details);
+
+          // Create a complete product object with variants and addons
+          const productWithExtras = {
+            ...item,
+            variants: {items: details.variants},
+            addons: {items: details.addons},
+          };
+
+          console.log(
+            'Enhanced product data:',
+            JSON.stringify(productWithExtras),
+          );
+
+          if (details.variants.length === 0 && details.addons.length === 0) {
+            console.log(
+              'No variants or addons found for this product. Adding directly to cart.',
+            );
+            addToCart(item);
+            return;
+          }
+
+          // Now set the selected product and show the modal
+          const enhancedProduct = {
+            ...productWithExtras,
+            variants,
+            addons,
+          };
+
+          setSelectedVariantId(null); // Reset selected variant
+          setSelectedAddonId(null); // Reset selected addon
+          setSelectedProduct(enhancedProduct); // Set the selected product
+          setVariantModal(true); // Open the modal
+        } catch (err) {
+          console.error('Error fetching product details:', err);
+          // Fallback to using the basic product info
+          setSelectedVariantId(null);
+          setSelectedAddonId(null);
+          setSelectedProduct(item);
+          setVariantModal(true);
+        }
+        return;
+      }
+
+      // Get selected variant and addon objects (if any)
+      const selectedVariant =
+        selectedVariantId && selectedProduct?.variants?.items
           ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
           : null;
-          
-        const selectedAddon = selectedAddonId && selectedProduct?.addons?.items
+
+      const selectedAddon =
+        selectedAddonId && selectedProduct?.addons?.items
           ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
           : null;
 
-        // Create new item in backend with variant and addon details
-        const newItem = {
+      // Check if this exact product+variant+addon combination exists in cart
+      const cartItem = cart.find(
+        cartItem =>
+          cartItem.productId === item.id &&
+          // For variants: Check if IDs match or both are missing
+          ((selectedVariant &&
+            cartItem.variantData &&
+            JSON.parse(cartItem.variantData).id === selectedVariant.id) ||
+            (!selectedVariant && !cartItem.variantData)) &&
+          // For addons: Check if IDs match or both are missing
+          ((selectedAddon &&
+            cartItem.addonData &&
+            JSON.parse(cartItem.addonData).id === selectedAddon.id) ||
+            (!selectedAddon && !cartItem.addonData)),
+      );
+
+      // Check if enough stock
+      const currentQty = cartItem?.quantity || 0;
+      if (currentQty + 1 > item.stock) {
+        alert('Not enough stock available');
+        return;
+      }
+
+      // Calculate the final price using our utility function
+      // We need to create arrays for the selectedVariant and selectedAddon to match our utility function
+      const selectedVariantArray =
+        selectedVariantId && selectedProduct
+          ? [
+              selectedProduct.variants.items.find(
+                v => v.id === selectedVariantId,
+              ),
+            ].filter(Boolean)
+          : [];
+
+      const selectedAddonArray =
+        selectedAddonId && selectedProduct
+          ? [
+              selectedProduct.addons.items.find(a => a.id === selectedAddonId),
+            ].filter(Boolean)
+          : [];
+
+      // Now calculate the price with the correct variant and addon data
+      const totalPrice = calculateFinalPrice(
+        item,
+        selectedVariantArray,
+        selectedAddonArray,
+      );
+
+      console.log(
+        `Adding product ${item.name} to cart with price ${totalPrice}:`,
+        {
+          hasSelections: !!(item.selectedVariants || item.selectedAddons),
+          calculatedPrice: item.calculatedPrice,
+          finalPrice: totalPrice,
+        },
+      );
+
+      // Optimistically update the UI immediately
+      if (cartItem) {
+        // Update existing item in local state
+        const updatedCart = cart.map(item =>
+          item.id === cartItem.id
+            ? {...item, quantity: item.quantity + 1}
+            : item,
+        );
+        setCart(updatedCart);
+      } else {
+        // We already have selectedVariant and selectedAddon from above
+        // Create new item in local state with variant and addon details
+        const newCartItem = {
+          id: `temp-${Date.now()}`, // Temporary ID for optimistic update
           name: item.name,
           brand: item.brand,
           oprice: item.oprice,
@@ -419,53 +410,114 @@ const fetchProducts = async () => {
           unit: item.unit || 'PCS',
           storeId: item.storeId,
           quantity: 1,
-          
-          // Store variant and addon data as serialized JSON strings for AWSJSON
-          // Note: Even though the field is AWSJSON type, we need to pass it as a string
+
+          // Store variant and addon data directly in AWSJSON
           variantData: selectedVariant ? JSON.stringify(selectedVariant) : null,
           addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+          // Add direct references for UI rendering (single objects, not arrays)
+          selectedVariant: selectedVariant,
+          selectedAddon: selectedAddon,
           // Legacy field for backward compatibility
-          addon: selectedVariant ? selectedVariant.name : (selectedAddon ? selectedAddon.name : null)
+          addon: selectedVariant
+            ? selectedVariant.name
+            : selectedAddon
+            ? selectedAddon.name
+            : null,
+
+          pending: true, // Flag to identify optimistic updates
         };
-
-        await client.graphql({
-          query: createCartItem,
-          variables: { 
-            input: newItem 
-          },
-        });
+        setCart(prevCart => [...prevCart, newCartItem]);
       }
 
-      // Only fetch the full cart after a small delay to avoid unnecessary API calls
-      setTimeout(() => {
-        onCartUpdate();
-      }, 500);
+      // Now sync with the backend
+      try {
+        if (cartItem) {
+          // Update existing item in backend (same product + variant + addon combination)
+          await client.graphql({
+            query: updateCartItem,
+            variables: {
+              input: {
+                id: cartItem.id,
+                quantity: cartItem.quantity + 1,
+              },
+            },
+          });
+        } else {
+          // This is a new product
+          // Get selected variant and addon objects (if any)
+          const selectedVariant =
+            selectedVariantId && selectedProduct?.variants?.items
+              ? selectedProduct.variants.items.find(
+                  v => v.id === selectedVariantId,
+                )
+              : null;
 
+          const selectedAddon =
+            selectedAddonId && selectedProduct?.addons?.items
+              ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+              : null;
+
+          // Create new item in backend with variant and addon details
+          const newItem = {
+            name: item.name,
+            brand: item.brand,
+            oprice: item.oprice,
+            sprice: totalPrice,
+            productId: item.id,
+            cashierId: staffData.id,
+            category: item.category,
+            unit: item.unit || 'PCS',
+            storeId: item.storeId,
+            quantity: 1,
+
+            // Store variant and addon data as serialized JSON strings for AWSJSON
+            // Note: Even though the field is AWSJSON type, we need to pass it as a string
+            variantData: selectedVariant
+              ? JSON.stringify(selectedVariant)
+              : null,
+            addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+            // Legacy field for backward compatibility
+            addon: selectedVariant
+              ? selectedVariant.name
+              : selectedAddon
+              ? selectedAddon.name
+              : null,
+          };
+
+          await client.graphql({
+            query: createCartItem,
+            variables: {
+              input: newItem,
+            },
+          });
+        }
+
+        // Only fetch the full cart after a small delay to avoid unnecessary API calls
+        setTimeout(() => {
+          onCartUpdate();
+        }, 500);
+      } catch (err) {
+        console.log('Error syncing with backend:', err.message);
+        alert('Failed to add item to cart. Please try again.');
+
+        // Revert optimistic update on error
+        if (cartItem) {
+          // Revert to previous cart state
+          const originalCart = cart.map(item =>
+            item.id === cartItem.id
+              ? {...item, quantity: cartItem.quantity}
+              : item,
+          );
+          setCart(originalCart);
+        } else {
+          // Remove the optimistically added item
+          setCart(prevCart => prevCart.filter(item => !item.pending));
+        }
+      }
     } catch (err) {
-      console.log('Error syncing with backend:', err.message);
-      alert('Failed to add item to cart. Please try again.');
-      
-      // Revert optimistic update on error
-      if (cartItem) {
-        // Revert to previous cart state
-        const originalCart = cart.map(item => 
-          item.id === cartItem.id 
-            ? { ...item, quantity: cartItem.quantity } 
-            : item
-        );
-        setCart(originalCart);
-      } else {
-        // Remove the optimistically added item
-        setCart(prevCart => prevCart.filter(item => !item.pending));
-      }
+      console.log('Error adding to cart:', err.message);
     }
-
-  } catch (err) {
-    console.log('Error adding to cart:', err.message);
-  }
-};
-
-
+  };
 
   const calculateTotal = () => {
     let total = 0;
@@ -483,7 +535,6 @@ const fetchProducts = async () => {
     return total;
   };
 
-
   const onTabChange = sterm => {
     console.log('Changing category to:', sterm);
     setSelectedCategory(sterm);
@@ -500,10 +551,7 @@ const fetchProducts = async () => {
       alertVisible2(true);
       return;
     }
-
-
   };
-
 
   const withAddtional = item => {
     setWithAdditional(true);
@@ -534,15 +582,17 @@ const fetchProducts = async () => {
     setSelectedOption(item);
   };
   const _renderitem = ({item}) => {
-    const cartItem = cart.find((cartItem) => cartItem.productId === item.id);
+    const cartItem = cart.find(cartItem => cartItem.productId === item.id);
     const remainingStock = item.stock - (cartItem?.quantity || 0);
     const isOutOfStock = remainingStock <= 0;
     const hasLowStock = item.stock <= 10 && !isOutOfStock;
     // Check if product has variants or addons with enhanced detection
-    const hasVariants = Array.isArray(item.variants?.items) && item.variants.items.length > 0;
-    const hasAddons = Array.isArray(item.addons?.items) && item.addons.items.length > 0;
+    const hasVariants =
+      Array.isArray(item.variants?.items) && item.variants.items.length > 0;
+    const hasAddons =
+      Array.isArray(item.addons?.items) && item.addons.items.length > 0;
     const hasExtras = hasVariants || hasAddons;
-    
+
     if (item.name === 'TEST2' || hasExtras) {
       console.log(`Product ${item.name} details:`, {
         id: item.id,
@@ -550,31 +600,32 @@ const fetchProducts = async () => {
         addons: item.addons?.items || [],
         hasVariants,
         hasAddons,
-        hasExtras
+        hasExtras,
       });
     }
-  
+
     return (
       <TouchableOpacity
         onPress={() => !isOutOfStock && addToCart(item)}
         style={styles.itemContainer}
-        activeOpacity={0.7}
-      >
+        activeOpacity={0.7}>
         <Image
           style={styles.itemImage}
           source={
-            item.img 
+            item.img
               ? {uri: item.img, headers: {Authorization: 'auth-token'}}
               : require('../../assets/noproduct.png')
           }
         />
-        
+
         <View style={styles.itemContent}>
-          <Text numberOfLines={2} style={styles.itemName}>{item.name}</Text>
+          <Text numberOfLines={2} style={styles.itemName}>
+            {item.name}
+          </Text>
           <Text style={styles.itemPrice}>
             {formatMoney(item.sprice, {symbol: '₱', precision: 2})}
           </Text>
-          
+
           {/* Stock Status */}
           {isOutOfStock ? (
             <View style={[styles.statusBadge, styles.outOfStockBadge]}>
@@ -585,14 +636,14 @@ const fetchProducts = async () => {
               <Text style={styles.statusText}>Low Stock: {item.stock}</Text>
             </View>
           ) : null}
-          
+
           {/* Cart Quantity */}
           {cartItem && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{cartItem.quantity}</Text>
             </View>
           )}
-          
+
           {/* Variant/Addon Indicator */}
           {hasExtras && (
             <View style={styles.variantBadge}>
@@ -610,22 +661,26 @@ const fetchProducts = async () => {
 
   const renderVariantModal = () => {
     // Don't render if no selected product
-    if (!selectedProduct) return null;
-    
+    if (!selectedProduct) {
+      return null;
+    }
+
     // Get selected variant and addon objects
-    const selectedVariant = selectedVariantId && selectedProduct.variants?.items
-      ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
-      : null;
-      
-    const selectedAddon = selectedAddonId && selectedProduct.addons?.items
-      ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
-      : null;
-    
+    const selectedVariant =
+      selectedVariantId && selectedProduct.variants?.items
+        ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
+        : null;
+
+    const selectedAddon =
+      selectedAddonId && selectedProduct.addons?.items
+        ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+        : null;
+
     // Calculate total price using our utility
     const totalPrice = calculateFinalPrice(
       selectedProduct,
       selectedVariant ? [selectedVariant] : [],
-      selectedAddon ? [selectedAddon] : []
+      selectedAddon ? [selectedAddon] : [],
     );
 
     return (
@@ -637,42 +692,70 @@ const fetchProducts = async () => {
         animationOut="slideOutRight"
         style={styles.variantModal}
         backdropTransitionOutTiming={0}
-        useNativeDriver={true}
-      >
+        useNativeDriver={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{selectedProduct.name}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setVariantModal(false)}
-            >
+              onPress={() => setVariantModal(false)}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalContent}
+            showsVerticalScrollIndicator={false}>
             {/* Variants Section */}
             {selectedProduct.variants?.items?.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, {color: '#333', fontWeight: '700', fontSize: 18}]}>Select Size/Variant <Text style={{color: 'red'}}>*</Text></Text>
-                {selectedProduct.variants.items.map((variant) => (
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {color: '#333', fontWeight: '700', fontSize: 18},
+                  ]}>
+                  Select Size/Variant <Text style={{color: 'red'}}>*</Text>
+                </Text>
+                {selectedProduct.variants.items.map(variant => (
                   <TouchableOpacity
                     key={variant.id}
-                    style={[styles.optionContainer, 
-                      selectedVariantId === variant.id && styles.selectedOption
+                    style={[
+                      styles.optionContainer,
+                      selectedVariantId === variant.id && styles.selectedOption,
                     ]}
-                    onPress={() => setSelectedVariantId(selectedVariantId === variant.id ? null : variant.id)}
-                    activeOpacity={0.7}
-                  >
+                    onPress={() =>
+                      setSelectedVariantId(
+                        selectedVariantId === variant.id ? null : variant.id,
+                      )
+                    }
+                    activeOpacity={0.7}>
                     <View style={styles.radioContainer}>
-                      <View style={selectedVariantId === variant.id ? styles.radioOuterSelected : styles.radioOuter}>
-                        {selectedVariantId === variant.id && <View style={styles.radioInner} />}
+                      <View
+                        style={
+                          selectedVariantId === variant.id
+                            ? styles.radioOuterSelected
+                            : styles.radioOuter
+                        }>
+                        {selectedVariantId === variant.id && (
+                          <View style={styles.radioInner} />
+                        )}
                       </View>
-                      <Text style={[styles.optionText, selectedVariantId === variant.id && {fontWeight: '600', color: '#000'}]}>
+                      <Text
+                        style={[
+                          styles.optionText,
+                          selectedVariantId === variant.id && {
+                            fontWeight: '600',
+                            color: '#000',
+                          },
+                        ]}>
                         {variant.name}
                       </Text>
                     </View>
-                    <Text style={[styles.optionPrice, selectedVariantId === variant.id && {color: '#000'}]}>
+                    <Text
+                      style={[
+                        styles.optionPrice,
+                        selectedVariantId === variant.id && {color: '#000'},
+                      ]}>
                       {formatPrice(parseFloat(variant.price) || 0)}
                     </Text>
                   </TouchableOpacity>
@@ -683,25 +766,53 @@ const fetchProducts = async () => {
             {/* Addons Section */}
             {selectedProduct.addons?.items?.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, {color: '#333', fontWeight: '700', fontSize: 18}]}>Add Extras (Pick one)</Text>
-                {selectedProduct.addons.items.map((addon) => (
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {color: '#333', fontWeight: '700', fontSize: 18},
+                  ]}>
+                  Add Extras (Pick one)
+                </Text>
+                {selectedProduct.addons.items.map(addon => (
                   <TouchableOpacity
                     key={addon.id}
-                    style={[styles.optionContainer,
-                      selectedAddonId === addon.id && styles.selectedOption
+                    style={[
+                      styles.optionContainer,
+                      selectedAddonId === addon.id && styles.selectedOption,
                     ]}
-                    onPress={() => setSelectedAddonId(selectedAddonId === addon.id ? null : addon.id)}
-                    activeOpacity={0.7}
-                  >
+                    onPress={() =>
+                      setSelectedAddonId(
+                        selectedAddonId === addon.id ? null : addon.id,
+                      )
+                    }
+                    activeOpacity={0.7}>
                     <View style={styles.radioContainer}>
-                      <View style={selectedAddonId === addon.id ? styles.radioOuterSelected : styles.radioOuter}>
-                        {selectedAddonId === addon.id && <View style={styles.radioInner} />}
+                      <View
+                        style={
+                          selectedAddonId === addon.id
+                            ? styles.radioOuterSelected
+                            : styles.radioOuter
+                        }>
+                        {selectedAddonId === addon.id && (
+                          <View style={styles.radioInner} />
+                        )}
                       </View>
-                      <Text style={[styles.optionText, selectedAddonId === addon.id && {fontWeight: '600', color: '#000'}]}>
+                      <Text
+                        style={[
+                          styles.optionText,
+                          selectedAddonId === addon.id && {
+                            fontWeight: '600',
+                            color: '#000',
+                          },
+                        ]}>
                         {addon.name}
                       </Text>
                     </View>
-                    <Text style={[styles.optionPrice, selectedAddonId === addon.id && {color: '#000'}]}>
+                    <Text
+                      style={[
+                        styles.optionPrice,
+                        selectedAddonId === addon.id && {color: '#000'},
+                      ]}>
                       {formatPrice(parseFloat(addon.price) || 0)}
                     </Text>
                   </TouchableOpacity>
@@ -711,47 +822,62 @@ const fetchProducts = async () => {
 
             <View style={styles.totalSection}>
               <Text style={styles.totalLabel}>Total Price:</Text>
-              <Text style={styles.totalPrice}>
-                {formatPrice(totalPrice)}
-              </Text>
+              <Text style={styles.totalPrice}>{formatPrice(totalPrice)}</Text>
             </View>
           </ScrollView>
 
-          <TouchableOpacity 
-            style={[styles.addButton, 
-              (!selectedVariantId && selectedProduct.variants?.items?.length > 0) ? styles.addButtonDisabled : null
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              !selectedVariantId && selectedProduct.variants?.items?.length > 0
+                ? styles.addButtonDisabled
+                : null,
             ]}
             onPress={() => {
               // Validate selections - variant selection is required if variants exist
-              if (selectedProduct.variants?.items?.length > 0 && !selectedVariantId) {
-                Alert.alert('Selection Required', 'Please select a variant to continue');
+              if (
+                selectedProduct.variants?.items?.length > 0 &&
+                !selectedVariantId
+              ) {
+                Alert.alert(
+                  'Selection Required',
+                  'Please select a variant to continue',
+                );
                 return;
               }
 
               // Get the selected variant and addon objects
               let selectedVariant = null;
               let selectedAddon = null;
-              
+
               if (selectedVariantId && selectedProduct.variants?.items) {
-                selectedVariant = selectedProduct.variants.items.find(v => v.id === selectedVariantId);
+                selectedVariant = selectedProduct.variants.items.find(
+                  v => v.id === selectedVariantId,
+                );
               }
-              
+
               if (selectedAddonId && selectedProduct.addons?.items) {
-                selectedAddon = selectedProduct.addons.items.find(a => a.id === selectedAddonId);
+                selectedAddon = selectedProduct.addons.items.find(
+                  a => a.id === selectedAddonId,
+                );
               }
 
               // Calculate the total price including all selections
               let totalPrice = selectedProduct.sprice;
-              if (selectedVariant) totalPrice += parseFloat(selectedVariant.price) || 0;
-              if (selectedAddon) totalPrice += parseFloat(selectedAddon.price) || 0;
-              
+              if (selectedVariant) {
+                totalPrice += parseFloat(selectedVariant.price) || 0;
+              }
+              if (selectedAddon) {
+                totalPrice += parseFloat(selectedAddon.price) || 0;
+              }
+
               console.log('Adding to cart with selections:', {
                 product: selectedProduct.name,
                 variant: selectedVariant?.name,
                 addon: selectedAddon?.name,
-                totalPrice
+                totalPrice,
               });
-              
+
               const productWithOptions = {
                 ...selectedProduct,
                 // Store selected variant and addon information
@@ -760,19 +886,20 @@ const fetchProducts = async () => {
                 selectedVariant: selectedVariant,
                 selectedAddon: selectedAddon,
                 // Override the original price with the calculated total
-                calculatedPrice: totalPrice
+                calculatedPrice: totalPrice,
               };
-              
+
               addToCart(productWithOptions);
               setVariantModal(false);
-              
+
               // Reset selections after adding to cart
               setSelectedVariantId(null);
               setSelectedAddonId(null);
             }}
-            disabled={selectedProduct.variants?.items?.length > 0 && !selectedVariantId}
-            activeOpacity={0.7}
-          >
+            disabled={
+              selectedProduct.variants?.items?.length > 0 && !selectedVariantId
+            }
+            activeOpacity={0.7}>
             <Text style={styles.addButtonText}>Add to Order</Text>
           </TouchableOpacity>
         </View>
@@ -805,32 +932,33 @@ const fetchProducts = async () => {
         onTermChange={setSearchTerm}
         onTermSubmit={() => console.log('Search Submitted')}
       />
-    
+
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, selectedCategory === 'All' && styles.activeTab]}
-          onPress={() => onTabChange('All')}
-        >
-          <Text style={[styles.tabText, selectedCategory === 'All' && styles.activeTabText]}>
+          onPress={() => onTabChange('All')}>
+          <Text
+            style={[
+              styles.tabText,
+              selectedCategory === 'All' && styles.activeTabText,
+            ]}>
             All
           </Text>
         </TouchableOpacity>
 
-        {category.map((category) => (
+        {category.map(category => (
           <TouchableOpacity
             key={category.id}
             style={[
               styles.tab,
               selectedCategory === category.name && styles.activeTab,
             ]}
-            onPress={() => onTabChange(category.name)}
-          >
+            onPress={() => onTabChange(category.name)}>
             <Text
               style={[
                 styles.tabText,
                 selectedCategory === category.name && styles.activeTabText,
-              ]}
-            >
+              ]}>
               {category.name}
             </Text>
           </TouchableOpacity>
@@ -855,9 +983,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: colors.white,
-    height: Dimensions.get('window').height * 0.22, 
+    height: Dimensions.get('window').height * 0.22,
     shadowColor: '#EBECF0',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 2,
@@ -866,23 +994,23 @@ const styles = StyleSheet.create({
   itemImage: {
     width: '100%',
     height: 100,
-    resizeMode: 'contain'
+    resizeMode: 'contain',
   },
   itemContent: {
     padding: 8,
-    width: '100%'
+    width: '100%',
   },
   itemName: {
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
     marginBottom: 4,
-    lineHeight: 20
+    lineHeight: 20,
   },
   itemPrice: {
     fontSize: 16,
     color: colors.primary,
-    fontWeight: '700'
+    fontWeight: '700',
   },
   statusBadge: {
     position: 'absolute',
@@ -890,18 +1018,18 @@ const styles = StyleSheet.create({
     right: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4
+    borderRadius: 4,
   },
   outOfStockBadge: {
-    backgroundColor: '#ff4444'
+    backgroundColor: '#ff4444',
   },
   lowStockBadge: {
-    backgroundColor: '#ffbb33'
+    backgroundColor: '#ffbb33',
   },
   statusText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   cartBadge: {
     position: 'absolute',
@@ -912,12 +1040,12 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   cartBadgeText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '700',
   },
   variantBadge: {
     position: 'absolute',
@@ -928,7 +1056,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   variantModal: {
     margin: 0,
@@ -955,10 +1083,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333'
+    color: '#333',
   },
   closeButton: {
-    padding: 5
+    padding: 5,
   },
   modalContent: {
     flex: 1,
@@ -993,7 +1121,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 15
+    marginBottom: 15,
   },
   optionContainer: {
     flexDirection: 'row',
@@ -1002,7 +1130,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 8,
     marginBottom: 8,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: '#f8f9fa',
   },
   radioContainer: {
     flexDirection: 'row',
@@ -1051,12 +1179,12 @@ const styles = StyleSheet.create({
   optionText: {
     flex: 1,
     fontSize: 15,
-    color: '#333'
+    color: '#333',
   },
   optionPrice: {
     fontSize: 15,
     color: colors.primary,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   addButton: {
     backgroundColor: colors.primary,
@@ -1077,7 +1205,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600'
+    fontWeight: '600',
   },
   plusBtn: {
     backgroundColor: colors.accent,
@@ -1300,9 +1428,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: colors.white,
-    height: Dimensions.get('window').height * 0.25, 
+    height: Dimensions.get('window').height * 0.25,
     shadowColor: '#EBECF0',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.89,
     shadowRadius: 2,
     elevation: 2,

@@ -3,7 +3,7 @@ name: React Native CI/CD
 on:
   push:
     branches: [master]
-    
+
   pull_request:
 
 jobs:

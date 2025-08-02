@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   ScrollView,
@@ -8,33 +8,48 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { DataTable, TextInput, Button, Text, Menu, Portal, List, IconButton } from 'react-native-paper';
-import { generateClient } from 'aws-amplify/api';
-import { listProducts, listCategories, getProduct, listVariants, listAddons } from '../graphql/queries';
-import { updateProduct } from '../graphql/mutations';
-import { useStore } from '../context/StoreContext';
+import {
+  DataTable,
+  TextInput,
+  Button,
+  Text,
+  Menu,
+  Portal,
+  List,
+  IconButton,
+} from 'react-native-paper';
+import {generateClient} from 'aws-amplify/api';
+import {
+  listProducts,
+  listCategories,
+  getProduct,
+  listVariants,
+  listAddons,
+} from '../graphql/queries';
+import {updateProduct} from '../graphql/mutations';
+import {useStore} from '../context/StoreContext';
 import Appbar from '../components/Appbar';
 import colors from '../themes/colors';
 
 const client = generateClient();
 
-const BatchEditScreen = ({ navigation, route }) => {
+const BatchEditScreen = ({navigation, route}) => {
   // Get store directly from route params if available
   const storeFromParams = route.params?.store;
-  
+
   // Still use StoreContext as fallback
-  const { currentStore: contextStore } = useStore();
-  
+  const {currentStore: contextStore} = useStore();
+
   // Use store from params if available, otherwise fall back to context
   const currentStore = storeFromParams || contextStore;
-  
+
   // Debug info
   console.log('BatchEdit - Store info:', {
     fromParams: !!storeFromParams,
     storeId: currentStore?.id || 'missing',
-    storeName: currentStore?.name || 'unknown'
+    storeName: currentStore?.name || 'unknown',
   });
-  
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,24 +62,23 @@ const BatchEditScreen = ({ navigation, route }) => {
   const [showAddonsModal, setShowAddonsModal] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedAddon, setSelectedAddon] = useState(null);
-  const [newVariant, setNewVariant] = useState({ name: '', price: '' });
-  const [newAddon, setNewAddon] = useState({ name: '', price: '' });
+  const [newVariant, setNewVariant] = useState({name: '', price: ''});
+  const [newAddon, setNewAddon] = useState({name: '', price: ''});
   const [productVariants, setProductVariants] = useState({});
   const [productAddons, setProductAddons] = useState({});
   const [error, setError] = useState(null);
 
-
   // Columns to show in the table
   const columns = [
-    { key: 'name', title: 'Name', editable: true },
-    { key: 'brand', title: 'Brand', editable: true },
-    { key: 'sku', title: 'SKU', editable: true },
-    { key: 'categoryId', title: 'Category', editable: true, type: 'dropdown' },
-    { key: 'oprice', title: 'Original Price', editable: true, numeric: true },
-    { key: 'sprice', title: 'Selling Price', editable: true, numeric: true },
-    { key: 'stock', title: 'Stock', editable: true, numeric: true },
-    { key: 'variants', title: 'Variants', editable: true, type: 'modal' },
-    { key: 'addons', title: 'Addons', editable: true, type: 'modal' },
+    {key: 'name', title: 'Name', editable: true},
+    {key: 'brand', title: 'Brand', editable: true},
+    {key: 'sku', title: 'SKU', editable: true},
+    {key: 'categoryId', title: 'Category', editable: true, type: 'dropdown'},
+    {key: 'oprice', title: 'Original Price', editable: true, numeric: true},
+    {key: 'sprice', title: 'Selling Price', editable: true, numeric: true},
+    {key: 'stock', title: 'Stock', editable: true, numeric: true},
+    {key: 'variants', title: 'Variants', editable: true, type: 'modal'},
+    {key: 'addons', title: 'Addons', editable: true, type: 'modal'},
   ];
 
   useEffect(() => {
@@ -111,19 +125,19 @@ const BatchEditScreen = ({ navigation, route }) => {
           }
         }`,
         variables: {
-          storeId: currentStore.id
-        }
+          storeId: currentStore.id,
+        },
       });
 
       const productsList = listResult.data?.listProducts?.items || [];
       console.log('Products:', productsList);
 
       // Get product details using getProduct
-      const productPromises = productsList.map(p => 
+      const productPromises = productsList.map(p =>
         client.graphql({
           query: getProduct,
-          variables: { id: p.id }
-        })
+          variables: {id: p.id},
+        }),
       );
 
       const results = await Promise.all(productPromises);
@@ -134,7 +148,7 @@ const BatchEditScreen = ({ navigation, route }) => {
       // Fetch all variants
       console.log('Fetching variants...');
       const variantsResult = await client.graphql({
-        query: listVariants
+        query: listVariants,
       });
       const allVariants = variantsResult.data?.listVariants?.items || [];
       console.log('All variants:', allVariants);
@@ -142,7 +156,7 @@ const BatchEditScreen = ({ navigation, route }) => {
       // Fetch all addons
       console.log('Fetching addons...');
       const addonsResult = await client.graphql({
-        query: listAddons
+        query: listAddons,
       });
       const allAddons = addonsResult.data?.listAddons?.items || [];
       console.log('All addons:', allAddons);
@@ -152,8 +166,10 @@ const BatchEditScreen = ({ navigation, route }) => {
       const addonsMap = {};
 
       allVariants.forEach(variant => {
-        if (!variant.productId) return;
-        
+        if (!variant.productId) {
+          return;
+        }
+
         if (!variantsMap[variant.productId]) {
           variantsMap[variant.productId] = [];
         }
@@ -161,13 +177,15 @@ const BatchEditScreen = ({ navigation, route }) => {
           id: variant.id,
           name: variant.name,
           price: variant.price,
-          productId: variant.productId
+          productId: variant.productId,
         });
       });
 
       allAddons.forEach(addon => {
-        if (!addon.productId) return;
-        
+        if (!addon.productId) {
+          return;
+        }
+
         if (!addonsMap[addon.productId]) {
           addonsMap[addon.productId] = [];
         }
@@ -175,7 +193,7 @@ const BatchEditScreen = ({ navigation, route }) => {
           id: addon.id,
           name: addon.name,
           price: addon.price,
-          productId: addon.productId
+          productId: addon.productId,
         });
       });
 
@@ -191,8 +209,10 @@ const BatchEditScreen = ({ navigation, route }) => {
     }
   };
 
-  const fetchProductDetails = async (productId) => {
-    if (!productId) return;
+  const fetchProductDetails = async productId => {
+    if (!productId) {
+      return;
+    }
 
     setLoadingVariants(true);
     setLoadingAddons(true);
@@ -200,24 +220,26 @@ const BatchEditScreen = ({ navigation, route }) => {
       console.log('Fetching product details for:', productId);
       const result = await client.graphql({
         query: getProduct,
-        variables: { id: productId }
+        variables: {id: productId},
       });
 
       const product = result.data?.getProduct;
       console.log('Fetched product:', product);
       if (product) {
         // Filter variants and addons
-        const variants = (product.variants?.items || []).filter(v => !v._deleted);
+        const variants = (product.variants?.items || []).filter(
+          v => !v._deleted,
+        );
         const addons = (product.addons?.items || []).filter(a => !a._deleted);
 
         console.log('Filtered variants:', variants);
         console.log('Filtered addons:', addons);
-        
+
         // Update variants
         setProductVariants(prev => {
           const updated = {
             ...prev,
-            [productId]: variants
+            [productId]: variants,
           };
           console.log('Updated variants state:', updated);
           return updated;
@@ -227,7 +249,7 @@ const BatchEditScreen = ({ navigation, route }) => {
         setProductAddons(prev => {
           const updated = {
             ...prev,
-            [productId]: addons
+            [productId]: addons,
           };
           console.log('Updated addons state:', updated);
           return updated;
@@ -244,19 +266,23 @@ const BatchEditScreen = ({ navigation, route }) => {
   };
 
   const fetchCategories = async () => {
-    if (!currentStore?.id) return;
+    if (!currentStore?.id) {
+      return;
+    }
 
     try {
       const result = await client.graphql({
         query: listCategories,
         variables: {
           filter: {
-            storeId: { eq: currentStore.id }
-          }
-        }
+            storeId: {eq: currentStore.id},
+          },
+        },
       });
       const fetchedCategories = result.data.listCategories.items || [];
-      console.log(`Fetched ${fetchedCategories.length} categories for store ${currentStore.id}`);
+      console.log(
+        `Fetched ${fetchedCategories.length} categories for store ${currentStore.id}`,
+      );
       setCategories(fetchedCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -269,8 +295,8 @@ const BatchEditScreen = ({ navigation, route }) => {
       ...prev,
       [productId]: {
         ...(prev[productId] || {}),
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
@@ -278,7 +304,9 @@ const BatchEditScreen = ({ navigation, route }) => {
     const errors = [];
     Object.entries(editedProducts).forEach(([productId, changes]) => {
       const product = products.find(p => p.id === productId);
-      if (!product) return;
+      if (!product) {
+        return;
+      }
 
       Object.entries(changes).forEach(([field, value]) => {
         if (['oprice', 'sprice', 'stock'].includes(field)) {
@@ -301,24 +329,28 @@ const BatchEditScreen = ({ navigation, route }) => {
 
     setSaving(true);
     try {
-      const updatePromises = Object.entries(editedProducts).map(([productId, changes]) => {
-        const product = products.find(p => p.id === productId);
-        if (!product) return null;
+      const updatePromises = Object.entries(editedProducts).map(
+        ([productId, changes]) => {
+          const product = products.find(p => p.id === productId);
+          if (!product) {
+            return null;
+          }
 
-        const input = {
-          id: productId,
-          ...changes,
-          // Convert numeric fields
-          ...(changes.oprice && { oprice: parseFloat(changes.oprice) }),
-          ...(changes.sprice && { sprice: parseFloat(changes.sprice) }),
-          ...(changes.stock && { stock: parseFloat(changes.stock) })
-        };
+          const input = {
+            id: productId,
+            ...changes,
+            // Convert numeric fields
+            ...(changes.oprice && {oprice: parseFloat(changes.oprice)}),
+            ...(changes.sprice && {sprice: parseFloat(changes.sprice)}),
+            ...(changes.stock && {stock: parseFloat(changes.stock)}),
+          };
 
-        return client.graphql({
-          query: updateProduct,
-          variables: { input }
-        });
-      });
+          return client.graphql({
+            query: updateProduct,
+            variables: {input},
+          });
+        },
+      );
 
       await Promise.all(updatePromises.filter(Boolean));
       setEditedProducts({});
@@ -333,8 +365,9 @@ const BatchEditScreen = ({ navigation, route }) => {
   };
 
   const renderCell = (product, column) => {
-    const value = editedProducts[product.id]?.[column.key] ?? product[column.key];
-    
+    const value =
+      editedProducts[product.id]?.[column.key] ?? product[column.key];
+
     if (!column.editable) {
       return <Text>{value}</Text>;
     }
@@ -350,12 +383,10 @@ const BatchEditScreen = ({ navigation, route }) => {
               mode="outlined"
               onPress={() => setSelectedProduct(product.id)}
               compact
-              style={styles.dropdownButton}
-            >
+              style={styles.dropdownButton}>
               {category?.name || 'Select Category'}
             </Button>
-          }
-        >
+          }>
           {categories.map(cat => (
             <Menu.Item
               key={cat.id}
@@ -371,9 +402,10 @@ const BatchEditScreen = ({ navigation, route }) => {
     }
 
     if (column.type === 'modal') {
-      const items = column.key === 'variants' 
-        ? productVariants[product.id] || []
-        : productAddons[product.id] || [];
+      const items =
+        column.key === 'variants'
+          ? productVariants[product.id] || []
+          : productAddons[product.id] || [];
       return (
         <Button
           mode="outlined"
@@ -386,8 +418,7 @@ const BatchEditScreen = ({ navigation, route }) => {
             }
           }}
           compact
-          style={styles.dropdownButton}
-        >
+          style={styles.dropdownButton}>
           {`${items.length} ${column.key}`}
         </Button>
       );
@@ -399,14 +430,16 @@ const BatchEditScreen = ({ navigation, route }) => {
         dense
         value={value?.toString() || ''}
         keyboardType={column.numeric ? 'numeric' : 'default'}
-        onChangeText={(text) => handleInputChange(product.id, column.key, text)}
+        onChangeText={text => handleInputChange(product.id, column.key, text)}
         style={styles.input}
       />
     );
   };
 
   const renderVariantsSection = () => {
-    if (!selectedProduct) return null;
+    if (!selectedProduct) {
+      return null;
+    }
 
     const variants = productVariants[selectedProduct.id] || [];
 
@@ -414,38 +447,41 @@ const BatchEditScreen = ({ navigation, route }) => {
       <View style={styles.section}>
         <View style={styles.inputRow}>
           <TextInput
-            style={[styles.input, { flex: 2 }]}
+            style={[styles.input, {flex: 2}]}
             placeholder="Variant Name"
             value={newVariant.name}
-            onChangeText={text => setNewVariant({ ...newVariant, name: text })}
+            onChangeText={text => setNewVariant({...newVariant, name: text})}
           />
           <TextInput
-            style={[styles.input, { flex: 1, marginLeft: 8 }]}
+            style={[styles.input, {flex: 1, marginLeft: 8}]}
             placeholder="Price"
             value={newVariant.price}
-            onChangeText={text => setNewVariant({ ...newVariant, price: text })}
+            onChangeText={text => setNewVariant({...newVariant, price: text})}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity 
-            style={styles.addButton} 
+          <TouchableOpacity
+            style={styles.addButton}
             onPress={() => {
-              if (!newVariant.name || !newVariant.price) return;
+              if (!newVariant.name || !newVariant.price) {
+                return;
+              }
               const updatedVariants = [
                 ...variants,
-                { 
-                  ...newVariant, 
+                {
+                  ...newVariant,
                   id: Date.now().toString(),
-                  productId: selectedProduct.id
-                }
+                  productId: selectedProduct.id,
+                },
               ];
               setProductVariants(prev => ({
                 ...prev,
-                [selectedProduct.id]: updatedVariants
+                [selectedProduct.id]: updatedVariants,
               }));
-              handleInputChange(selectedProduct.id, 'variants', { items: updatedVariants });
-              setNewVariant({ name: '', price: '' });
-            }}
-          >
+              handleInputChange(selectedProduct.id, 'variants', {
+                items: updatedVariants,
+              });
+              setNewVariant({name: '', price: ''});
+            }}>
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -458,14 +494,17 @@ const BatchEditScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => {
-                  const updatedVariants = variants.filter(v => v.id !== variant.id);
+                  const updatedVariants = variants.filter(
+                    v => v.id !== variant.id,
+                  );
                   setProductVariants(prev => ({
                     ...prev,
-                    [selectedProduct.id]: updatedVariants
+                    [selectedProduct.id]: updatedVariants,
                   }));
-                  handleInputChange(selectedProduct.id, 'variants', { items: updatedVariants });
-                }}
-              >
+                  handleInputChange(selectedProduct.id, 'variants', {
+                    items: updatedVariants,
+                  });
+                }}>
                 <Text style={styles.removeButtonText}>×</Text>
               </TouchableOpacity>
             </View>
@@ -478,7 +517,9 @@ const BatchEditScreen = ({ navigation, route }) => {
   };
 
   const renderAddonsSection = () => {
-    if (!selectedProduct) return null;
+    if (!selectedProduct) {
+      return null;
+    }
 
     const addons = productAddons[selectedProduct.id] || [];
 
@@ -486,38 +527,41 @@ const BatchEditScreen = ({ navigation, route }) => {
       <View style={styles.section}>
         <View style={styles.inputRow}>
           <TextInput
-            style={[styles.input, { flex: 2 }]}
+            style={[styles.input, {flex: 2}]}
             placeholder="Addon Name"
             value={newAddon.name}
-            onChangeText={text => setNewAddon({ ...newAddon, name: text })}
+            onChangeText={text => setNewAddon({...newAddon, name: text})}
           />
           <TextInput
-            style={[styles.input, { flex: 1, marginLeft: 8 }]}
+            style={[styles.input, {flex: 1, marginLeft: 8}]}
             placeholder="Price"
             value={newAddon.price}
-            onChangeText={text => setNewAddon({ ...newAddon, price: text })}
+            onChangeText={text => setNewAddon({...newAddon, price: text})}
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity 
-            style={styles.addButton} 
+          <TouchableOpacity
+            style={styles.addButton}
             onPress={() => {
-              if (!newAddon.name || !newAddon.price) return;
+              if (!newAddon.name || !newAddon.price) {
+                return;
+              }
               const updatedAddons = [
                 ...addons,
-                { 
-                  ...newAddon, 
+                {
+                  ...newAddon,
                   id: Date.now().toString(),
-                  productId: selectedProduct.id
-                }
+                  productId: selectedProduct.id,
+                },
               ];
               setProductAddons(prev => ({
                 ...prev,
-                [selectedProduct.id]: updatedAddons
+                [selectedProduct.id]: updatedAddons,
               }));
-              handleInputChange(selectedProduct.id, 'addons', { items: updatedAddons });
-              setNewAddon({ name: '', price: '' });
-            }}
-          >
+              handleInputChange(selectedProduct.id, 'addons', {
+                items: updatedAddons,
+              });
+              setNewAddon({name: '', price: ''});
+            }}>
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -533,11 +577,12 @@ const BatchEditScreen = ({ navigation, route }) => {
                   const updatedAddons = addons.filter(a => a.id !== addon.id);
                   setProductAddons(prev => ({
                     ...prev,
-                    [selectedProduct.id]: updatedAddons
+                    [selectedProduct.id]: updatedAddons,
                   }));
-                  handleInputChange(selectedProduct.id, 'addons', { items: updatedAddons });
-                }}
-              >
+                  handleInputChange(selectedProduct.id, 'addons', {
+                    items: updatedAddons,
+                  });
+                }}>
                 <Text style={styles.removeButtonText}>×</Text>
               </TouchableOpacity>
             </View>
@@ -550,7 +595,9 @@ const BatchEditScreen = ({ navigation, route }) => {
   };
 
   const renderVariantsModal = () => {
-    if (!selectedProduct) return null;
+    if (!selectedProduct) {
+      return null;
+    }
 
     const variants = productVariants[selectedProduct.id] || [];
 
@@ -559,8 +606,7 @@ const BatchEditScreen = ({ navigation, route }) => {
         <Modal
           visible={showVariantsModal}
           onDismiss={() => setShowVariantsModal(false)}
-          contentContainerStyle={styles.modal}
-        >
+          contentContainerStyle={styles.modal}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Variants</Text>
@@ -573,38 +619,45 @@ const BatchEditScreen = ({ navigation, route }) => {
               <View style={styles.section}>
                 <View style={styles.inputRow}>
                   <TextInput
-                    style={[styles.input, { flex: 2 }]}
+                    style={[styles.input, {flex: 2}]}
                     placeholder="Variant Name"
                     value={newVariant.name}
-                    onChangeText={text => setNewVariant({ ...newVariant, name: text })}
+                    onChangeText={text =>
+                      setNewVariant({...newVariant, name: text})
+                    }
                   />
                   <TextInput
-                    style={[styles.input, { flex: 1, marginLeft: 8 }]}
+                    style={[styles.input, {flex: 1, marginLeft: 8}]}
                     placeholder="Price"
                     value={newVariant.price}
-                    onChangeText={text => setNewVariant({ ...newVariant, price: text })}
+                    onChangeText={text =>
+                      setNewVariant({...newVariant, price: text})
+                    }
                     keyboardType="decimal-pad"
                   />
-                  <TouchableOpacity 
-                    style={styles.addButton} 
+                  <TouchableOpacity
+                    style={styles.addButton}
                     onPress={() => {
-                      if (!newVariant.name || !newVariant.price) return;
+                      if (!newVariant.name || !newVariant.price) {
+                        return;
+                      }
                       const updatedVariants = [
                         ...variants,
-                        { 
-                          ...newVariant, 
+                        {
+                          ...newVariant,
                           id: Date.now().toString(),
-                          productId: selectedProduct.id
-                        }
+                          productId: selectedProduct.id,
+                        },
                       ];
                       setProductVariants(prev => ({
                         ...prev,
-                        [selectedProduct.id]: updatedVariants
+                        [selectedProduct.id]: updatedVariants,
                       }));
-                      handleInputChange(selectedProduct.id, 'variants', { items: updatedVariants });
-                      setNewVariant({ name: '', price: '' });
-                    }}
-                  >
+                      handleInputChange(selectedProduct.id, 'variants', {
+                        items: updatedVariants,
+                      });
+                      setNewVariant({name: '', price: ''});
+                    }}>
                     <Text style={styles.addButtonText}>+</Text>
                   </TouchableOpacity>
                 </View>
@@ -617,14 +670,17 @@ const BatchEditScreen = ({ navigation, route }) => {
                       <TouchableOpacity
                         style={styles.removeButton}
                         onPress={() => {
-                          const updatedVariants = variants.filter(v => v.id !== variant.id);
+                          const updatedVariants = variants.filter(
+                            v => v.id !== variant.id,
+                          );
                           setProductVariants(prev => ({
                             ...prev,
-                            [selectedProduct.id]: updatedVariants
+                            [selectedProduct.id]: updatedVariants,
                           }));
-                          handleInputChange(selectedProduct.id, 'variants', { items: updatedVariants });
-                        }}
-                      >
+                          handleInputChange(selectedProduct.id, 'variants', {
+                            items: updatedVariants,
+                          });
+                        }}>
                         <Text style={styles.removeButtonText}>×</Text>
                       </TouchableOpacity>
                     </View>
@@ -641,7 +697,9 @@ const BatchEditScreen = ({ navigation, route }) => {
   };
 
   const renderAddonsModal = () => {
-    if (!selectedProduct) return null;
+    if (!selectedProduct) {
+      return null;
+    }
 
     const addons = productAddons[selectedProduct.id] || [];
 
@@ -650,8 +708,7 @@ const BatchEditScreen = ({ navigation, route }) => {
         <Modal
           visible={showAddonsModal}
           onDismiss={() => setShowAddonsModal(false)}
-          contentContainerStyle={styles.modal}
-        >
+          contentContainerStyle={styles.modal}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add-ons</Text>
@@ -664,38 +721,45 @@ const BatchEditScreen = ({ navigation, route }) => {
               <View style={styles.section}>
                 <View style={styles.inputRow}>
                   <TextInput
-                    style={[styles.input, { flex: 2 }]}
+                    style={[styles.input, {flex: 2}]}
                     placeholder="Add-on Name"
                     value={newAddon.name}
-                    onChangeText={text => setNewAddon({ ...newAddon, name: text })}
+                    onChangeText={text =>
+                      setNewAddon({...newAddon, name: text})
+                    }
                   />
                   <TextInput
-                    style={[styles.input, { flex: 1, marginLeft: 8 }]}
+                    style={[styles.input, {flex: 1, marginLeft: 8}]}
                     placeholder="Price"
                     value={newAddon.price}
-                    onChangeText={text => setNewAddon({ ...newAddon, price: text })}
+                    onChangeText={text =>
+                      setNewAddon({...newAddon, price: text})
+                    }
                     keyboardType="decimal-pad"
                   />
-                  <TouchableOpacity 
-                    style={styles.addButton} 
+                  <TouchableOpacity
+                    style={styles.addButton}
                     onPress={() => {
-                      if (!newAddon.name || !newAddon.price) return;
+                      if (!newAddon.name || !newAddon.price) {
+                        return;
+                      }
                       const updatedAddons = [
                         ...addons,
-                        { 
-                          ...newAddon, 
+                        {
+                          ...newAddon,
                           id: Date.now().toString(),
-                          productId: selectedProduct.id
-                        }
+                          productId: selectedProduct.id,
+                        },
                       ];
                       setProductAddons(prev => ({
                         ...prev,
-                        [selectedProduct.id]: updatedAddons
+                        [selectedProduct.id]: updatedAddons,
                       }));
-                      handleInputChange(selectedProduct.id, 'addons', { items: updatedAddons });
-                      setNewAddon({ name: '', price: '' });
-                    }}
-                  >
+                      handleInputChange(selectedProduct.id, 'addons', {
+                        items: updatedAddons,
+                      });
+                      setNewAddon({name: '', price: ''});
+                    }}>
                     <Text style={styles.addButtonText}>+</Text>
                   </TouchableOpacity>
                 </View>
@@ -708,14 +772,17 @@ const BatchEditScreen = ({ navigation, route }) => {
                       <TouchableOpacity
                         style={styles.removeButton}
                         onPress={() => {
-                          const updatedAddons = addons.filter(a => a.id !== addon.id);
+                          const updatedAddons = addons.filter(
+                            a => a.id !== addon.id,
+                          );
                           setProductAddons(prev => ({
                             ...prev,
-                            [selectedProduct.id]: updatedAddons
+                            [selectedProduct.id]: updatedAddons,
                           }));
-                          handleInputChange(selectedProduct.id, 'addons', { items: updatedAddons });
-                        }}
-                      >
+                          handleInputChange(selectedProduct.id, 'addons', {
+                            items: updatedAddons,
+                          });
+                        }}>
                         <Text style={styles.removeButtonText}>×</Text>
                       </TouchableOpacity>
                     </View>
@@ -735,7 +802,7 @@ const BatchEditScreen = ({ navigation, route }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 16 }}>Loading products...</Text>
+        <Text style={{marginTop: 16}}>Loading products...</Text>
       </View>
     );
   }
@@ -744,11 +811,10 @@ const BatchEditScreen = ({ navigation, route }) => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <Button 
-          mode="contained" 
+        <Button
+          mode="contained"
           onPress={() => fetchProducts()}
-          style={{ marginTop: 16 }}
-        >
+          style={{marginTop: 16}}>
           Retry
         </Button>
       </View>
@@ -759,11 +825,14 @@ const BatchEditScreen = ({ navigation, route }) => {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No products found for this store</Text>
-        <Text style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>Try adding some products first</Text>
-        <Button 
-          mode="contained" 
-          onPress={() => navigation.navigate('CreateProduct', { store: currentStore })}
-        >
+        <Text style={{textAlign: 'center', marginTop: 8, marginBottom: 16}}>
+          Try adding some products first
+        </Text>
+        <Button
+          mode="contained"
+          onPress={() =>
+            navigation.navigate('CreateProduct', {store: currentStore})
+          }>
           Add Products
         </Button>
       </View>
@@ -784,8 +853,7 @@ const BatchEditScreen = ({ navigation, route }) => {
                 <DataTable.Title
                   key={column.key}
                   numeric={column.numeric}
-                  style={styles.cell}
-                >
+                  style={styles.cell}>
                   {column.title}
                 </DataTable.Title>
               ))}
@@ -802,8 +870,12 @@ const BatchEditScreen = ({ navigation, route }) => {
                           <DataTable.Cell key={column.key} style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={editedProducts[product.id]?.name ?? product.name}
-                              onChangeText={(text) => handleInputChange(product.id, 'name', text)}
+                              value={
+                                editedProducts[product.id]?.name ?? product.name
+                              }
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'name', text)
+                              }
                               placeholder="Name"
                             />
                           </DataTable.Cell>
@@ -814,8 +886,13 @@ const BatchEditScreen = ({ navigation, route }) => {
                           <DataTable.Cell key={column.key} style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={editedProducts[product.id]?.brand ?? product.brand}
-                              onChangeText={(text) => handleInputChange(product.id, 'brand', text)}
+                              value={
+                                editedProducts[product.id]?.brand ??
+                                product.brand
+                              }
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'brand', text)
+                              }
                               placeholder="Brand"
                             />
                           </DataTable.Cell>
@@ -826,8 +903,12 @@ const BatchEditScreen = ({ navigation, route }) => {
                           <DataTable.Cell key={column.key} style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={editedProducts[product.id]?.sku ?? product.sku}
-                              onChangeText={(text) => handleInputChange(product.id, 'sku', text)}
+                              value={
+                                editedProducts[product.id]?.sku ?? product.sku
+                              }
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'sku', text)
+                              }
                               placeholder="SKU"
                             />
                           </DataTable.Cell>
@@ -835,11 +916,19 @@ const BatchEditScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'oprice') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={(editedProducts[product.id]?.oprice ?? product.oprice)?.toString()}
-                              onChangeText={(text) => handleInputChange(product.id, 'oprice', text)}
+                              value={(
+                                editedProducts[product.id]?.oprice ??
+                                product.oprice
+                              )?.toString()}
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'oprice', text)
+                              }
                               placeholder="0.00"
                               keyboardType="decimal-pad"
                             />
@@ -848,11 +937,19 @@ const BatchEditScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'sprice') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={(editedProducts[product.id]?.sprice ?? product.sprice)?.toString()}
-                              onChangeText={(text) => handleInputChange(product.id, 'sprice', text)}
+                              value={(
+                                editedProducts[product.id]?.sprice ??
+                                product.sprice
+                              )?.toString()}
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'sprice', text)
+                              }
                               placeholder="0.00"
                               keyboardType="decimal-pad"
                             />
@@ -861,11 +958,19 @@ const BatchEditScreen = ({ navigation, route }) => {
                       }
                       if (column.key === 'stock') {
                         return (
-                          <DataTable.Cell key={column.key} numeric={column.numeric} style={styles.cell}>
+                          <DataTable.Cell
+                            key={column.key}
+                            numeric={column.numeric}
+                            style={styles.cell}>
                             <TextInput
                               style={styles.cellInput}
-                              value={(editedProducts[product.id]?.stock ?? product.stock)?.toString()}
-                              onChangeText={(text) => handleInputChange(product.id, 'stock', text)}
+                              value={(
+                                editedProducts[product.id]?.stock ??
+                                product.stock
+                              )?.toString()}
+                              onChangeText={text =>
+                                handleInputChange(product.id, 'stock', text)
+                              }
                               placeholder="0"
                               keyboardType="decimal-pad"
                             />
@@ -873,8 +978,12 @@ const BatchEditScreen = ({ navigation, route }) => {
                         );
                       }
                       if (column.key === 'categoryId') {
-                        const categoryId = editedProducts[product.id]?.categoryId ?? product.categoryId;
-                        const category = categories.find(c => c.id === categoryId);
+                        const categoryId =
+                          editedProducts[product.id]?.categoryId ??
+                          product.categoryId;
+                        const category = categories.find(
+                          c => c.id === categoryId,
+                        );
                         return (
                           <DataTable.Cell key={column.key} style={styles.cell}>
                             <View style={styles.categoryPicker}>
@@ -885,14 +994,22 @@ const BatchEditScreen = ({ navigation, route }) => {
                                     key={cat.id}
                                     style={[
                                       styles.categoryChip,
-                                      categoryId === cat.id && styles.selectedCategoryChip
+                                      categoryId === cat.id &&
+                                        styles.selectedCategoryChip,
                                     ]}
-                                    onPress={() => handleInputChange(product.id, 'categoryId', cat.id)}
-                                  >
-                                    <Text style={[
-                                      styles.categoryChipText,
-                                      categoryId === cat.id && styles.selectedCategoryChipText
-                                    ]}>
+                                    onPress={() =>
+                                      handleInputChange(
+                                        product.id,
+                                        'categoryId',
+                                        cat.id,
+                                      )
+                                    }>
+                                    <Text
+                                      style={[
+                                        styles.categoryChipText,
+                                        categoryId === cat.id &&
+                                          styles.selectedCategoryChipText,
+                                      ]}>
                                       {cat.name}
                                     </Text>
                                   </TouchableOpacity>
@@ -902,9 +1019,10 @@ const BatchEditScreen = ({ navigation, route }) => {
                         );
                       }
                       if (column.type === 'modal') {
-                        const items = column.key === 'variants' 
-                          ? productVariants[product.id] || []
-                          : productAddons[product.id] || [];
+                        const items =
+                          column.key === 'variants'
+                            ? productVariants[product.id] || []
+                            : productAddons[product.id] || [];
                         return (
                           <DataTable.Cell key={column.key} style={styles.cell}>
                             <Button
@@ -918,8 +1036,7 @@ const BatchEditScreen = ({ navigation, route }) => {
                                 }
                               }}
                               compact
-                              style={styles.dropdownButton}
-                            >
+                              style={styles.dropdownButton}>
                               {`${items.length} ${column.key}`}
                             </Button>
                           </DataTable.Cell>
@@ -929,8 +1046,7 @@ const BatchEditScreen = ({ navigation, route }) => {
                         <DataTable.Cell
                           key={column.key}
                           numeric={column.numeric}
-                          style={styles.cell}
-                        >
+                          style={styles.cell}>
                           {renderCell(product, column)}
                         </DataTable.Cell>
                       );
@@ -954,8 +1070,7 @@ const BatchEditScreen = ({ navigation, route }) => {
             onPress={saveChanges}
             loading={saving}
             disabled={saving || Object.keys(editedProducts).length === 0}
-            style={styles.saveButton}
-          >
+            style={styles.saveButton}>
             Save Changes
           </Button>
         </View>

@@ -18,7 +18,7 @@ import {
   deleteVariant,
   createAddon,
   updateAddon,
-  deleteAddon
+  deleteAddon,
 } from '../graphql/mutations';
 import {useStore} from '../context/StoreContext';
 import {uploadData} from 'aws-amplify/storage';
@@ -49,7 +49,7 @@ const EditProductScreen = ({navigation, route}) => {
     image: product.img || null,
     sku: product.sku || '',
     variants: [],
-    addons: []
+    addons: [],
   });
 
   // Load variants and addons
@@ -58,21 +58,23 @@ const EditProductScreen = ({navigation, route}) => {
     console.log('Raw variants:', product.variants?.items);
     console.log('Raw addons:', product.addons?.items);
 
-    const variants = product.variants?.items
-      ?.filter(item => !item._deleted)
-      ?.map(variant => ({
-        id: variant.id,
-        name: variant.name,
-        price: variant.price?.toString() || '0'
-      })) || [];
+    const variants =
+      product.variants?.items
+        ?.filter(item => !item._deleted)
+        ?.map(variant => ({
+          id: variant.id,
+          name: variant.name,
+          price: variant.price?.toString() || '0',
+        })) || [];
 
-    const addons = product.addons?.items
-      ?.filter(item => !item._deleted)
-      ?.map(addon => ({
-        id: addon.id,
-        name: addon.name,
-        price: addon.price?.toString() || '0'
-      })) || [];
+    const addons =
+      product.addons?.items
+        ?.filter(item => !item._deleted)
+        ?.map(addon => ({
+          id: addon.id,
+          name: addon.name,
+          price: addon.price?.toString() || '0',
+        })) || [];
 
     console.log('Processed variants:', variants);
     console.log('Processed addons:', addons);
@@ -80,7 +82,7 @@ const EditProductScreen = ({navigation, route}) => {
     setFormState(prev => ({
       ...prev,
       variants,
-      addons
+      addons,
     }));
   }, [product.id]);
 
@@ -139,7 +141,9 @@ const EditProductScreen = ({navigation, route}) => {
   // Handle form submission
   const handleSubmit = async () => {
     try {
-      if (!validateForm()) return;
+      if (!validateForm()) {
+        return;
+      }
 
       setIsLoading(true);
 
@@ -163,13 +167,13 @@ const EditProductScreen = ({navigation, route}) => {
         sku: formState.sku || '',
         img: imageUrl,
         storeId: currentStore.id,
-        isActive: true
+        isActive: true,
       };
 
       // Update the main product
       const updatedProduct = await client.graphql({
         query: updateProduct,
-        variables: { input: productData },
+        variables: {input: productData},
       });
 
       console.log('Updated product:', updatedProduct.data.updateProduct);
@@ -187,9 +191,9 @@ const EditProductScreen = ({navigation, route}) => {
                   id: variant.id,
                   name: variant.name,
                   price: parseFloat(variant.price),
-                  productId: product.id
-                }
-              }
+                  productId: product.id,
+                },
+              },
             });
           } else {
             // Create new variant
@@ -199,9 +203,9 @@ const EditProductScreen = ({navigation, route}) => {
                 input: {
                   name: variant.name,
                   price: parseFloat(variant.price),
-                  productId: product.id
-                }
-              }
+                  productId: product.id,
+                },
+              },
             });
           }
         } catch (error) {
@@ -223,9 +227,9 @@ const EditProductScreen = ({navigation, route}) => {
                   id: addon.id,
                   name: addon.name,
                   price: parseFloat(addon.price),
-                  productId: product.id
-                }
-              }
+                  productId: product.id,
+                },
+              },
             });
           } else {
             // Create new addon
@@ -235,9 +239,9 @@ const EditProductScreen = ({navigation, route}) => {
                 input: {
                   name: addon.name,
                   price: parseFloat(addon.price),
-                  productId: product.id
-                }
-              }
+                  productId: product.id,
+                },
+              },
             });
           }
         } catch (error) {
@@ -250,16 +254,16 @@ const EditProductScreen = ({navigation, route}) => {
       const deleteVariantPromises = deletedVariantIds.map(id =>
         client.graphql({
           query: deleteVariant,
-          variables: { input: { id } }
-        })
+          variables: {input: {id}},
+        }),
       );
 
       // Delete removed addons
       const deleteAddonPromises = deletedAddonIds.map(id =>
         client.graphql({
           query: deleteAddon,
-          variables: { input: { id } }
-        })
+          variables: {input: {id}},
+        }),
       );
 
       // Wait for all operations to complete
@@ -267,7 +271,7 @@ const EditProductScreen = ({navigation, route}) => {
         ...variantPromises,
         ...addonPromises,
         ...deleteVariantPromises,
-        ...deleteAddonPromises
+        ...deleteAddonPromises,
       ]);
 
       // Clear deleted IDs
@@ -318,14 +322,21 @@ const EditProductScreen = ({navigation, route}) => {
 
   // Variant handlers
   const addVariant = () => {
-    if (!newVariant.name || !newVariant.price || isNaN(parseFloat(newVariant.price))) {
+    if (
+      !newVariant.name ||
+      !newVariant.price ||
+      isNaN(parseFloat(newVariant.price))
+    ) {
       Alert.alert('Error', 'Please enter valid variant name and price');
       return;
     }
 
     setFormState(prev => ({
       ...prev,
-      variants: [...prev.variants, {...newVariant, price: parseFloat(newVariant.price)}],
+      variants: [
+        ...prev.variants,
+        {...newVariant, price: parseFloat(newVariant.price)},
+      ],
     }));
     setNewVariant({name: '', price: ''});
   };
@@ -339,14 +350,21 @@ const EditProductScreen = ({navigation, route}) => {
 
   // Addon handlers
   const addAddon = () => {
-    if (!newAddon.name || !newAddon.price || isNaN(parseFloat(newAddon.price))) {
+    if (
+      !newAddon.name ||
+      !newAddon.price ||
+      isNaN(parseFloat(newAddon.price))
+    ) {
       Alert.alert('Error', 'Please enter valid addon name and price');
       return;
     }
 
     setFormState(prev => ({
       ...prev,
-      addons: [...prev.addons, {...newAddon, price: parseFloat(newAddon.price)}],
+      addons: [
+        ...prev.addons,
+        {...newAddon, price: parseFloat(newAddon.price)},
+      ],
     }));
     setNewAddon({name: '', price: ''});
   };
@@ -369,7 +387,9 @@ const EditProductScreen = ({navigation, route}) => {
         value={formState.name}
         onChangeText={value => handleInputChange('name', value)}
       />
-      {formErrors.name && <Text style={styles.errorText}>{formErrors.name}</Text>}
+      {formErrors.name && (
+        <Text style={styles.errorText}>{formErrors.name}</Text>
+      )}
 
       <TextInput
         style={[styles.input, formErrors.brand && styles.inputError]}
@@ -440,13 +460,17 @@ const EditProductScreen = ({navigation, route}) => {
           style={[styles.input, {flex: 2}]}
           placeholder="Variant Name"
           value={newVariant.name}
-          onChangeText={value => setNewVariant(prev => ({...prev, name: value}))}
+          onChangeText={value =>
+            setNewVariant(prev => ({...prev, name: value}))
+          }
         />
         <TextInput
           style={[styles.input, {flex: 1, marginLeft: 8}]}
           placeholder="Price"
           value={newVariant.price}
-          onChangeText={value => setNewVariant(prev => ({...prev, price: value}))}
+          onChangeText={value =>
+            setNewVariant(prev => ({...prev, price: value}))
+          }
           keyboardType="decimal-pad"
         />
         <TouchableOpacity style={styles.addButton} onPress={addVariant}>

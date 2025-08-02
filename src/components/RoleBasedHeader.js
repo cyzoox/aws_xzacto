@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Appbar, Menu, IconButton } from 'react-native-paper';
+import {View, StyleSheet, TouchableOpacity} from 'react-native';
+import {Appbar, Menu, IconButton} from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDispatch } from 'react-redux';
+import {useDispatch} from 'react-redux';
 
 // Reset navigation flag when logging out
 let hasNavigated = false;
 
-export function RoleBasedHeader({ title, navigation, staffData }) {
+export function RoleBasedHeader({title, navigation, staffData}) {
   const [menuVisible, setMenuVisible] = React.useState(false);
   const dispatch = useDispatch();
 
@@ -19,17 +19,17 @@ export function RoleBasedHeader({ title, navigation, staffData }) {
       await AsyncStorage.removeItem('staffSession');
       await AsyncStorage.removeItem('@store');
       await AsyncStorage.removeItem('@currency');
-      
+
       // Clear Redux store
-      dispatch({ type: 'store/clearAll' });
-      dispatch({ type: 'staff/clearAll' });
-      dispatch({ type: 'sales/clearAll' });
+      dispatch({type: 'store/clearAll'});
+      dispatch({type: 'staff/clearAll'});
+      dispatch({type: 'sales/clearAll'});
 
       // Reset navigation flag and navigate
       hasNavigated = false; // Reset the flag so login screen can work
       navigation.reset({
         index: 0,
-        routes: [{ name: 'RoleSelection' }],
+        routes: [{name: 'RoleSelection'}],
       });
     } catch (error) {
       console.error('Error during logout:', error);
@@ -44,7 +44,7 @@ export function RoleBasedHeader({ title, navigation, staffData }) {
       ) : (
         <Appbar.Action icon="menu" onPress={() => navigation.openDrawer()} />
       )}
-      
+
       <Appbar.Content title={title} />
 
       <Menu
@@ -56,20 +56,10 @@ export function RoleBasedHeader({ title, navigation, staffData }) {
             size={24}
             onPress={() => setMenuVisible(true)}
           />
-        }
-      >
-        <Menu.Item
-          title={staffData?.name || 'User'}
-          disabled
-        />
-        <Menu.Item
-          title={staffData?.role?.[0] || 'No Role'}
-          disabled
-        />
-        <Menu.Item
-          onPress={handleLogout}
-          title="Logout"
-        />
+        }>
+        <Menu.Item title={staffData?.name || 'User'} disabled />
+        <Menu.Item title={staffData?.role?.[0] || 'No Role'} disabled />
+        <Menu.Item onPress={handleLogout} title="Logout" />
       </Menu>
     </Appbar.Header>
   );

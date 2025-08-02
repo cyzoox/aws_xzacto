@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import {createSlice} from '@reduxjs/toolkit';
 
 const initialState = {
   items: [],
@@ -21,27 +21,29 @@ export const salesSlice = createSlice({
         ...action.payload,
         id: Date.now().toString(), // Temporary ID until synced
         _status: 'pending_create',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
       state.items.push(newSale);
       state.pendingChanges.push({
         type: 'CREATE',
         data: newSale,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     },
     updateSaleTransaction: (state, action) => {
-      const index = state.items.findIndex(item => item.id === action.payload.id);
+      const index = state.items.findIndex(
+        item => item.id === action.payload.id,
+      );
       if (index !== -1) {
         state.items[index] = {
           ...state.items[index],
           ...action.payload,
-          _status: 'pending_update'
+          _status: 'pending_update',
         };
         state.pendingChanges.push({
           type: 'UPDATE',
           data: action.payload,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     },
@@ -51,10 +53,10 @@ export const salesSlice = createSlice({
     setError: (state, action) => {
       state.error = action.payload;
     },
-    clearPendingChanges: (state) => {
+    clearPendingChanges: state => {
       state.pendingChanges = [];
     },
-    clearAll: (state) => {
+    clearAll: state => {
       state.items = [];
       state.pendingChanges = [];
       state.lastSync = null;
@@ -62,13 +64,13 @@ export const salesSlice = createSlice({
     },
     syncComplete: (state, action) => {
       // Update local IDs with server IDs after sync
-      const { localId, serverId } = action.payload;
+      const {localId, serverId} = action.payload;
       const index = state.items.findIndex(item => item.id === localId);
       if (index !== -1) {
         state.items[index].id = serverId;
         state.items[index]._status = 'synced';
       }
-    }
+    },
   },
 });
 
@@ -80,7 +82,7 @@ export const {
   setError,
   clearPendingChanges,
   clearAll,
-  syncComplete
+  syncComplete,
 } = salesSlice.actions;
 
 export default salesSlice.reducer;

@@ -5,7 +5,7 @@ declare module '*/WarehouseNavigator' {
   interface WarehouseNavigatorProps {
     staffData: any;
   }
-  
+
   const WarehouseNavigator: React.FC<WarehouseNavigatorProps>;
   export default WarehouseNavigator;
 }
@@ -18,7 +18,7 @@ declare module '*/DrawerNavigation' {
       };
     };
   }
-  
+
   const DrawerNavigator: React.FC<DrawerNavigatorProps>;
   export default DrawerNavigator;
 }
@@ -31,7 +31,7 @@ declare module '*/SuperAdminNavigator' {
       };
     };
   }
-  
+
   const SuperAdminNavigator: React.FC<SuperAdminNavigatorProps>;
   export default SuperAdminNavigator;
 }

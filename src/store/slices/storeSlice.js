@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/api';
+import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
+import {generateClient} from 'aws-amplify/api';
 import * as queries from '../../graphql/queries';
 
 // Async thunks
@@ -8,16 +8,16 @@ const client = generateClient();
 // Fetch stores by owner ID
 export const fetchStores = createAsyncThunk(
   'store/fetchStores',
-  async ({ ownerId }) => {
+  async ({ownerId}) => {
     try {
       console.log('Fetching stores for ownerId:', ownerId);
       const response = await client.graphql({
         query: queries.listStores,
         variables: {
           filter: {
-            ownerId: { eq: ownerId }
-          }
-        }
+            ownerId: {eq: ownerId},
+          },
+        },
       });
 
       return response.data.listStores.items;
@@ -25,7 +25,7 @@ export const fetchStores = createAsyncThunk(
       console.error('Error fetching stores:', error);
       throw error;
     }
-  }
+  },
 );
 
 const initialState = {
@@ -42,8 +42,8 @@ const initialState = {
       transactions: [],
       expenses: [],
       customers: [],
-      suppliers: []
-    }
+      suppliers: [],
+    },
   ],
   loading: false,
   error: null,
@@ -78,7 +78,7 @@ export const storeSlice = createSlice({
         transactions: [],
         expenses: [],
         customers: [],
-        suppliers: []
+        suppliers: [],
       };
       state.items.push(newStore);
 
@@ -86,27 +86,27 @@ export const storeSlice = createSlice({
       const createInput = {
         name: action.payload.name,
         location: action.payload.location,
-        ownerId: action.payload.ownerId // Include ownerId when creating store
+        ownerId: action.payload.ownerId, // Include ownerId when creating store
       };
-      
+
       state.pendingChanges.push({
         type: 'CREATE',
         data: createInput,
         localId: newStore.id, // Keep track of local ID for sync
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     },
     updateStore: (state, action) => {
-      const { id, ...changes } = action.payload;
+      const {id, ...changes} = action.payload;
       const store = state.items.find(item => item.id === id);
-      
+
       if (store) {
         // Ensure required fields remain present after update
         const updatedStore = {
           ...store,
           ...changes,
           _status: 'pending_update',
-          _lastChangedAt: new Date().toISOString()
+          _lastChangedAt: new Date().toISOString(),
         };
 
         // Validate required fields from schema
@@ -118,25 +118,25 @@ export const storeSlice = createSlice({
         // Update the store
         const index = state.items.findIndex(item => item.id === id);
         state.items[index] = updatedStore;
-        
+
         // Only send required fields to the API
         const updateInput = {
           id,
           name: updatedStore.name,
-          location: updatedStore.location
+          location: updatedStore.location,
         };
 
         state.pendingChanges.push({
           type: 'UPDATE',
           data: updateInput,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     },
     deleteStore: (state, action) => {
-      const { id } = action.payload;
+      const {id} = action.payload;
       const store = state.items.find(item => item.id === id);
-      
+
       if (store) {
         // Mark store as deleted locally
         const index = state.items.findIndex(item => item.id === id);
@@ -144,14 +144,14 @@ export const storeSlice = createSlice({
           ...store,
           _deleted: true,
           _status: 'pending_delete',
-          _lastChangedAt: new Date().toISOString()
+          _lastChangedAt: new Date().toISOString(),
         };
 
         // Add to pending changes for sync
         state.pendingChanges.push({
           type: 'DELETE',
-          data: { id },
-          timestamp: new Date().toISOString()
+          data: {id},
+          timestamp: new Date().toISOString(),
         });
       }
     },
@@ -161,10 +161,10 @@ export const storeSlice = createSlice({
     setError: (state, action) => {
       state.error = action.payload;
     },
-    clearPendingChanges: (state) => {
+    clearPendingChanges: state => {
       state.pendingChanges = [];
     },
-    clearAll: (state) => {
+    clearAll: state => {
       state.items = [];
       state.pendingChanges = [];
       state.lastSync = null;
@@ -172,18 +172,18 @@ export const storeSlice = createSlice({
     },
     syncComplete: (state, action) => {
       // Update local IDs with server IDs after sync
-      const { localId, serverId } = action.payload;
+      const {localId, serverId} = action.payload;
       const index = state.items.findIndex(item => item.id === localId);
       if (index !== -1) {
         state.items[index].id = serverId;
         state.items[index]._status = 'synced';
       }
-    }
+    },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
       // Fetch stores
-      .addCase(fetchStores.pending, (state) => {
+      .addCase(fetchStores.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -208,7 +208,7 @@ export const {
   setError,
   clearPendingChanges,
   clearAll,
-  syncComplete
+  syncComplete,
 } = storeSlice.actions;
 
 export default storeSlice.reducer;

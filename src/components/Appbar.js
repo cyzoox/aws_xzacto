@@ -1,42 +1,53 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Alert,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Appbar = ({ title, subtitle, onBack, onMenuPress, onSearchPress, onNotificationPress, onProfilePress }) => {
+const Appbar = ({
+  title,
+  subtitle,
+  onBack,
+  onMenuPress,
+  onSearchPress,
+  onNotificationPress,
+  onProfilePress,
+}) => {
   const navigation = useNavigation();
-  
+
   const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        { 
-          text: "Logout", 
-          onPress: async () => {
-            try {
-              // Clear any relevant session data
-              await AsyncStorage.removeItem('staffData');
-              console.log('User logged out successfully');
-              
-              // Navigate to the RoleSelectionScreen
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'RoleSelection' }],
-              });
-            } catch (error) {
-              console.error('Error during logout:', error);
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        onPress: async () => {
+          try {
+            // Clear any relevant session data
+            await AsyncStorage.removeItem('staffData');
+            console.log('User logged out successfully');
+
+            // Navigate to the RoleSelectionScreen
+            navigation.reset({
+              index: 0,
+              routes: [{name: 'RoleSelection'}],
+            });
+          } catch (error) {
+            console.error('Error during logout:', error);
+            Alert.alert('Error', 'Failed to logout. Please try again.');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
   return (
     <View style={styles.appbar}>
@@ -56,7 +67,7 @@ const Appbar = ({ title, subtitle, onBack, onMenuPress, onSearchPress, onNotific
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
-      
+
       {/* Right: Action Icons */}
       <View style={styles.actions}>
         {/* <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>

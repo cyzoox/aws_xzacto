@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  TextInput, 
-  StyleSheet, 
+import React, {useState, useEffect, useCallback} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
   Alert,
   ScrollView,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { generateClient } from 'aws-amplify/api';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {generateClient} from 'aws-amplify/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons, MaterialIcons } from 'react-native-vector-icons';
+import {Ionicons, MaterialIcons} from 'react-native-vector-icons';
 
 // Custom components
 import AppHeader from '../components/AppHeader';
@@ -22,8 +22,12 @@ import Spacer from '../components/Spacer';
 import colors from '../themes/colors';
 
 // GraphQL operations
-import { listExpenses } from '../graphql/queries';
-import { createExpense, deleteExpense, updateExpense } from '../graphql/mutations';
+import {listExpenses} from '../graphql/queries';
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+} from '../graphql/mutations';
 
 // Format money utility
 import formatMoney from 'accounting-js/lib/formatMoney.js';
@@ -39,23 +43,23 @@ const EXPENSE_CATEGORIES = [
   'Maintenance',
   'Inventory',
   'Marketing',
-  'Other'
+  'Other',
 ];
 
-const ExpensesScreen = ({ navigation, route }) => {
+const ExpensesScreen = ({navigation, route}) => {
   // Get staffData from route params or from storage
   const [staffData, setStaffData] = useState(route.params?.staffData || null);
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Form state
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Other');
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
@@ -74,12 +78,15 @@ const ExpensesScreen = ({ navigation, route }) => {
           await loadStaffData();
         } catch (error) {
           console.error('Error loading staff data:', error);
-          Alert.alert('Error', 'Could not load staff data. Please log in again.');
+          Alert.alert(
+            'Error',
+            'Could not load staff data. Please log in again.',
+          );
           navigation.navigate('RoleSelection');
         }
       }
     };
-    
+
     getStaffData();
   }, []);
 
@@ -116,21 +123,21 @@ const ExpensesScreen = ({ navigation, route }) => {
   // Apply filters to expenses
   const applyFilters = () => {
     let filtered = [...expenses];
-    
+
     // Apply search query filter
     if (searchQuery) {
-      filtered = filtered.filter(expense => 
-        expense.description.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(expense =>
+        expense.description.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-    
+
     // Apply category filter
     if (categoryFilter) {
-      filtered = filtered.filter(expense => 
-        expense.category === categoryFilter
+      filtered = filtered.filter(
+        expense => expense.category === categoryFilter,
       );
     }
-    
+
     setFilteredExpenses(filtered);
   };
 
@@ -147,18 +154,18 @@ const ExpensesScreen = ({ navigation, route }) => {
       console.log('No staff data or store ID available');
       return;
     }
-    
+
     setLoading(true);
     try {
       const result = await client.graphql({
         query: listExpenses,
         variables: {
           filter: {
-            storeID: { eq: staffData.store_id },
+            storeID: {eq: staffData.store_id},
           },
         },
       });
-      
+
       const expenseItems = result.data.listExpenses.items;
       console.log('Fetched expenses:', expenseItems);
       setExpenses(expenseItems);
@@ -191,17 +198,21 @@ const ExpensesScreen = ({ navigation, route }) => {
     try {
       // Extract ownerId from staff data or associated store with fallbacks
       let ownerId = null;
-      
+
       // Debugging staff data structure
       console.log('Staff data structure:', JSON.stringify(staffData, null, 2));
-      
+
       // Option 1: Direct ownerId field
       if (staffData.ownerId) {
         console.log('Using direct ownerId from staff');
         ownerId = staffData.ownerId;
-      } 
+      }
       // Option 2: Get from stores collection
-      else if (staffData.stores && staffData.stores.items && staffData.stores.items.length > 0) {
+      else if (
+        staffData.stores &&
+        staffData.stores.items &&
+        staffData.stores.items.length > 0
+      ) {
         console.log('Examining stores collection');
         const storeItem = staffData.stores.items[0];
         if (storeItem.store && storeItem.store.ownerId) {
@@ -221,7 +232,7 @@ const ExpensesScreen = ({ navigation, route }) => {
       }
 
       console.log('Using ownerId for expense:', ownerId);
-      
+
       // Updated to match schema field names exactly
       const input = {
         name: description, // Schema uses 'name' not 'description'
@@ -232,23 +243,23 @@ const ExpensesScreen = ({ navigation, route }) => {
         storeId: staffData.store_id, // Case matters: storeId not storeID
         ownerId: ownerId,
         date: new Date().toISOString(),
-        notes: '' // Optional notes field
+        notes: '', // Optional notes field
       };
 
       const result = await client.graphql({
         query: createExpense,
-        variables: { input },
+        variables: {input},
       });
 
       console.log('Expense created:', result.data.createExpense);
-      
+
       // Reset form and refresh list
       setModalVisible(false);
       setDescription('');
       setAmount('');
       setCategory('Other');
       fetchExpenses();
-      
+
       Alert.alert('Success', 'Expense added successfully');
     } catch (error) {
       console.error('Error adding expense', error);
@@ -259,8 +270,10 @@ const ExpensesScreen = ({ navigation, route }) => {
   };
 
   const handleEditExpense = async () => {
-    if (!currentExpense) return;
-    
+    if (!currentExpense) {
+      return;
+    }
+
     if (!description || !amount) {
       Alert.alert('Error', 'Please enter both description and amount');
       return;
@@ -275,17 +288,21 @@ const ExpensesScreen = ({ navigation, route }) => {
     try {
       // Extract or reuse ownerId with fallbacks
       let ownerId = currentExpense.ownerId;
-      
+
       // If current expense doesn't have ownerId, extract from staff data
       if (!ownerId && staffData) {
         console.log('Current expense missing ownerId, extracting from staff');
-        
+
         // Option 1: Direct ownerId field
         if (staffData.ownerId) {
           ownerId = staffData.ownerId;
-        } 
+        }
         // Option 2: Get from stores collection
-        else if (staffData.stores && staffData.stores.items && staffData.stores.items.length > 0) {
+        else if (
+          staffData.stores &&
+          staffData.stores.items &&
+          staffData.stores.items.length > 0
+        ) {
           const storeItem = staffData.stores.items[0];
           if (storeItem.store && storeItem.store.ownerId) {
             ownerId = storeItem.store.ownerId;
@@ -300,9 +317,9 @@ const ExpensesScreen = ({ navigation, route }) => {
           ownerId = staffData.id;
         }
       }
-      
+
       console.log('Using ownerId for expense update:', ownerId);
-      
+
       const input = {
         id: currentExpense.id,
         name: description, // Schema uses 'name' not 'description'
@@ -312,16 +329,16 @@ const ExpensesScreen = ({ navigation, route }) => {
         ownerId: ownerId,
         storeId: currentExpense.storeId,
         // Only update fields we want to change
-        _version: currentExpense._version
+        _version: currentExpense._version,
       };
 
       const result = await client.graphql({
         query: updateExpense,
-        variables: { input },
+        variables: {input},
       });
 
       console.log('Expense updated:', result.data.updateExpense);
-      
+
       // Reset form and refresh list
       setModalVisible(false);
       setIsEditMode(false);
@@ -330,7 +347,7 @@ const ExpensesScreen = ({ navigation, route }) => {
       setAmount('');
       setCategory('Other');
       fetchExpenses();
-      
+
       Alert.alert('Success', 'Expense updated successfully');
     } catch (error) {
       console.error('Error updating expense', error);
@@ -340,12 +357,12 @@ const ExpensesScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleDeleteExpense = async (expense) => {
+  const handleDeleteExpense = async expense => {
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this expense?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Delete',
           style: 'destructive',
@@ -354,25 +371,28 @@ const ExpensesScreen = ({ navigation, route }) => {
             try {
               const input = {
                 id: expense.id,
-                _version: expense._version
+                _version: expense._version,
               };
 
               await client.graphql({
                 query: deleteExpense,
-                variables: { input },
+                variables: {input},
               });
 
               fetchExpenses();
               Alert.alert('Success', 'Expense deleted successfully');
             } catch (error) {
               console.error('Error deleting expense', error);
-              Alert.alert('Error', 'Failed to delete expense. Please try again.');
+              Alert.alert(
+                'Error',
+                'Failed to delete expense. Please try again.',
+              );
             } finally {
               setLoading(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -385,7 +405,7 @@ const ExpensesScreen = ({ navigation, route }) => {
     setModalVisible(true);
   };
 
-  const openEditExpenseModal = (expense) => {
+  const openEditExpenseModal = expense => {
     setIsEditMode(true);
     setCurrentExpense(expense);
     setDescription(expense.name); // Schema uses 'name' not 'description'
@@ -395,15 +415,14 @@ const ExpensesScreen = ({ navigation, route }) => {
   };
 
   // Function to render expense item
-  const renderExpenseItem = ({ item }) => {
+  const renderExpenseItem = ({item}) => {
     const date = new Date(item.date || item.createdAt);
     const formattedDate = date.toLocaleDateString();
-    
+
     return (
-      <TouchableOpacity 
-        style={styles.expenseItem} 
-        onPress={() => openEditExpenseModal(item)}
-      >
+      <TouchableOpacity
+        style={styles.expenseItem}
+        onPress={() => openEditExpenseModal(item)}>
         <View style={styles.expenseHeader}>
           <Text style={styles.expenseTitle}>{item.name}</Text>
           <View style={styles.expenseActions}>
@@ -412,16 +431,22 @@ const ExpensesScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         <View style={styles.expenseDetails}>
           <View style={styles.expenseMetadata}>
-            <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
-              <Text style={styles.categoryText}>{item.category || 'Other'}</Text>
+            <View
+              style={[
+                styles.categoryBadge,
+                {backgroundColor: getCategoryColor(item.category)},
+              ]}>
+              <Text style={styles.categoryText}>
+                {item.category || 'Other'}
+              </Text>
             </View>
             <Text style={styles.dateText}>{formattedDate}</Text>
           </View>
           <Text style={styles.amountText}>
-            {formatMoney(item.amount, { symbol: '₱', precision: 2 })}
+            {formatMoney(item.amount, {symbol: '₱', precision: 2})}
           </Text>
         </View>
       </TouchableOpacity>
@@ -429,33 +454,35 @@ const ExpensesScreen = ({ navigation, route }) => {
   };
 
   // Function to get color based on category
-  const getCategoryColor = (category) => {
+  const getCategoryColor = category => {
     const colors = {
-      'Utilities': '#4CAF50',
-      'Supplies': '#2196F3', 
-      'Salary': '#9C27B0',
-      'Rent': '#F44336',
-      'Maintenance': '#FF9800',
-      'Inventory': '#607D8B',
-      'Marketing': '#E91E63',
-      'Other': '#9E9E9E'
+      Utilities: '#4CAF50',
+      Supplies: '#2196F3',
+      Salary: '#9C27B0',
+      Rent: '#F44336',
+      Maintenance: '#FF9800',
+      Inventory: '#607D8B',
+      Marketing: '#E91E63',
+      Other: '#9E9E9E',
     };
-    
-    return colors[category] || colors['Other'];
+
+    return colors[category] || colors.Other;
   };
 
   // Render category picker
   const renderCategoryPicker = () => (
     <View style={styles.categoryPickerContainer}>
       {EXPENSE_CATEGORIES.map(cat => (
-        <TouchableOpacity 
+        <TouchableOpacity
           key={cat}
-          style={[styles.categoryOption, { backgroundColor: getCategoryColor(cat) }]}
+          style={[
+            styles.categoryOption,
+            {backgroundColor: getCategoryColor(cat)},
+          ]}
           onPress={() => {
             setCategory(cat);
             setShowCategoryPicker(false);
-          }}
-        >
+          }}>
           <Text style={styles.categoryOptionText}>{cat}</Text>
         </TouchableOpacity>
       ))}
@@ -464,7 +491,7 @@ const ExpensesScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader 
+      <AppHeader
         centerText="Expenses"
         leftComponent={
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -473,7 +500,11 @@ const ExpensesScreen = ({ navigation, route }) => {
         }
         rightComponent={
           <TouchableOpacity onPress={openAddExpenseModal}>
-            <Ionicons name="add-circle-outline" size={24} color={colors.white} />
+            <Ionicons
+              name="add-circle-outline"
+              size={24}
+              color={colors.white}
+            />
           </TouchableOpacity>
         }
       />
@@ -489,14 +520,13 @@ const ExpensesScreen = ({ navigation, route }) => {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.filterButton}
-          onPress={() => setShowFilterOptions(!showFilterOptions)}
-        >
-          <Ionicons 
-            name={showFilterOptions ? "filter" : "filter-outline"} 
-            size={20} 
-            color={categoryFilter ? colors.accent : colors.grey} 
+          onPress={() => setShowFilterOptions(!showFilterOptions)}>
+          <Ionicons
+            name={showFilterOptions ? 'filter' : 'filter-outline'}
+            size={20}
+            color={categoryFilter ? colors.accent : colors.grey}
           />
         </TouchableOpacity>
       </View>
@@ -505,25 +535,46 @@ const ExpensesScreen = ({ navigation, route }) => {
       {showFilterOptions && (
         <View style={styles.filterOptions}>
           <Text style={styles.filterTitle}>Filter by Category:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            <TouchableOpacity 
-              style={[styles.filterChip, !categoryFilter && styles.activeFilterChip]}
-              onPress={() => setCategoryFilter('')}
-            >
-              <Text style={[styles.filterChipText, !categoryFilter && styles.activeFilterChipText]}>All</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}>
+            <TouchableOpacity
+              style={[
+                styles.filterChip,
+                !categoryFilter && styles.activeFilterChip,
+              ]}
+              onPress={() => setCategoryFilter('')}>
+              <Text
+                style={[
+                  styles.filterChipText,
+                  !categoryFilter && styles.activeFilterChipText,
+                ]}>
+                All
+              </Text>
             </TouchableOpacity>
             {EXPENSE_CATEGORIES.map(cat => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={cat}
                 style={[
-                  styles.filterChip, 
+                  styles.filterChip,
                   categoryFilter === cat && styles.activeFilterChip,
-                  { borderColor: getCategoryColor(cat) }
+                  {borderColor: getCategoryColor(cat)},
                 ]}
-                onPress={() => setCategoryFilter(cat)}
-              >
-                <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(cat) }]} />
-                <Text style={[styles.filterChipText, categoryFilter === cat && styles.activeFilterChipText]}>{cat}</Text>
+                onPress={() => setCategoryFilter(cat)}>
+                <View
+                  style={[
+                    styles.categoryDot,
+                    {backgroundColor: getCategoryColor(cat)},
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    categoryFilter === cat && styles.activeFilterChipText,
+                  ]}>
+                  {cat}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -538,19 +589,22 @@ const ExpensesScreen = ({ navigation, route }) => {
         </View>
       ) : filteredExpenses.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="receipt-long" size={64} color={colors.lightGrey} />
+          <MaterialIcons
+            name="receipt-long"
+            size={64}
+            color={colors.lightGrey}
+          />
           <Text style={styles.emptyText}>No expenses found</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addButton}
-            onPress={openAddExpenseModal}
-          >
+            onPress={openAddExpenseModal}>
             <Text style={styles.addButtonText}>Add an Expense</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={filteredExpenses}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={renderExpenseItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -574,7 +628,7 @@ const ExpensesScreen = ({ navigation, route }) => {
 
             <View style={styles.formContainer}>
               <Text style={styles.inputLabel}>Description</Text>
-              <TextInput 
+              <TextInput
                 style={styles.input}
                 placeholder="Enter expense description"
                 value={description}
@@ -582,7 +636,7 @@ const ExpensesScreen = ({ navigation, route }) => {
               />
 
               <Text style={styles.inputLabel}>Amount</Text>
-              <TextInput 
+              <TextInput
                 style={styles.input}
                 placeholder="Enter amount"
                 value={amount}
@@ -591,23 +645,29 @@ const ExpensesScreen = ({ navigation, route }) => {
               />
 
               <Text style={styles.inputLabel}>Category</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.categorySelector}
-                onPress={() => setShowCategoryPicker(!showCategoryPicker)}
-              >
-                <View style={[styles.selectedCategory, { backgroundColor: getCategoryColor(category) }]}>
+                onPress={() => setShowCategoryPicker(!showCategoryPicker)}>
+                <View
+                  style={[
+                    styles.selectedCategory,
+                    {backgroundColor: getCategoryColor(category)},
+                  ]}>
                   <Text style={styles.selectedCategoryText}>{category}</Text>
                 </View>
-                <Ionicons name="chevron-down" size={20} color={colors.darkGrey} />
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={colors.darkGrey}
+                />
               </TouchableOpacity>
 
               {showCategoryPicker && renderCategoryPicker()}
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.submitButton, loading && styles.disabledButton]}
                 onPress={isEditMode ? handleEditExpense : handleAddExpense}
-                disabled={loading}
-              >
+                disabled={loading}>
                 {loading ? (
                   <ActivityIndicator color={colors.white} size="small" />
                 ) : (
@@ -622,10 +682,7 @@ const ExpensesScreen = ({ navigation, route }) => {
       )}
 
       {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={openAddExpenseModal}
-      >
+      <TouchableOpacity style={styles.fab} onPress={openAddExpenseModal}>
         <Ionicons name="add" size={24} color={colors.white} />
       </TouchableOpacity>
     </SafeAreaView>
@@ -719,7 +776,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },

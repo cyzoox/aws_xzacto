@@ -1,10 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Modal, TextInput, Button, StyleSheet, Alert, Switch } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
+import React, {useState, useEffect, useMemo} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Button,
+  StyleSheet,
+  Alert,
+  Switch,
+} from 'react-native';
+import {useSelector, useDispatch} from 'react-redux';
+import {API, graphqlOperation, Auth} from 'aws-amplify';
 import * as queries from '../../graphql/queries';
 import * as mutations from '../../graphql/mutations';
-
 
 const CustomerScreen = () => {
   const [customers, setCustomers] = useState([]);
@@ -17,18 +27,22 @@ const CustomerScreen = () => {
   const [allowCredit, setAllowCredit] = useState(false);
   const [creditLimit, setCreditLimit] = useState('0');
 
-    const user = useSelector(state => state.user?.user);
+  const user = useSelector(state => state.user?.user);
 
   useEffect(() => {
     fetchCustomers();
   }, [user]);
 
   const fetchCustomers = async () => {
-    if (!user?.ownerId) return;
+    if (!user?.ownerId) {
+      return;
+    }
     try {
-      const customerData = await API.graphql(graphqlOperation(queries.listCustomers, {
-        filter: { ownerId: { eq: user.ownerId } }
-      }));
+      const customerData = await API.graphql(
+        graphqlOperation(queries.listCustomers, {
+          filter: {ownerId: {eq: user.ownerId}},
+        }),
+      );
       setCustomers(customerData.data.listCustomers.items);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -47,7 +61,7 @@ const CustomerScreen = () => {
     setIsModalVisible(true);
   };
 
-  const handleEditCustomer = (customer) => {
+  const handleEditCustomer = customer => {
     setCurrentCustomer(customer);
     setName(customer.name);
     setEmail(customer.email || '');
@@ -58,26 +72,30 @@ const CustomerScreen = () => {
     setIsModalVisible(true);
   };
 
-  const handleDeleteCustomer = async (customerId) => {
+  const handleDeleteCustomer = async customerId => {
     Alert.alert(
       'Delete Customer',
       'Are you sure you want to delete this customer?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive', 
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             try {
-              await API.graphql(graphqlOperation(mutations.deleteCustomer, { input: { id: customerId } }));
+              await API.graphql(
+                graphqlOperation(mutations.deleteCustomer, {
+                  input: {id: customerId},
+                }),
+              );
               fetchCustomers();
             } catch (error) {
               console.error('Error deleting customer:', error);
               Alert.alert('Error', 'Could not delete customer.');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -103,10 +121,16 @@ const CustomerScreen = () => {
     try {
       if (currentCustomer) {
         // Update existing customer
-        await API.graphql(graphqlOperation(mutations.updateCustomer, { input: { id: currentCustomer.id, ...customerDetails } }));
+        await API.graphql(
+          graphqlOperation(mutations.updateCustomer, {
+            input: {id: currentCustomer.id, ...customerDetails},
+          }),
+        );
       } else {
         // Create new customer
-        await API.graphql(graphqlOperation(mutations.createCustomer, { input: customerDetails }));
+        await API.graphql(
+          graphqlOperation(mutations.createCustomer, {input: customerDetails}),
+        );
       }
       fetchCustomers();
       setIsModalVisible(false);
@@ -116,18 +140,25 @@ const CustomerScreen = () => {
     }
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <View style={customerStyles.itemContainer}>
       <View style={customerStyles.itemTextContainer}>
         <Text style={customerStyles.itemText}>{item.name}</Text>
         <Text>Credit Balance: {item.creditBalance || 0}</Text>
-        <Text>Credit Allowed: {item.allowCredit ? `Yes (Limit: ${item.creditLimit || 0})` : 'No'}</Text>
+        <Text>
+          Credit Allowed:{' '}
+          {item.allowCredit ? `Yes (Limit: ${item.creditLimit || 0})` : 'No'}
+        </Text>
       </View>
       <View style={customerStyles.buttonsContainer}>
-        <TouchableOpacity onPress={() => handleEditCustomer(item)} style={[customerStyles.button, customerStyles.editButton]}>
+        <TouchableOpacity
+          onPress={() => handleEditCustomer(item)}
+          style={[customerStyles.button, customerStyles.editButton]}>
           <Text style={customerStyles.buttonText}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDeleteCustomer(item.id)} style={[customerStyles.button, customerStyles.deleteButton]}>
+        <TouchableOpacity
+          onPress={() => handleDeleteCustomer(item.id)}
+          style={[customerStyles.button, customerStyles.deleteButton]}>
           <Text style={customerStyles.buttonText}>Delete</Text>
         </TouchableOpacity>
       </View>
@@ -143,30 +174,66 @@ const CustomerScreen = () => {
         keyExtractor={item => item.id}
         ListEmptyComponent={<Text>No customers found.</Text>}
       />
-      <TouchableOpacity style={styles.primaryButton} onPress={handleAddCustomer}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={handleAddCustomer}>
         <Text style={styles.primaryButtonText}>Add New Customer</Text>
       </TouchableOpacity>
 
       <Modal
         visible={isModalVisible}
         animationType="slide"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
+        onRequestClose={() => setIsModalVisible(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>{currentCustomer ? 'Edit Customer' : 'Add Customer'}</Text>
-          <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
-          <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-          <TextInput placeholder="Phone" value={phone} onChangeText={setPhone} style={styles.input} keyboardType="phone-pad" />
-          <TextInput placeholder="Points" value={points} onChangeText={setPoints} style={styles.input} keyboardType="numeric" />
+          <Text style={styles.modalTitle}>
+            {currentCustomer ? 'Edit Customer' : 'Add Customer'}
+          </Text>
+          <TextInput
+            placeholder="Name"
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            keyboardType="email-address"
+          />
+          <TextInput
+            placeholder="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            style={styles.input}
+            keyboardType="phone-pad"
+          />
+          <TextInput
+            placeholder="Points"
+            value={points}
+            onChangeText={setPoints}
+            style={styles.input}
+            keyboardType="numeric"
+          />
           <View style={customerStyles.switchContainer}>
             <Text>Allow Credit</Text>
             <Switch value={allowCredit} onValueChange={setAllowCredit} />
           </View>
           {allowCredit && (
-            <TextInput placeholder="Credit Limit" value={creditLimit} onChangeText={setCreditLimit} style={styles.input} keyboardType="numeric" />
+            <TextInput
+              placeholder="Credit Limit"
+              value={creditLimit}
+              onChangeText={setCreditLimit}
+              style={styles.input}
+              keyboardType="numeric"
+            />
           )}
           <Button title="Save" onPress={handleSaveCustomer} />
-          <Button title="Cancel" onPress={() => setIsModalVisible(false)} color="red" />
+          <Button
+            title="Cancel"
+            onPress={() => setIsModalVisible(false)}
+            color="red"
+          />
         </View>
       </Modal>
     </View>

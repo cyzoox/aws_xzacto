@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { Text, Card, Title, Paragraph, Button, FAB, Divider, ActivityIndicator } from 'react-native-paper';
+import React, {useState, useEffect} from 'react';
+import {View, StyleSheet, ScrollView, RefreshControl} from 'react-native';
+import {
+  Text,
+  Card,
+  Title,
+  Paragraph,
+  Button,
+  FAB,
+  Divider,
+  ActivityIndicator,
+} from 'react-native-paper';
 import Appbar from '../../components/Appbar';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { colors } from '../../constants/theme';
-import { generateClient } from 'aws-amplify/api';
-import { listWarehouseProducts, listInventoryRequests } from '../../graphql/queries';
+import {useNetworkStatus} from '../../hooks/useNetworkStatus';
+import {colors} from '../../constants/theme';
+import {generateClient} from 'aws-amplify/api';
+import {
+  listWarehouseProducts,
+  listInventoryRequests,
+} from '../../graphql/queries';
 
 // Define styles first
 const styles = StyleSheet.create({
@@ -93,18 +105,18 @@ const REQUEST_STATUS = {
   PROCESSING: 'PROCESSING',
   PARTIALLY_FULFILLED: 'PARTIALLY_FULFILLED',
   FULFILLED: 'FULFILLED',
-  CANCELLED: 'CANCELLED'
+  CANCELLED: 'CANCELLED',
 };
 
 const LOW_STOCK_THRESHOLD = 10;
 
-const WarehouseHomeScreen = ({ navigation, route }) => {
-  const { staffData } = route.params || {};
+const WarehouseHomeScreen = ({navigation, route}) => {
+  const {staffData} = route.params || {};
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { isOnline, hasPendingChanges } = useNetworkStatus();
+  const {isOnline, hasPendingChanges} = useNetworkStatus();
   const client = generateClient();
-  
+
   // State for warehouse data
   const [warehouseProducts, setWarehouseProducts] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -117,17 +129,19 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
       const productsData = await client.graphql({
         query: listWarehouseProducts,
         variables: {
-          filter: { isActive: { eq: true } }
-        }
+          filter: {isActive: {eq: true}},
+        },
       });
-      
+
       const products = productsData.data.listWarehouseProducts.items;
       setWarehouseProducts(products);
       setProductCount(products.length);
-      
+
       // Filter low stock products
-      const lowStock = products.filter(product => 
-        product.availableStock <= (product.reorderPoint || LOW_STOCK_THRESHOLD)
+      const lowStock = products.filter(
+        product =>
+          product.availableStock <=
+          (product.reorderPoint || LOW_STOCK_THRESHOLD),
       );
       setLowStockProducts(lowStock);
     } catch (error) {
@@ -141,10 +155,10 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
       const requestsData = await client.graphql({
         query: listInventoryRequests,
         variables: {
-          filter: { status: { eq: REQUEST_STATUS.PENDING } }
-        }
+          filter: {status: {eq: REQUEST_STATUS.PENDING}},
+        },
       });
-      
+
       const requests = requestsData.data.listInventoryRequests.items;
       setPendingRequests(requests);
     } catch (error) {
@@ -156,22 +170,18 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchWarehouseProducts(),
-        fetchInventoryRequests()
-      ]);
+      await Promise.all([fetchWarehouseProducts(), fetchInventoryRequests()]);
       setLoading(false);
     };
-    
+
     loadData();
   }, []);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    Promise.all([
-      fetchWarehouseProducts(),
-      fetchInventoryRequests()
-    ]).finally(() => setRefreshing(false));
+    Promise.all([fetchWarehouseProducts(), fetchInventoryRequests()]).finally(
+      () => setRefreshing(false),
+    );
   }, []);
 
   if (loading && !refreshing) {
@@ -193,15 +203,14 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
         title="Warehouse Dashboard"
         subtitle={`Welcome, ${staffData?.name || 'Warehouse Staff'}`}
       />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+        }>
         <Text style={styles.sectionTitle}>Quick Summary</Text>
-        
+
         <View style={styles.cardsContainer}>
           <Card style={styles.card}>
             <Card.Content>
@@ -209,14 +218,14 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
               <Paragraph>Total Products</Paragraph>
             </Card.Content>
           </Card>
-          
+
           <Card style={styles.card}>
             <Card.Content>
               <Title>{lowStockProducts.length}</Title>
               <Paragraph>Low Stock Items</Paragraph>
             </Card.Content>
           </Card>
-          
+
           <Card style={styles.card}>
             <Card.Content>
               <Title>{pendingRequests.length}</Title>
@@ -224,7 +233,7 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
             </Card.Content>
           </Card>
         </View>
-        
+
         <Text style={styles.sectionTitle}>Low Stock Products</Text>
         {lowStockProducts.length > 0 ? (
           lowStockProducts.slice(0, 5).map(product => (
@@ -236,7 +245,9 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
                     <Paragraph>{product.brand || 'No Brand'}</Paragraph>
                   </View>
                   <View style={styles.stockIndicator}>
-                    <Text style={styles.stockText}>Stock: {product.availableStock}</Text>
+                    <Text style={styles.stockText}>
+                      Stock: {product.availableStock}
+                    </Text>
                   </View>
                 </View>
               </Card.Content>
@@ -245,21 +256,22 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
         ) : (
           <Card style={styles.emptyCard}>
             <Card.Content>
-              <Paragraph style={styles.emptyText}>No low stock products</Paragraph>
+              <Paragraph style={styles.emptyText}>
+                No low stock products
+              </Paragraph>
             </Card.Content>
           </Card>
         )}
-        
+
         {lowStockProducts.length > 5 && (
-          <Button 
-            mode="text" 
+          <Button
+            mode="text"
             onPress={() => navigation.navigate('WarehouseInventory')}
-            style={styles.viewMoreButton}
-          >
+            style={styles.viewMoreButton}>
             View All Low Stock Items
           </Button>
         )}
-        
+
         <Text style={styles.sectionTitle}>Pending Store Requests</Text>
         {pendingRequests.length > 0 ? (
           pendingRequests.slice(0, 5).map(request => (
@@ -272,12 +284,15 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
                       {new Date(request.requestDate).toLocaleDateString()}
                     </Paragraph>
                   </View>
-                  <Button 
-                    mode="contained" 
-                    compact 
-                    onPress={() => navigation.navigate('RequestDetails', { requestId: request.id })} 
-                    style={styles.actionButton}
-                  >
+                  <Button
+                    mode="contained"
+                    compact
+                    onPress={() =>
+                      navigation.navigate('RequestDetails', {
+                        requestId: request.id,
+                      })
+                    }
+                    style={styles.actionButton}>
                     Process
                   </Button>
                 </View>
@@ -291,18 +306,17 @@ const WarehouseHomeScreen = ({ navigation, route }) => {
             </Card.Content>
           </Card>
         )}
-        
+
         {pendingRequests.length > 5 && (
-          <Button 
-            mode="text" 
+          <Button
+            mode="text"
             onPress={() => navigation.navigate('StoreRequests')}
-            style={styles.viewMoreButton}
-          >
+            style={styles.viewMoreButton}>
             View All Store Requests
           </Button>
         )}
       </ScrollView>
-      
+
       <FAB
         style={styles.fab}
         icon="plus"

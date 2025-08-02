@@ -1,5 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import {Text, StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator} from 'react-native';
+import {
+  Text,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import {
   ListItem,
@@ -10,16 +17,15 @@ import {
 } from 'react-native-elements';
 import {TextInput} from 'react-native-paper';
 import Alert from '../../components/Alert';
-import { AddStaff } from './forms/AddStaff';
+import {AddStaff} from './forms/AddStaff';
 import AppHeader from '../../components/AppHeader';
 import colors from '../../themes/colors';
 
-import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from '@aws-amplify/auth';
-import { createStaff, createStaffStore } from '../../graphql/mutations';
-import { listStaff, listStaffStores } from '../../graphql/queries';
+import {generateClient} from 'aws-amplify/api';
+import {getCurrentUser} from '@aws-amplify/auth';
+import {createStaff, createStaffStore} from '../../graphql/mutations';
+import {listStaff, listStaffStores} from '../../graphql/queries';
 import * as queries from '../../graphql/queries';
-
 
 const client = generateClient();
 
@@ -42,14 +48,14 @@ const StaffsScreen = ({navigation, route}) => {
   useEffect(() => {
     const getAuthUser = async () => {
       try {
-        const { userId } = await getCurrentUser();
+        const {userId} = await getCurrentUser();
         setAuthUserId(userId);
         console.log('Authenticated user ID:', userId);
       } catch (error) {
         console.error('Error getting authenticated user:', error);
       }
     };
-    
+
     getAuthUser();
     fetchStaff();
   }, []);
@@ -61,53 +67,54 @@ const StaffsScreen = ({navigation, route}) => {
         console.log('No store ID available to filter staff');
         return;
       }
-      
+
       console.log(`Fetching cashiers for store: ${STORE.id}`);
-      
+
       // First approach: Using StaffStore connections to find staff assigned to this store
       const staffStoreResult = await client.graphql({
         query: listStaffStores,
-        variables: { 
-          filter: { 
-            storeId: { eq: STORE.id } 
-          }
-        }
+        variables: {
+          filter: {
+            storeId: {eq: STORE.id},
+          },
+        },
       });
-      
+
       // Get the staff IDs related to this store
-      const staffIds = staffStoreResult.data.listStaffStores.items.map(item => item.staffId);
+      const staffIds = staffStoreResult.data.listStaffStores.items.map(
+        item => item.staffId,
+      );
       console.log(`Found ${staffIds.length} staff associations for this store`);
-      
+
       if (staffIds.length === 0) {
         console.log('No staff found for this store');
         setStaffs([]);
         return;
       }
-      
+
       // Get each cashier one by one since 'in' operator isn't supported
       console.log('Fetching cashier info for each staff ID...');
       let cashierStaff = [];
-      
+
       // For simplicity, fetch all cashiers first, then filter by our staffIds
       const result = await client.graphql({
         query: listStaff,
-        variables: { 
-          filter: { 
-            role: { contains: "Cashier" }
-          } 
-        }
+        variables: {
+          filter: {
+            role: {contains: 'Cashier'},
+          },
+        },
       });
-      
+
       // Filter the cashiers that belong to this store
       if (result.data.listStaff.items) {
-        cashierStaff = result.data.listStaff.items.filter(staff => 
-          staffIds.includes(staff.id)
+        cashierStaff = result.data.listStaff.items.filter(staff =>
+          staffIds.includes(staff.id),
         );
       }
-      
+
       console.log(`Found ${cashierStaff.length} cashiers for this store`);
       setStaffs(cashierStaff);
-      
     } catch (error) {
       console.error('Error fetching staff:', error);
       // Use a more descriptive error message
@@ -117,7 +124,7 @@ const StaffsScreen = ({navigation, route}) => {
     }
   };
 
-const saveStaff = async (
+  const saveStaff = async (
     name,
     storeId,
     storeName,
@@ -125,23 +132,23 @@ const saveStaff = async (
     status,
     deviceName = '',
     deviceId = '',
-    logStatus = "INACTIVE",
+    logStatus = 'INACTIVE',
   ) => {
     if (!name || !password) {
-      alert("Name and PIN are required!");
+      alert('Name and PIN are required!');
       return false;
     }
 
     // Validate PIN is numeric and exactly 5 digits
     if (!/^\d{5}$/.test(password)) {
-      alert("PIN must be exactly 5 digits");
+      alert('PIN must be exactly 5 digits');
       return false;
     }
 
     try {
-      const { userId } = await getCurrentUser();
+      const {userId} = await getCurrentUser();
       if (!userId) {
-        alert("Authentication error. Please sign in again.");
+        alert('Authentication error. Please sign in again.');
         return false;
       }
 
@@ -149,57 +156,58 @@ const saveStaff = async (
       const newStaff = {
         name,
         password,
-        role: ["Cashier"], // Enforcing Cashier role only
+        role: ['Cashier'], // Enforcing Cashier role only
         device_id: deviceId,
         device_name: deviceName,
         log_status: logStatus,
-        ownerId: userId // Include owner ID from authenticated user
+        ownerId: userId, // Include owner ID from authenticated user
       };
-      
+
       console.log('Creating new cashier with valid fields:', newStaff);
-  
+
       // 1. Create the staff member first
       const staffResult = await client.graphql({
         query: createStaff,
-        variables: { input: newStaff },
+        variables: {input: newStaff},
       });
-      
+
       // 2. Get the new staff ID
       const newStaffId = staffResult.data.createStaff.id;
-      console.log("Cashier created with ID:", newStaffId);
-      
+      console.log('Cashier created with ID:', newStaffId);
+
       // 3. Now connect this staff member to the store using the StaffStore relationship
       try {
         const staffStoreConnection = {
-          staffId: newStaffId,  // Correct field name is staffId (lowercase 'd')
-          storeId: STORE.id     // Correct field name is storeId (lowercase 'd')
+          staffId: newStaffId, // Correct field name is staffId (lowercase 'd')
+          storeId: STORE.id, // Correct field name is storeId (lowercase 'd')
         };
-        
-        console.log("Connecting staff to store:", staffStoreConnection);
-        
+
+        console.log('Connecting staff to store:', staffStoreConnection);
+
         await client.graphql({
           query: createStaffStore,
-          variables: { input: staffStoreConnection }
+          variables: {input: staffStoreConnection},
         });
-        
-        console.log("Staff-Store connection created successfully");
+
+        console.log('Staff-Store connection created successfully');
       } catch (connectionError) {
-        console.error("Error connecting staff to store:", connectionError);
-        console.error("Connection error details:", JSON.stringify(connectionError, null, 2));
+        console.error('Error connecting staff to store:', connectionError);
+        console.error(
+          'Connection error details:',
+          JSON.stringify(connectionError, null, 2),
+        );
         // Even if connection fails, the staff was created
       }
-      
-      console.log("Cashier added successfully!");
+
+      console.log('Cashier added successfully!');
       fetchStaff(); // Refresh the staff list
       return true;
     } catch (error) {
-      console.error("Error saving cashier:", error);
-      alert("Failed to add cashier. Please try again.");
+      console.error('Error saving cashier:', error);
+      alert('Failed to add cashier. Please try again.');
       return false;
     }
   };
-  
- 
 
   const onEditStaff = item => {
     setName(item.name);
@@ -265,11 +273,9 @@ const saveStaff = async (
             <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
           </TouchableOpacity>
         }
-        rightComponent={
-          <AddStaff saveStaff={saveStaff} store={STORE} />
-        }
+        rightComponent={<AddStaff saveStaff={saveStaff} store={STORE} />}
       />
-      
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -278,7 +284,9 @@ const saveStaff = async (
       ) : staffs.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No cashiers found</Text>
-          <Text style={styles.emptySubText}>Add cashiers to your store using the + button</Text>
+          <Text style={styles.emptySubText}>
+            Add cashiers to your store using the + button
+          </Text>
         </View>
       ) : (
         <FlatList
