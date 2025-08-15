@@ -6,20 +6,22 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   ListItem,
   Avatar,
   CheckBox,
-  Overlay,
   Button,
+  FAB,
 } from 'react-native-elements';
 import {TextInput} from 'react-native-paper';
 import Alert from '../../components/Alert';
-import {AddStaff} from './forms/AddStaff';
-import AppHeader from '../../components/AppHeader';
+import Appbar from '../../components/Appbar';
 import colors from '../../themes/colors';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {generateClient} from 'aws-amplify/api';
 import {getCurrentUser} from '@aws-amplify/auth';
@@ -32,6 +34,7 @@ const client = generateClient();
 const StaffsScreen = ({navigation, route}) => {
   const STORE = route.params.store;
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [addStaffModalVisible, setAddStaffModalVisible] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [check1, setCheck1] = useState(false);
@@ -233,7 +236,7 @@ const StaffsScreen = ({navigation, route}) => {
         containerStyle={{
           borderColor: 'grey',
           borderStyle: 'solid',
-          borderWidth: 1,
+  
           borderRadius: 20,
           backgroundColor: colors.white,
         }}
@@ -257,7 +260,7 @@ const StaffsScreen = ({navigation, route}) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Alert
         visible={upgrade_plan}
         onCancel={() => setUpgradePlan(false)}
@@ -266,14 +269,10 @@ const StaffsScreen = ({navigation, route}) => {
         content="Maximum number of cashiers for your current plan has been reached."
         confirmTitle="OK"
       />
-      <AppHeader
-        centerText="Cashiers"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={<AddStaff saveStaff={saveStaff} store={STORE} />}
+      <Appbar
+        title={`Cashiers`}
+        subtitle={STORE.name || ''}
+        onBack={() => navigation.goBack()}
       />
 
       {loading ? (
@@ -283,6 +282,7 @@ const StaffsScreen = ({navigation, route}) => {
         </View>
       ) : staffs.length === 0 ? (
         <View style={styles.emptyContainer}>
+          <Ionicons name="people-outline" size={70} color={colors.lightGray} />
           <Text style={styles.emptyText}>No cashiers found</Text>
           <Text style={styles.emptySubText}>
             Add cashiers to your store using the + button
@@ -296,72 +296,168 @@ const StaffsScreen = ({navigation, route}) => {
           contentContainerStyle={styles.listContainer}
         />
       )}
-      <Overlay
-        isVisible={overlayVisible}
-        overlayStyle={{
-          width: '70%',
-          paddingHorizontal: 30,
-          paddingBottom: 20,
-          paddingTop: 15,
-        }}
-        onBackdropPress={() => setOverlayVisible(false)}>
-        <>
-          <Text
-            style={{
-              textAlign: 'center',
-              fontSize: 18,
-              fontWeight: '700',
-              marginBottom: 10,
-            }}>
-            Edit Staff Details
-          </Text>
-          <TextInput
-            mode="outlined"
-            value={name}
-            placeholder="Name"
-            onChangeText={text => setName(text)}
-          />
-          <TextInput
-            mode="outlined"
-            value={password}
-            placeholder="Password"
-            onChangeText={text => setPassword(text)}
-            maxLength={6}
-          />
+      
+      {/* Edit Staff Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={overlayVisible}
+        onRequestClose={() => setOverlayVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Staff Details</Text>
+              <TouchableOpacity onPress={() => setOverlayVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.darkGray} />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              mode="outlined"
+              label="Name"
+              value={name}
+              placeholder="Enter cashier name"
+              style={styles.textInput}
+              onChangeText={text => setName(text)}
+            />
+            
+            <TextInput
+              mode="outlined"
+              label="PIN"
+              value={password}
+              placeholder="Enter 5-digit PIN"
+              keyboardType="numeric"
+              style={styles.textInput}
+              onChangeText={text => setPassword(text)}
+              maxLength={5}
+              secureTextEntry
+            />
 
-          <View style={{flexDirection: 'row', marginLeft: -10}}>
-            <CheckBox
-              textStyle={{fontSize: 10}}
-              title="Active"
-              checkedIcon="dot-circle-o"
-              uncheckedIcon="circle-o"
-              checked={check1}
-              onPress={() => {
-                setCheck1(!check1), setSelected('Active'), setCheck2(false);
-              }}
-            />
-            <CheckBox
-              textStyle={{fontSize: 10}}
-              title="Inactive"
-              checkedIcon="dot-circle-o"
-              uncheckedIcon="circle-o"
-              checked={check2}
-              onPress={() => {
-                setCheck2(!check2), setSelected('Inactive'), setCheck1(false);
-              }}
-            />
+            <Text style={styles.statusLabel}>Status</Text>
+            <View style={styles.checkboxContainer}>
+              <CheckBox
+                title="Active"
+                checkedIcon="dot-circle-o"
+                uncheckedIcon="circle-o"
+                checked={check1}
+                containerStyle={styles.checkbox}
+                onPress={() => {
+                  setCheck1(true);
+                  setSelected('Active');
+                  setCheck2(false);
+                }}
+              />
+              <CheckBox
+                title="Inactive"
+                checkedIcon="dot-circle-o"
+                uncheckedIcon="circle-o"
+                checked={check2}
+                containerStyle={styles.checkbox}
+                onPress={() => {
+                  setCheck2(true);
+                  setSelected('Inactive');
+                  setCheck1(false);
+                }}
+              />
+            </View>
+            
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Cancel"
+                type="outline"
+                buttonStyle={styles.cancelButton}
+                titleStyle={{color: colors.darkGray}}
+                onPress={() => setOverlayVisible(false)}
+              />
+              <Button
+                title="Save"
+                buttonStyle={styles.saveButton}
+                onPress={() => {
+                  setOverlayVisible(false);
+                  fetchStaff();
+                }}
+              />
+            </View>
           </View>
-          <Button
-            title="Save"
-            buttonStyle={{marginTop: 20, backgroundColor: colors.accent}}
-            onPress={() => {
-              setOverlayVisible(false);
-              fetchStaff();
-            }}
-          />
-        </>
-      </Overlay>
-    </View>
+        </View>
+      </Modal>
+      
+      {/* Add New Cashier Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={addStaffModalVisible}
+        onRequestClose={() => setAddStaffModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Cashier</Text>
+              <TouchableOpacity onPress={() => setAddStaffModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.darkGray} />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              mode="outlined"
+              label="Name"
+              placeholder="Enter cashier name"
+              style={styles.textInput}
+              onChangeText={text => setName(text)}
+            />
+            
+            <TextInput
+              mode="outlined"
+              label="PIN"
+              placeholder="Enter 5-digit PIN"
+              keyboardType="numeric"
+              style={styles.textInput}
+              onChangeText={text => setPassword(text)}
+              maxLength={5}
+              secureTextEntry
+            />
+            
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Cancel"
+                type="outline"
+                buttonStyle={styles.cancelButton}
+                titleStyle={{color: colors.darkGray}}
+                onPress={() => setAddStaffModalVisible(false)}
+              />
+              <Button
+                title="Save"
+                buttonStyle={styles.saveButton}
+                onPress={() => {
+                  if (name && password) {
+                    saveStaff(name, STORE.id, STORE.name, password, 'Active');
+                    setAddStaffModalVisible(false);
+                    setName('');
+                    setPassword('');
+                  } else {
+                    alert('Please enter both name and PIN');
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Floating Action Button */}
+      <FAB
+        placement="right"
+        color={colors.secondary}
+        size="large"
+        icon={<Ionicons name="add" size={24} color="white" />}
+        onPress={() => {
+          setName('');
+          setPassword('');
+          setAddStaffModalVisible(true);
+        }}
+        style={styles.fab}
+        buttonStyle={styles.fabButton}
+      />
+    </SafeAreaView>
   );
 };
 
@@ -372,66 +468,161 @@ StaffsScreen.navigationOptions = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  text: {
-    fontSize: 30,
-  },
-  listStyle: {
-    flex: 1,
-    height: 75,
-    backgroundColor: colors.white,
-    marginHorizontal: 15,
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    marginTop: 10,
-    borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    shadowColor: '#EBECF0',
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
-    elevation: 5,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: colors.grey,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.grey,
-    marginBottom: 8,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: colors.grey,
-    textAlign: 'center',
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
+container: {
+flex: 1,
+backgroundColor: '#f9f9f9',
+},
+text: {
+fontSize: 30,
+},
+listStyle: {
+flex: 1,
+height: 75,
+backgroundColor: colors.white,
+marginHorizontal: 15,
+paddingHorizontal: 15,
+marginBottom: 10,
+marginTop: 10,
+borderRadius: 12,
+flexDirection: 'row',
+justifyContent: 'space-between',
+paddingHorizontal: 10,
+alignItems: 'center',
+shadowColor: '#000',
+shadowOffset: {
+width: 0,
+height: 2,
+},
+shadowOpacity: 0.1,
+shadowRadius: 3,
+elevation: 3,
+},
+statusText: {
+color: '#fff',
+fontSize: 10,
+marginTop: 2,
+},
+subText: {
+color: '#4c4c4c',
+fontSize: 12,
+},
+div: {
+height: 1,
+width: '100%',
+backgroundColor: '#e1e1e1',
+},
+loadingContainer: {
+flex: 1,
+justifyContent: 'center',
+alignItems: 'center',
+},
+loadingText: {
+marginTop: 10,
+color: colors.darkGray,
+fontSize: 16,
+},
+emptyContainer: {
+flex: 1,
+justifyContent: 'center',
+alignItems: 'center',
+paddingHorizontal: 30,
+},
+emptyText: {
+fontSize: 18,
+fontWeight: 'bold',
+color: colors.darkGray,
+marginTop: 16,
+},
+emptySubText: {
+fontSize: 14,
+color: colors.darkGray,
+marginTop: 8,
+textAlign: 'center',
+},
+// Modal Styles
+modalOverlay: {
+flex: 1,
+backgroundColor: 'rgba(0,0,0,0.5)',
+justifyContent: 'center',
+alignItems: 'center',
+padding: 20,
+},
+modalContent: {
+backgroundColor: '#fff',
+borderRadius: 12,
+padding: 20,
+width: '90%',
+maxWidth: 500,
+shadowColor: '#000',
+shadowOffset: {
+width: 0,
+height: 3,
+},
+shadowOpacity: 0.27,
+shadowRadius: 4.65,
+elevation: 6,
+},
+modalHeader: {
+flexDirection: 'row',
+justifyContent: 'space-between',
+alignItems: 'center',
+marginBottom: 16,
+},
+modalTitle: {
+fontSize: 18,
+fontWeight: 'bold',
+color: colors.darkGray,
+},
+textInput: {
+marginBottom: 12,
+backgroundColor: 'white',
+},
+statusLabel: {
+fontSize: 16,
+fontWeight: '500',
+marginBottom: 8,
+marginTop: 8,
+color: colors.darkGray,
+},
+checkboxContainer: {
+flexDirection: 'row',
+marginLeft: -10,
+marginBottom: 10,
+},
+checkbox: {
+backgroundColor: 'transparent',
+borderWidth: 0,
+padding: 8,
+marginLeft: 0,
+},
+buttonContainer: {
+flexDirection: 'row',
+justifyContent: 'space-between',
+marginTop: 16,
+},
+cancelButton: {
+borderColor: colors.darkGray,
+paddingHorizontal: 20,
+},
+saveButton: {
+backgroundColor: colors.primary,
+paddingHorizontal: 30,
+},
+listContainer: {
+paddingVertical: 12,
+paddingBottom: 80, 
+},
+fab: {
+position: 'absolute',
+margin: 16,
+right: 0,
+bottom: 60, 
+},
+fabButton: {
+height: 56,
+width: 56,
+borderRadius: 28,
+},
 });
 
 export default StaffsScreen;

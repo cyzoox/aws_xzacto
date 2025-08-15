@@ -5,99 +5,131 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import WarehouseHomeScreen from '../screens/warehouse/WarehouseHomeScreen';
 import WarehouseInventoryScreen from '../screens/warehouse/WarehouseInventoryScreen';
 import StoreRequestsScreen from '../screens/warehouse/StoreRequestsScreen';
-import OrderDetailsScreen from '../screens/warehouse/OrderDetailsScreen';
+import RequestDetailsScreen from '../screens/warehouse/RequestDetailsScreen';
+import WarehouseProductAddScreen from '../screens/warehouse/WarehouseProductAddScreen';
+import WarehouseSummaryReportScreen from '../screens/warehouse/WarehouseSummaryReportScreen';
 import BatchAddScreen from '../screens/BatchAddScreen';
 import BatchEditScreen from '../screens/BatchEditScreen';
-import WarehouseProductScreen from '../screens/warehouse/WarehouseProductScreen';
 import {colors} from '../constants/theme';
-import RequestDetailsScreen from '../screens/warehouse/RequestDetailsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Stack navigators for each tab
-const HomeStack = ({staffData}) => (
-  <Stack.Navigator screenOptions={{headerShown: false}}>
-    <Stack.Screen
-      name="WarehouseHome"
-      component={WarehouseHomeScreen}
-      initialParams={{staffData}}
-    />
-    <Stack.Screen
-      name="WarehouseProductAdd"
-      component={WarehouseProductScreen}
-      options={{title: 'Add Warehouse Product'}}
+// Shared screen options for stack navigators
+const stackScreenOptions = {
+  headerShown: false,
+  headerStyle: {
+    backgroundColor: colors.primary,
+  },
+  headerTintColor: '#FFFFFF',
+  headerTitleStyle: {
+    fontWeight: 'bold',
+  },
+};
+
+// Helper for tab screen options
+const getTabScreenOptions = (iconName, label) => ({
+  tabBarIcon: ({color, size, focused}) => (
+    <Icon name={focused ? iconName : iconName} color={color} size={size} />
+  ),
+  tabBarLabel: label,
+  headerShown: false, // We show headers on the stack, not the tab
+});
+
+// Stack Navigators for each tab
+const HomeStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen 
+      name="WarehouseHome" 
+      component={WarehouseHomeScreen} 
+      // options={{ title: 'Warehouse Dashboard' }} 
     />
   </Stack.Navigator>
 );
 
 const InventoryStack = () => (
-  <Stack.Navigator screenOptions={{headerShown: false}}>
-    <Stack.Screen
-      name="WarehouseInventory"
-      component={WarehouseInventoryScreen}
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen 
+      name="WarehouseInventory" 
+      component={WarehouseInventoryScreen} 
+      // options={{ title: 'Inventory' }}
     />
-    <Stack.Screen name="BatchAdd" component={BatchAddScreen} />
-    <Stack.Screen name="BatchEdit" component={BatchEditScreen} />
-  </Stack.Navigator>
-);
-const RequestsStack = () => (
-  <Stack.Navigator screenOptions={{headerShown: false}}>
-    <Stack.Screen name="RequestsMain" component={StoreRequestsScreen} />
-    <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-    <Stack.Screen name="RequestDetails" component={RequestDetailsScreen} />
+    <Stack.Screen 
+      name="WarehouseProductAddScreen" 
+      component={WarehouseProductAddScreen} 
+      options={{ title: 'Add Product' }}
+    />
+    <Stack.Screen 
+      name="BatchAdd" 
+      component={BatchAddScreen} 
+      // options={{ title: 'Add Batch' }}
+    />
+    <Stack.Screen 
+      name="BatchEdit" 
+      component={BatchEditScreen} 
+      options={{ title: 'Edit Batch' }}
+    />
   </Stack.Navigator>
 );
 
-// Tab navigation component
-const TabNavigation = ({navigation, route, staffData}) => {
+const RequestsStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen 
+      name="RequestsMain" 
+      component={StoreRequestsScreen} 
+      options={{ title: 'Store Requests' }}
+    />
+    <Stack.Screen 
+      name="RequestDetails" 
+      component={RequestDetailsScreen} 
+      // options={{ title: 'Request Details' }}
+    />
+  </Stack.Navigator>
+);
+
+const ReportsStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen 
+      name="WarehouseSummaryReport" 
+      component={WarehouseSummaryReportScreen} 
+      options={{ title: 'Inventory Reports' }}
+    />
+  </Stack.Navigator>
+);
+
+// Main Warehouse Navigator (Tab-based)
+const WarehouseNavigator = ({ route }) => {
+  // staffData is passed via route.params from the parent navigator
+  const { staffData } = route.params;
+
   return (
     <Tab.Navigator
-      screenOptions={({route, focused}) => ({
-        tabBarIcon: ({size}) => {
-          let iconName;
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Inventory') {
-            iconName = focused ? 'warehouse' : 'warehouse-outline';
-          } else if (route.name === 'Requests') {
-            iconName = focused ? 'truck-delivery' : 'truck-delivery-outline';
-          }
-          return <Icon name={iconName} size={size} color={colors.primary} />;
-        },
+      screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: 'gray',
-        headerShown: false,
-      })}>
+      }}>
       <Tab.Screen
         name="Home"
         component={HomeStack}
-        initialParams={{staffData}}
+        options={getTabScreenOptions('home', 'Home')}
+        initialParams={{ staffData }}
       />
       <Tab.Screen
         name="Inventory"
         component={InventoryStack}
-        initialParams={{staffData}}
+        options={getTabScreenOptions('warehouse', 'Inventory')}
       />
       <Tab.Screen
         name="Requests"
         component={RequestsStack}
-        initialParams={{staffData}}
+        options={getTabScreenOptions('truck-delivery', 'Requests')}
+      />
+      <Tab.Screen
+        name="Reports"
+        component={ReportsStack}
+        options={getTabScreenOptions('chart-bar', 'Reports')}
       />
     </Tab.Navigator>
-  );
-};
-
-const WarehouseNavigator = ({staffData}) => {
-  return (
-    <Stack.Navigator screenOptions={{headerShown: false}}>
-      <Stack.Screen
-        name="TabScreens"
-        component={TabNavigation}
-        initialParams={{staffData}}
-      />
-      <Stack.Screen name="RequestDetails" component={RequestDetailsScreen} />
-    </Stack.Navigator>
   );
 };
 

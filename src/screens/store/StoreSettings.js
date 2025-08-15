@@ -22,13 +22,20 @@ import {
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {listStoreSettings, updateStoreSettings} from '../../graphql/queries';
-import {updateStaff} from '../../graphql/mutations';
-import {listStaff} from '../../graphql/queries';
+import {
+  updateStaff,
+  createStoreSettings as createStoreSettingsMutation,
+  updateStoreSettings as updateStoreSettingsMutation
+} from '../../graphql/mutations';
+import {listStaff, listStoreSettings} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
 import {getCurrentUser} from '@aws-amplify/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../../themes/colors';
+import {useDispatch, useSelector} from 'react-redux';
+import {hashPassword} from '../../utils/PasswordUtils';
+import {selectIsLoading} from '../../redux/slices/storeSettingsSlice';
+import NetworkStatus from '../../components/ui/NetworkStatus';
 
 const client = generateClient();
 
@@ -48,6 +55,12 @@ const StoreSettings = ({route, navigation}) => {
   const STORE = route.params.store; // Pass store object from the previous screen
   const {passwordVisibility, rightIcon, handlePasswordVisibility} =
     useTogglePasswordVisibility();
+
+  const dispatch = useDispatch();
+  const reduxIsLoading = useSelector(selectIsLoading);
+
+  // Store settings are now loaded directly from GraphQL API
+  const [storeSettingsId, setStoreSettingsId] = useState(null);
 
   // Define states
   const [storeName, setStoreName] = useState('');
@@ -72,23 +85,88 @@ const StoreSettings = ({route, navigation}) => {
   // Validation states
   const [errors, setErrors] = useState({});
 
-  // Fetch store settings
+  // Fetch store settings directly from AWS GraphQL API
   useEffect(() => {
-    fetchSettings();
+    if (STORE.id) {
+      console.log('Fetching store settings for ID:', STORE.id);
+      
+      // Directly fetch store settings from AWS
+      fetchStoreSettingsFromAPI(STORE.id);
+      
+      // Also fetch legacy settings
+      fetchLegacySettings();
+      
+      // Load security settings
+      loadSecuritySettings();
+    }
   }, [STORE.id]);
-
-  const fetchSettings = async () => {
+  
+  // Function to fetch store settings directly from GraphQL API
+  const fetchStoreSettingsFromAPI = async (storeId) => {
     try {
       setLoading(true);
-
-      // Load general and operational settings from AsyncStorage
-      await loadLocalSettings();
-
-      // Load security settings from staff record
+      const client = generateClient();
+      
+      console.log('Fetching store settings from API for store ID:', storeId);
+      
+      // Query for store settings with the matching storeId
+      const response = await client.graphql({
+        query: listStoreSettings,
+        variables: {
+          filter: {
+            storeId: { eq: storeId }
+          }
+        }
+      });
+      
+      const settingsList = response?.data?.listStoreSettings?.items || [];
+      console.log('Fetched settings:', settingsList.length > 0 ? 'Found' : 'None found');
+      
+      if (settingsList.length > 0) {
+        // Use the first matching settings
+        const settings = settingsList[0];
+        
+        // Save settings ID for later use in updates
+        setStoreSettingsId(settings.id);
+        console.log('Set settings ID:', settings.id);
+        
+        // Update local state from fetched settings
+        setStoreName(STORE.name || '');
+        setStoreAddress(settings.address || '');
+        setStorePhone(settings.phone || '');
+        setStoreEmail(settings.email || '');
+        setStoreLogoUrl(settings.logoUrl || '');
+        setVat(settings.vatPercentage ? settings.vatPercentage.toString() : '0');
+        setLowStock(settings.lowStockThreshold ? settings.lowStockThreshold.toString() : '0');
+        setCashierView(settings.allowCashierSalesView || false);
+        setAllowCredit(settings.allowCreditSales || false);
+      } else {
+        console.log('No store settings found, using defaults');
+        // Set defaults
+        setStoreName(STORE.name || '');
+        setStoreAddress('');
+        setStorePhone('');
+        setStoreEmail('');
+        setStoreLogoUrl('');
+        setVat('0');
+        setLowStock('5');
+        setCashierView(true);
+        setAllowCredit(true);
+      }
+    } catch (error) {
+      console.error('Error fetching store settings from API:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchLegacySettings = async () => {
+    try {
+      setLoading(true);
+      // Load security settings from staff record since they're not part of StoreSettings model
       await loadSecuritySettings();
     } catch (error) {
-      console.error('Error fetching settings:', error.message);
-      Alert.alert('Error', 'Failed to load settings. Please try again.');
+      console.error('Error fetching legacy settings:', error.message);
     } finally {
       setLoading(false);
     }
@@ -136,24 +214,56 @@ const StoreSettings = ({route, navigation}) => {
 
   const loadSecuritySettings = async () => {
     try {
-      // Get current user to find staff record
-      const userInfo = await getCurrentUser();
-      const userId = userInfo.userId;
+      // Always use STORE.id directly to ensure consistency with saving
+      const storeId = STORE.id;
+      
+      if (!storeId) {
+        console.log('Store ID not found, skipping security settings load');
+        return; // Exit if no storeId is available
+      }
+      
+      console.log('Loading security settings for store ID:', storeId);
+      
+      // First check if we have a logged in user
+      try {
+        // Get current user to find staff record
+        const userInfo = await getCurrentUser();
+        if (!userInfo || !userInfo.userId) {
+          console.log('No authenticated user found, skipping staff PIN load');
+          return;
+        }
+        const userId = userInfo.userId;
+        
+        // Create a GraphQL client instance
+        const client = generateClient();
 
-      // Find staff record for current user
-      const staffResult = await client.graphql({
-        query: listStaff,
-        variables: {filter: {storeId: {eq: STORE.id}}},
-      });
+        console.log('Fetching staff records for store:', storeId);
+        
+        // Find staff record by ownerId (user ID) instead of storeId
+        // storeId isn't a direct field in Staff model according to schema
+        const staffResult = await client.graphql({
+          query: listStaff,
+          variables: {filter: {ownerId: {eq: userId}}},
+        });
 
-      const staffList = staffResult.data.listStaff.items;
-      const currentStaff = staffList.find(staff => staff.ownerId === userId);
+        console.log('Staff query result:', JSON.stringify(staffResult?.data?.listStaff || {}));
+        
+        const staffList = staffResult?.data?.listStaff?.items || [];
+        const currentStaff = staffList.find(staff => staff.ownerId === userId);
 
-      if (currentStaff) {
-        setOldPIN(currentStaff.password || '');
+        if (currentStaff) {
+          console.log('Found staff record, setting PIN');
+          setOldPIN(currentStaff.password || '');
+        } else {
+          console.log('No matching staff record found for user ID:', userId);
+        }
+      } catch (userError) {
+        console.error('Error getting user info or staff data:', userError);
+        // Continue execution - don't block the whole function for PIN issues
       }
     } catch (error) {
-      console.error('Error loading security settings:', error.message);
+      // Main try/catch to ensure component doesn't crash
+      console.error('Error in loadSecuritySettings:', error);
     }
   };
 
@@ -198,14 +308,122 @@ const StoreSettings = ({route, navigation}) => {
 
     try {
       setLoading(true);
+      
+      // Set a timeout to prevent infinite loading
+      const saveTimeout = setTimeout(() => {
+        setLoading(false);
+        Alert.alert(
+          'Operation Timeout',
+          'The save operation took too long. Please check network connectivity and try again.'
+        );
+      }, 10000); // 10 second timeout
+      
+      // Generate a hardcoded storeId if one isn't available
+      const defaultStoreId = 'store-' + Date.now().toString();
+      
+      // Create StoreSettings object
+      const storeSettingsData = {
+        // Always use STORE.id for consistency with loading
+        storeId: STORE.id,
+        // name field is not part of StoreSettings schema
+        address: storeAddress.trim(),
+        phone: storePhone.trim(),
+        email: storeEmail.trim(),
+        logoUrl: storeLogoUrl.trim(),
+        vatPercentage: parseFloat(vat) || 0,
+        lowStockThreshold: parseFloat(lowStock) || 0,
+        allowCashierSalesView: cashierView,
+        allowCreditSales: allowCredit,
+        currencySymbol: '$', // TODO: Make this configurable
+        receiptFooterText: '', // TODO: Add to UI
+        businessHours: '', // TODO: Add to UI
+      };
+      
+      console.log('Saving store settings:', storeSettingsData);
 
-      // Save general settings to AsyncStorage
-      await saveGeneralSettings();
+      // Save directly to AWS using GraphQL
+      try {
+        console.log('Saving store settings directly to AWS...');
+        const client = generateClient();
+        
+        if (storeSettingsId) {
+          console.log('Updating existing settings with ID:', storeSettingsId);
+          
+          // Update existing settings in AWS
+          await client.graphql({
+            query: updateStoreSettingsMutation,
+            variables: {
+              input: {
+                id: storeSettingsId,
+                storeId: STORE.id,
+                address: storeSettingsData.address,
+                phone: storeSettingsData.phone,
+                email: storeSettingsData.email,
+                logoUrl: storeSettingsData.logoUrl,
+                vatPercentage: storeSettingsData.vatPercentage,
+                lowStockThreshold: storeSettingsData.lowStockThreshold,
+                allowCashierSalesView: storeSettingsData.allowCashierSalesView,
+                allowCreditSales: storeSettingsData.allowCreditSales,
+                currencySymbol: storeSettingsData.currencySymbol,
+                receiptFooterText: storeSettingsData.receiptFooterText,
+                businessHours: storeSettingsData.businessHours
+              }
+            }
+          });
+          
+          // Also update Redux state for immediate UI updates
+          dispatch({
+            type: 'storeSettings/updateSuccess',
+            payload: {
+              id: storeSettingsId, // Use storeSettingsId instead of reduxStoreSettings.id
+              ...storeSettingsData
+            }
+          });
+        } else {
+          console.log('Creating new settings');
+          
+          // Create new settings in AWS
+          const result = await client.graphql({
+            query: createStoreSettingsMutation,
+            variables: {
+              input: {
+                storeId: STORE.id,
+                address: storeSettingsData.address,
+                phone: storeSettingsData.phone,
+                email: storeSettingsData.email,
+                logoUrl: storeSettingsData.logoUrl,
+                vatPercentage: storeSettingsData.vatPercentage,
+                lowStockThreshold: storeSettingsData.lowStockThreshold,
+                allowCashierSalesView: storeSettingsData.allowCashierSalesView,
+                allowCreditSales: storeSettingsData.allowCreditSales,
+                currencySymbol: storeSettingsData.currencySymbol,
+                receiptFooterText: storeSettingsData.receiptFooterText,
+                businessHours: storeSettingsData.businessHours
+              }
+            }
+          });
+          
+          const newSettings = result.data.createStoreSettings;
+          console.log('New settings created:', newSettings.id);
+          
+          // Update Redux state for immediate UI updates
+          dispatch({
+            type: 'storeSettings/createSuccess',
+            payload: newSettings
+          });
+        }
+      } catch (graphqlError) {
+        console.error('GraphQL error saving settings:', graphqlError);
+        throw graphqlError; // Re-throw to be caught by outer try/catch
+      }
+      
+      // Clear the timeout since the operation completed
+      clearTimeout(saveTimeout);
 
-      // Save operational settings to AsyncStorage
-      await saveOperationalSettings();
-
-      // Update staff PIN if changed
+      // We no longer need to save to local AsyncStorage separately 
+      // as our Redux actions now handle that directly
+      
+      // Update staff PIN if changed (still using GraphQL API)
       if (newPin && newPin.trim() !== '') {
         await updateStaffPin();
       }
@@ -270,30 +488,63 @@ const StoreSettings = ({route, navigation}) => {
 
   const updateStaffPin = async () => {
     try {
+      // Always use STORE.id for consistency with other operations
+      const storeId = STORE.id;
+      
+      if (!storeId) {
+        console.log('Store ID not found, cannot update staff PIN');
+        return; // Exit if no storeId is available
+      }
+      
       // Get current user info
       const userInfo = await getCurrentUser();
       const userId = userInfo.userId;
+      
+      if (!userId) {
+        console.log('User ID not found, cannot update staff PIN');
+        return;
+      }
+      
+      // Create a GraphQL client instance
+      const client = generateClient();
 
-      // Find staff record for current user
+      // Find staff record by owner ID (userId) as storeId isn't a direct filter field
       const staffResult = await client.graphql({
         query: listStaff,
-        variables: {filter: {storeId: {eq: STORE.id}}},
+        variables: {filter: {ownerId: {eq: userId}}},
       });
+      
+      console.log('Staff query for PIN update result:', JSON.stringify(staffResult?.data?.listStaff || {}));
 
-      const staffList = staffResult.data.listStaff.items;
+      const staffList = staffResult?.data?.listStaff?.items || [];
       const currentStaff = staffList.find(staff => staff.ownerId === userId);
 
       if (currentStaff) {
-        // Update staff PIN
+        // Hash the PIN before updating
+        let hashedPin;
+        try {
+          // Use our custom password hashing utility
+          hashedPin = hashPassword(newPin.trim());
+          console.log('Created hashed PIN for staff update');
+        } catch (hashError) {
+          console.error('Error hashing PIN:', hashError);
+          // Don't fall back to plain text - security first
+          Alert.alert('Error', 'There was a problem securing your PIN. Please try again.');
+          throw new Error('PIN hashing failed');
+        }
+        
+        // Update staff PIN with hashed value
         await client.graphql({
           query: updateStaff,
           variables: {
             input: {
               id: currentStaff.id,
-              password: newPin.trim(),
+              password: hashedPin,
             },
           },
         });
+        
+        console.log('Updated staff PIN with hash');
 
         console.log('Staff PIN updated successfully');
       } else {
@@ -572,8 +823,13 @@ const StoreSettings = ({route, navigation}) => {
           <MaterialIcons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Store Settings</Text>
-        <View style={{width: 40}} />
-        {/* Empty view for balance */}
+        <TouchableOpacity
+          onPress={onSaveSettings}
+          disabled={loading || reduxIsLoading || saveSuccess}
+          style={styles.headerSaveButton}>
+          <MaterialIcons name="save" size={24} color="white" />
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
       </View>
 
       {renderTabs()}
@@ -591,16 +847,20 @@ const StoreSettings = ({route, navigation}) => {
         </ScrollView>
       )}
 
+      {/* Network Status Indicator */}
+      {/* <NetworkStatus /> */}
+      
       {/* Save Button */}
       <View style={styles.buttonContainer}>
         <Button
           mode="contained"
           onPress={onSaveSettings}
           style={styles.saveButton}
-          loading={loading}
-          disabled={loading || saveSuccess}
-          labelStyle={{color: 'white', fontSize: 16}}>
-          {saveSuccess ? 'Saved!' : 'Save Settings'}
+          loading={loading || reduxIsLoading}
+          disabled={loading || reduxIsLoading || saveSuccess}
+          labelStyle={{color: 'white', fontSize: 18, fontWeight: 'bold'}}
+          icon="content-save">  {/* Add an icon to make button more visible */}
+          {saveSuccess ? 'SAVED SUCCESSFULLY!' : 'SAVE SETTINGS'}
         </Button>
       </View>
 
@@ -619,6 +879,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 70, // Add padding to account for fixed save button
   },
   header: {
     flexDirection: 'row',
@@ -636,6 +897,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
+  },
+  headerSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  saveButtonText: {
+    color: 'white',
+    marginLeft: 4,
+    fontWeight: 'bold',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -714,17 +985,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    padding: 16,
     backgroundColor: 'white',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    elevation: 5,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#e0e0e0',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   saveButton: {
-    borderRadius: 8,
-    paddingVertical: 6,
+    height: 50,
+    justifyContent: 'center',
     backgroundColor: colors.primary,
+    borderRadius: 8,
   },
   loadingContainer: {
     flex: 1,

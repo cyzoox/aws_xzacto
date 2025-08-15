@@ -1,3 +1,4 @@
+/* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
 export const onCreateStaff = /* GraphQL */ `
@@ -21,6 +22,10 @@ export const onCreateStaff = /* GraphQL */ `
         __typename
       }
       cartItems {
+        nextToken
+        __typename
+      }
+      payments {
         nextToken
         __typename
       }
@@ -67,6 +72,10 @@ export const onUpdateStaff = /* GraphQL */ `
         nextToken
         __typename
       }
+      payments {
+        nextToken
+        __typename
+      }
       account {
         id
         ownerId
@@ -107,6 +116,10 @@ export const onDeleteStaff = /* GraphQL */ `
         __typename
       }
       cartItems {
+        nextToken
+        __typename
+      }
+      payments {
         nextToken
         __typename
       }
@@ -614,6 +627,14 @@ export const onCreateStore = /* GraphQL */ `
         nextToken
         __typename
       }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       account {
         id
         ownerId
@@ -623,6 +644,24 @@ export const onCreateStore = /* GraphQL */ `
         subscriptionStartDate
         subscriptionEndDate
         lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeSettings {
+        id
+        storeId
+        address
+        phone
+        email
+        logoUrl
+        vatPercentage
+        lowStockThreshold
+        allowCashierSalesView
+        allowCreditSales
+        currencySymbol
+        receiptFooterText
+        businessHours
         createdAt
         updatedAt
         __typename
@@ -677,6 +716,14 @@ export const onUpdateStore = /* GraphQL */ `
         nextToken
         __typename
       }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       account {
         id
         ownerId
@@ -686,6 +733,24 @@ export const onUpdateStore = /* GraphQL */ `
         subscriptionStartDate
         subscriptionEndDate
         lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeSettings {
+        id
+        storeId
+        address
+        phone
+        email
+        logoUrl
+        vatPercentage
+        lowStockThreshold
+        allowCashierSalesView
+        allowCreditSales
+        currencySymbol
+        receiptFooterText
+        businessHours
         createdAt
         updatedAt
         __typename
@@ -740,6 +805,14 @@ export const onDeleteStore = /* GraphQL */ `
         nextToken
         __typename
       }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       account {
         id
         ownerId
@@ -749,6 +822,24 @@ export const onDeleteStore = /* GraphQL */ `
         subscriptionStartDate
         subscriptionEndDate
         lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeSettings {
+        id
+        storeId
+        address
+        phone
+        email
+        logoUrl
+        vatPercentage
+        lowStockThreshold
+        allowCashierSalesView
+        allowCreditSales
+        currencySymbol
+        receiptFooterText
+        businessHours
         createdAt
         updatedAt
         __typename
@@ -823,6 +914,18 @@ export const onCreateSaleTransaction = /* GraphQL */ `
         nextToken
         __typename
       }
+      discounts {
+        nextToken
+        __typename
+      }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -890,6 +993,18 @@ export const onUpdateSaleTransaction = /* GraphQL */ `
         __typename
       }
       sales {
+        nextToken
+        __typename
+      }
+      discounts {
+        nextToken
+        __typename
+      }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
         nextToken
         __typename
       }
@@ -961,6 +1076,120 @@ export const onDeleteSaleTransaction = /* GraphQL */ `
       }
       sales {
         nextToken
+        __typename
+      }
+      discounts {
+        nextToken
+        __typename
+      }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateDiscount = /* GraphQL */ `
+  subscription OnCreateDiscount($filter: ModelSubscriptionDiscountFilterInput) {
+    onCreateDiscount(filter: $filter) {
+      id
+      name
+      percentage
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateDiscount = /* GraphQL */ `
+  subscription OnUpdateDiscount($filter: ModelSubscriptionDiscountFilterInput) {
+    onUpdateDiscount(filter: $filter) {
+      id
+      name
+      percentage
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteDiscount = /* GraphQL */ `
+  subscription OnDeleteDiscount($filter: ModelSubscriptionDiscountFilterInput) {
+    onDeleteDiscount(filter: $filter) {
+      id
+      name
+      percentage
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
         __typename
       }
       createdAt
@@ -1167,6 +1396,18 @@ export const onCreateCreditTransaction = /* GraphQL */ `
       remarks
       createdAt
       addedBy
+      transactionId
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
       customer {
         id
         name
@@ -1178,6 +1419,27 @@ export const onCreateCreditTransaction = /* GraphQL */ `
         creditBalance
         allowCredit
         creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
         createdAt
         updatedAt
         __typename
@@ -1199,6 +1461,18 @@ export const onUpdateCreditTransaction = /* GraphQL */ `
       remarks
       createdAt
       addedBy
+      transactionId
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
       customer {
         id
         name
@@ -1210,6 +1484,27 @@ export const onUpdateCreditTransaction = /* GraphQL */ `
         creditBalance
         allowCredit
         creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
         createdAt
         updatedAt
         __typename
@@ -1231,6 +1526,18 @@ export const onDeleteCreditTransaction = /* GraphQL */ `
       remarks
       createdAt
       addedBy
+      transactionId
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
       customer {
         id
         name
@@ -1246,6 +1553,207 @@ export const onDeleteCreditTransaction = /* GraphQL */ `
         updatedAt
         __typename
       }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreatePayment = /* GraphQL */ `
+  subscription OnCreatePayment($filter: ModelSubscriptionPaymentFilterInput) {
+    onCreatePayment(filter: $filter) {
+      id
+      amount
+      paymentMethod
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      staffId
+      staff {
+        id
+        name
+        password
+        ownerId
+        accountId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdatePayment = /* GraphQL */ `
+  subscription OnUpdatePayment($filter: ModelSubscriptionPaymentFilterInput) {
+    onUpdatePayment(filter: $filter) {
+      id
+      amount
+      paymentMethod
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      staffId
+      staff {
+        id
+        name
+        password
+        ownerId
+        accountId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeletePayment = /* GraphQL */ `
+  subscription OnDeletePayment($filter: ModelSubscriptionPaymentFilterInput) {
+    onDeletePayment(filter: $filter) {
+      id
+      amount
+      paymentMethod
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      staffId
+      staff {
+        id
+        name
+        password
+        ownerId
+        accountId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
       updatedAt
       __typename
     }
@@ -2492,6 +3000,108 @@ export const onDeleteSubscriptionHistory = /* GraphQL */ `
       }
       createdAt
       updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateStoreSettings = /* GraphQL */ `
+  subscription OnCreateStoreSettings(
+    $filter: ModelSubscriptionStoreSettingsFilterInput
+  ) {
+    onCreateStoreSettings(filter: $filter) {
+      id
+      storeId
+      address
+      phone
+      email
+      logoUrl
+      vatPercentage
+      lowStockThreshold
+      allowCashierSalesView
+      allowCreditSales
+      currencySymbol
+      receiptFooterText
+      businessHours
+      createdAt
+      updatedAt
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+export const onUpdateStoreSettings = /* GraphQL */ `
+  subscription OnUpdateStoreSettings(
+    $filter: ModelSubscriptionStoreSettingsFilterInput
+  ) {
+    onUpdateStoreSettings(filter: $filter) {
+      id
+      storeId
+      address
+      phone
+      email
+      logoUrl
+      vatPercentage
+      lowStockThreshold
+      allowCashierSalesView
+      allowCreditSales
+      currencySymbol
+      receiptFooterText
+      businessHours
+      createdAt
+      updatedAt
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+export const onDeleteStoreSettings = /* GraphQL */ `
+  subscription OnDeleteStoreSettings(
+    $filter: ModelSubscriptionStoreSettingsFilterInput
+  ) {
+    onDeleteStoreSettings(filter: $filter) {
+      id
+      storeId
+      address
+      phone
+      email
+      logoUrl
+      vatPercentage
+      lowStockThreshold
+      allowCashierSalesView
+      allowCreditSales
+      currencySymbol
+      receiptFooterText
+      businessHours
+      createdAt
+      updatedAt
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
       __typename
     }
   }

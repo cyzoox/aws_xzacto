@@ -1,72 +1,56 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
-  Text,
   StyleSheet,
   View,
-  TouchableOpacity,
   FlatList,
-  ScrollView,
+  ActivityIndicator,
   Modal,
+  Text,
+  Dimensions,
+  TouchableOpacity,
 } from 'react-native';
-
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import {
+  TextInput,
+  Button,
+  FAB,
+  Title,
+} from 'react-native-paper';
 import Feather from 'react-native-vector-icons/Feather';
-import {Row, Col, Grid} from 'react-native-easy-grid';
-// useState imported with React
-import {TextInput} from 'react-native-paper';
-
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import SelectDropdown from 'react-native-select-dropdown';
-import AppHeader from '../../components/AppHeader';
-import ModalInputForm from '../../components/ModalInputForm';
-import colors from '../../themes/colors';
-import DataTable from '../../components/DataTable';
-
 import {generateClient} from 'aws-amplify/api';
+import {getCurrentUser} from 'aws-amplify/auth';
+import {Row, Col} from 'react-native-easy-grid';
+
+import Appbar from '../../components/Appbar';
+import DataTable from '../../components/DataTable';
+import colors from '../../themes/colors';
 import {createExpense} from '../../graphql/mutations';
 import {listExpenses, getStore} from '../../graphql/queries';
-import {getCurrentUser} from 'aws-amplify/auth';
+import Cards from '../../components/Cards';
+
 const client = generateClient();
+const {width: screenWidth} = Dimensions.get('window');
 
 const ExpensesScreen = ({navigation, route}) => {
-  const initialStore = route.params.store || {};
+  const {store: initialStore} = route.params || {};
   const [store, setStore] = useState(initialStore);
-  const [storeLoading, setStoreLoading] = useState(false);
-  const [description, setDescription] = useState('Description');
-  const [amount, setAmount] = useState('');
-  const [other, setOthers] = useState('');
-  const [loading, setLoading] = useState(false);
   const [expenses, setExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  
+  // Filter states
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [staffFilter, setStaffFilter] = useState('all');
+  const [allExpenses, setAllExpenses] = useState([]);
 
-  // Effect to fetch store data and expenses when screen is focused
-  useEffect(() => {
-    const handleScreenFocus = async () => {
-      // First fetch the latest store data if we have an ID
-      if (initialStore && initialStore.id) {
-        console.log('Screen focused - fetching latest store data...');
-        const updatedStore = await fetchStoreData(initialStore.id);
-        // After getting store data, fetch expenses
-        if (updatedStore) {
-          fetchExpenses();
-        }
-      } else {
-        console.log('No store ID available for fetching');
-      }
-    };
-
-    // Add focus listener
-    const unsubscribe = navigation.addListener('focus', handleScreenFocus);
-
-    // Initial load
-    handleScreenFocus();
-
-    return unsubscribe;
-  }, [navigation, initialStore?.id]);
-
-  const [filter, setFilter] = useState('Today');
-  const [attendant, setAttendant] = useState('');
-  const [attendant_info, setAttendantInfo] = useState([]);
-  const [specificDate, setSpecificDatePicker] = useState(false);
+  // Form state
+  const [description, setDescription] = useState('');
+  const [other, setOthers] = useState('');
+  const [amount, setAmount] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const descriptions = [
     'Rental Expense',
@@ -78,714 +62,641 @@ const ExpensesScreen = ({navigation, route}) => {
     'Others please specify',
   ];
 
-  // Fetch store data to ensure we have the latest info
-  const fetchStoreData = async storeId => {
-    if (!storeId) {
-      console.log('Cannot fetch store: Store ID is missing');
-      return null;
+  const timeFilterOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Today', value: 'today' },
+    { label: 'This Week', value: 'week' },
+    { label: 'This Month', value: 'month' },
+    { label: 'This Year', value: 'year' },
+  ];
+
+  const staffFilterOptions = [
+    { label: 'All Staff', value: 'all' },
+    { label: 'Admin', value: 'admin' },
+    { label: 'Cashier', value: 'cashier' }
+  ];
+
+  const fetchAllData = async () => {
+    if (!initialStore?.id) {
+      setLoading(false);
+      return;
     }
-
-    setStoreLoading(true);
+    setLoading(true);
     try {
-      console.log(`Fetching store data for ID: ${storeId}`);
-
-      // Use timeout protection
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const result = await client.graphql({
+      const storeResult = await client.graphql({
         query: getStore,
-        variables: {id: storeId},
-        abortSignal: controller.signal,
+        variables: {id: initialStore.id},
       });
+      const currentStore = storeResult.data.getStore;
+      setStore(currentStore);
 
-      clearTimeout(timeoutId);
-
-      if (result?.data?.getStore) {
-        const storeData = result.data.getStore;
-        console.log(`Fetched store: ${storeData.name}`);
-        setStore(storeData);
-        return storeData;
-      } else {
-        console.log('No store data returned');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error fetching store:', error);
-      return null;
-    } finally {
-      setStoreLoading(false);
-    }
-  };
-
-  const fetchExpenses = async () => {
-    if (!store || !store.id) {
-      console.log('Cannot fetch expenses: Store ID is missing');
-      return;
-    }
-
-    try {
-      console.log(`Fetching expenses for store ID: ${store.id}`);
-
-      // Use a simplified query with timeout protection
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const result = await client.graphql({
+      const expensesResult = await client.graphql({
         query: listExpenses,
-        variables: {filter: {storeId: {eq: store.id}}},
-        abortSignal: controller.signal,
+        variables: {filter: {storeId: {eq: initialStore.id}}},
       });
-
-      clearTimeout(timeoutId);
-
-      if (result && result.data && result.data.listExpenses) {
-        const expenseList = result.data.listExpenses.items;
-        console.log(
-          `Fetched ${expenseList.length} expenses for store ${store.id}`,
-        );
-        setExpenses(expenseList);
-      } else {
-        console.log('No expenses data in response');
-        setExpenses([]);
-      }
+      const fetchedExpenses = expensesResult.data.listExpenses.items || [];
+      setAllExpenses(fetchedExpenses);
+      setExpenses(fetchedExpenses);
+      setFilteredExpenses(fetchedExpenses);
     } catch (error) {
-      console.error('Error fetching expenses:', error);
-      setExpenses([]); // Set empty array in case of error
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const saveExpense = async () => {
-    // Validation checks
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchAllData();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleSaveExpense = async () => {
     if (!description || !amount) {
-      console.log('Description and Amount are required!');
       return;
     }
-
+    setIsSaving(true);
     try {
-      console.log('Beginning expense creation...');
+      const {userId} = await getCurrentUser();
+      const expenseName = description === 'Others please specify' ? other : description;
 
-      // Get authenticated user info for the ownerId
-      let ownerId = store.ownerId;
-      try {
-        const currentUser = await getCurrentUser();
-        console.log('Current authenticated user:', currentUser.username);
-        // Use userId from authenticated user if available (preferred by system)
-        ownerId = currentUser.userId || store.ownerId;
-      } catch (authError) {
-        console.log('No authenticated user found, using store owner ID');
-      }
-
-      // Properly construct the expense object with required fields
       const newExpense = {
-        name: description,
+        name: expenseName,
         storeId: store.id,
         category: description,
         staffName: 'Admin',
-        staffId: 'Admin',
+        staffId: userId,
         amount: parseFloat(amount),
         date: new Date().toISOString(),
-        ownerId: ownerId || store.ownerId || 'Admin', // Use authenticated user ID or store owner ID
-        notes: '',
+        ownerId: userId,
       };
 
-      console.log(
-        'Expense object prepared, attempting creation with direct mutation...',
-      );
-
-      // Try using direct mutation string to avoid potential client issues
-      const mutationString = /* GraphQL */ `
-        mutation CreateExpenseDirectly($input: CreateExpenseInput!) {
-          createExpense(input: $input) {
-            id
-            name
-          }
-        }
-      `;
-
-      // Execute with a timeout of 10 seconds
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const result = await client.graphql({
-        query: mutationString,
+      await client.graphql({
+        query: createExpense,
         variables: {input: newExpense},
-        abortSignal: controller.signal,
       });
 
-      clearTimeout(timeoutId); // Clear the timeout if successful
-
-      console.log('Expense created successfully:', result);
-
-      // Reset form fields and reload data
+      // Reset form and close modal
+      setDescription('');
+      setOthers('');
       setAmount('');
-      fetchExpenses();
+      setModalVisible(false);
+      fetchAllData(); // Refresh expenses list
     } catch (error) {
-      console.error('Error saving Expense:', error);
-      console.log('Failed to save Expense. Please try again.');
+      console.error('Error saving expense:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const calculateTotal = () => {
-    let total = 0;
-    expenses.forEach(item => {
-      total += parseFloat(item.amount || 0);
-    });
-
-    return total;
+    return filteredExpenses.reduce((total, item) => total + (item.amount || 0), 0);
   };
 
-  const renderItem = ({item}) => {
-    // Add safety check for missing data
-    if (!item) {
-      return null;
+  const applyFilters = () => {
+    let results = [...allExpenses];
+    
+    // Apply time filter
+    if (timeFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      results = results.filter(item => {
+        const expenseDate = new Date(item.date);
+        
+        switch(timeFilter) {
+          case 'today':
+            return expenseDate >= today;
+          case 'week':
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+            return expenseDate >= weekStart;
+          case 'month':
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            return expenseDate >= monthStart;
+          case 'year':
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            return expenseDate >= yearStart;
+          default:
+            return true;
+        }
+      });
     }
+    
+    // Apply staff filter
+    if (staffFilter !== 'all') {
+      results = results.filter(item => {
+        if (staffFilter === 'admin') {
+          return item.staffName?.toLowerCase().includes('admin');
+        } else if (staffFilter === 'cashier') {
+          return item.staffName?.toLowerCase().includes('cashier');
+        }
+        return true;
+      });
+    }
+    
+    setFilteredExpenses(results);
+    setFilterModalVisible(false);
+  };
+  
+  useEffect(() => {
+    applyFilters();
+  }, [timeFilter, staffFilter, allExpenses]);
 
+  const renderItem = ({item}) => {
+    const date = new Date(item.date);
+    const formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
+    
     return (
-      <Row
-        style={{
-          height: 40,
-          shadowColor: '#EBECF0',
-          marginVertical: 1.5,
-          marginHorizontal: 5,
-          backgroundColor: 'white',
-        }}>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.name || 'Unknown'}</Text>
+      <Row style={styles.tableRow}>
+        <Col style={styles.descriptionCol}>
+          <View>
+            <Text style={styles.tableCellText}>{item.name}</Text>
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          </View>
         </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {formatMoney(item.amount || 0, {symbol: '₱', precision: 2})}
+        <Col style={styles.amountCol}>
+          <Text style={styles.amountText}>
+            {formatMoney(item.amount, {symbol: '₱', precision: 2})}
           </Text>
         </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.staffName || 'Unknown'}</Text>
+        <Col style={styles.staffCol}>
+          <View style={styles.staffBadge}>
+            <Text style={styles.staffText}>{item.staffName}</Text>
+          </View>
         </Col>
       </Row>
     );
   };
 
+  if (loading && !store) {
+    return (
+      <View style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
-    <View style={{flex: 1}}>
-      <AppHeader
-        centerText="Expenses"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={
-          <ModalInputForm
-            displayComponent={
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}>
-                <EvilIcons
-                  style={{textAlign: 'center'}}
-                  name={'plus'}
-                  size={30}
-                  color={colors.white}
-                />
-                <Text
-                  style={{
-                    color: colors.white,
-                    textAlign: 'center',
-                    marginLeft: 3,
-                  }}>
-                  Admin Expense
-                </Text>
-              </View>
-            }
-            title="Add Expenses"
-            onSave={saveExpense}>
+    <View style={styles.container}>
+      <Appbar
+        title={`Expenses`}
+        subtitle={store?.name || ''}
+        onBack={() => navigation.goBack()}
+      />
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.centeredView}>
+          <View style={styles.modalView2}>
+            <Title style={styles.modalTitle}>Add New Expense</Title>
             <SelectDropdown
               data={descriptions}
-              defaultButtonText={description}
-              onSelect={(selectedItem, index) => {
-                setDescription(selectedItem);
-              }}
-              buttonTextAfterSelection={(selectedItem, index) => {
-                // text represented after item is selected
-                // if data array is an array of objects then return selectedItem.property to render after item is selected
-                return selectedItem;
-              }}
-              rowTextForSelection={(item, index) => {
-                // text represented for each item in dropdown
-                // if data array is an array of objects then return item.property to represent item in dropdown
-                return item;
-              }}
-              buttonStyle={{
-                marginTop: 5,
-                width: '100%',
-                height: 56,
-                backgroundColor: '#FFF',
-                borderRadius: 5,
-                borderWidth: 1,
-                borderColor: '#444',
-              }}
-              buttonTextStyle={{textAlign: 'left', color: 'grey', fontSize: 15}}
+              onSelect={selectedItem => setDescription(selectedItem)}
+              defaultButtonText="Select expense type"
+              buttonStyle={styles.dropdown}
+              buttonTextStyle={styles.dropdownText}
+              renderDropdownIcon={isOpened => (
+                <Feather
+                  name={isOpened ? 'chevron-up' : 'chevron-down'}
+                  color={'#444'}
+                  size={18}
+                />
+              )}
+              dropdownIconPosition={'right'}
             />
-            {description === 'Others please specify' ? (
+            {description === 'Others please specify' && (
               <TextInput
+                label="Specify Other Expense"
+                value={other}
+                onChangeText={setOthers}
+                style={styles.input}
                 mode="outlined"
-                label="Please specify"
-                placeholder="Please specify"
-                onChangeText={text => setOthers(text)}
               />
-            ) : null}
+            )}
             <TextInput
-              mode="outlined"
               label="Amount"
-              placeholder="Amount"
-              onChangeText={text => setAmount(text)}
+              value={amount}
+              onChangeText={setAmount}
+              style={styles.input}
+              keyboardType="numeric"
+              mode="outlined"
             />
-          </ModalInputForm>
-        }
-      />
-      <View style={{flexDirection: 'column'}}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-evenly',
-            marginBottom: 5,
-          }}>
-          <TouchableOpacity style={styles.filterStyle}>
-            <ModalInputForm
-              displayComponent={
-                <View style={{flexDirection: 'row'}}>
-                  <Feather
-                    style={{textAlign: 'center', paddingRight: 10}}
-                    name={'users'}
-                    size={20}
-                    color={colors.black}
-                  />
-                  <Text
-                    style={{
-                      paddingLeft: 10,
-                      borderLeftWidth: 1,
-                      color: colors.black,
-                      fontWeight: '700',
-                    }}>
-                    {attendant.length === 0 ? 'Select Attendant' : attendant}
-                  </Text>
-                </View>
-              }
-              title="Select Attendant"
-              onSave={() => {}}>
-              <ScrollView>
-                {[].map(
-                  (item, index) =>
-                    item.store_id === STORE._id && (
-                      <TouchableOpacity
-                        style={
-                          item.name === attendant
-                            ? [styles.storeList, {borderColor: colors.accent}]
-                            : styles.storeList
-                        }
-                        onPress={() => {
-                          setAttendant(item.name), setAttendantInfo(item);
-                        }}>
-                        <Text
-                          style={{
-                            textAlign: 'center',
-                            fontWeight: '700',
-                            fontSize: 17,
-                            textTransform: 'uppercase',
-                          }}>
-                          {item.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ),
-                )}
-                <TouchableOpacity
-                  style={
-                    attendant === 'Admin'
-                      ? [styles.storeList, {borderColor: colors.accent}]
-                      : styles.storeList
-                  }
-                  onPress={() => {
-                    setAttendant('Admin'), setAttendantInfo({_id: 'Admin'});
-                  }}>
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      fontWeight: '700',
-                      fontSize: 17,
-                      textTransform: 'uppercase',
-                    }}>
-                    Admin
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </ModalInputForm>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.filterStyle}>
-            <ModalInputForm
-              displayComponent={
-                <View style={{flexDirection: 'row'}}>
-                  <EvilIcons
-                    style={{
-                      textAlign: 'center',
-                      paddingRight: 10,
-                      paddingLeft: 10,
-                    }}
-                    name={'calendar'}
-                    size={30}
-                    color={colors.coverDark}
-                  />
-                  <Text
-                    style={{
-                      flex: 2,
-                      paddingLeft: 10,
-                      borderLeftWidth: 1,
-                      color: colors.black,
-                      fontWeight: '700',
-                    }}>
-                    {filter.length === 0 ? 'Select Date' : filter}
-                  </Text>
-                </View>
-              }
-              title="Select Date"
-              onSave={() => {}}>
-              <View style={{marginVertical: 10}}>
-                <Text
-                  style={{
-                    textAlign: 'center',
-                    fontSize: 16,
-                    fontWeight: '700',
-                  }}>
-                  Custom Date
-                </Text>
-              </View>
-
-              <View
-                style={{justifyContent: 'space-evenly', flexDirection: 'row'}}>
-                <TouchableOpacity
-                  style={
-                    filter === 'Today'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('Today')}>
-                  <Text
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                      textAlign: 'center',
-                    }}>
-                    {' '}
-                    Today
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={
-                    filter === 'Yesterday'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('Yesterday')}>
-                  <Text
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                      textAlign: 'center',
-                    }}>
-                    {' '}
-                    Yesterday
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                style={{justifyContent: 'space-evenly', flexDirection: 'row'}}>
-                <TouchableOpacity
-                  style={
-                    filter === 'This Week'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('This Week')}>
-                  <Text
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                      textAlign: 'center',
-                    }}>
-                    {' '}
-                    This Week
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={
-                    filter === 'Last Week'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('Last Week')}>
-                  <Text style={{paddingVertical: 5, paddingHorizontal: 3}}>
-                    {' '}
-                    Last Week
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                style={{justifyContent: 'space-evenly', flexDirection: 'row'}}>
-                <TouchableOpacity
-                  style={
-                    filter === 'This Month'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('This Month')}>
-                  <Text
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                      textAlign: 'center',
-                    }}>
-                    {' '}
-                    This Month
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={
-                    filter === 'Last Month'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('Last Month')}>
-                  <Text style={{paddingVertical: 5, paddingHorizontal: 3}}>
-                    {' '}
-                    Last Month
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                style={{justifyContent: 'space-evenly', flexDirection: 'row'}}>
-                <TouchableOpacity
-                  style={
-                    filter === 'This Year'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('This Year')}>
-                  <Text
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                      textAlign: 'center',
-                    }}>
-                    {' '}
-                    This Year
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={
-                    filter === 'Last Year'
-                      ? styles.dateFilter
-                      : [styles.dateFilter, {backgroundColor: colors.white}]
-                  }
-                  onPress={() => setFilter('Last Year')}>
-                  <Text style={{paddingVertical: 5, paddingHorizontal: 3}}>
-                    {' '}
-                    Last Year
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={{marginVertical: 10}}>
-                <Text
-                  style={{
-                    textAlign: 'center',
-                    fontSize: 16,
-                    fontWeight: '700',
-                  }}>
-                  Specific Date
-                </Text>
-              </View>
-              <View
-                style={{
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  marginHorizontal: 40,
-                }}>
-                <TouchableOpacity
-                  style={{
-                    borderWidth: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    flex: 1,
-                    marginHorizontal: 2,
-                  }}
-                  onPress={() => setSpecificDatePicker(true)}>
-                  <EvilIcons
-                    name={'calendar'}
-                    size={30}
-                    color={colors.boldGrey}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: '900',
-                      textAlign: 'center',
-                      paddingVertical: 5,
-                      paddingHorizontal: 3,
-                    }}>
-                    Specific Date
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {/*
-            <View style={{marginVertical: 10}}>
-                <Text style={{textAlign: 'center', fontSize: 16, fontWeight:'700'}}>Custom Filter</Text>
-              </View>
-              <View style={{justifyContent:'space-evenly', flexDirection:'row'}}>
-              <TouchableOpacity style={{borderWidth: 1, flexDirection:'row', alignItems:'center', flex: 1, marginHorizontal: 2}}onPress={() => setCustomPicker1(true)}>
-              <EvilIcons name={'calendar'} size={30} color={colors.boldGrey}/>
-               <Text style={{fontSize:15, fontWeight:'900', textAlign:'center', paddingVertical: 5, paddingHorizontal:3}}>
-                       Start Date
-                   </Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={{borderWidth: 1, flexDirection:'row', alignItems:'center', flex: 1, marginHorizontal: 2}} onPress={() => setCustomPicker2(true)}>
-               <EvilIcons name={'calendar'} size={30} color={colors.boldGrey}/>
-
-               <Text style={{fontSize:15, fontWeight:'900', textAlign:'center', paddingVertical: 5, paddingHorizontal:3}}>
-                       End Date
-                   </Text>
-               </TouchableOpacity>
-              </View>
-              */}
-            </ModalInputForm>
-          </TouchableOpacity>
+            <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={() => setModalVisible(false)}
+                style={[styles.modalButton,{backgroundColor: colors.red}]}
+                labelStyle={{color: colors.white}}
+                mode="flat">
+                Cancel
+              </Button>
+              <Button
+                onPress={handleSaveExpense}
+                style={[styles.modalButton,{backgroundColor: colors.secondary}]}
+                mode="contained"
+                loading={isSaving}
+                disabled={isSaving}>
+                Save
+              </Button>
+            </View>
+          </View>
         </View>
+      </Modal>
+
+      <Cards>
+        <View style={styles.filtersContainer}>
+          <View style={styles.modalView}>
+            <Text style={styles.filterLabel}>Time Period:</Text>
+            <SelectDropdown
+              data={timeFilterOptions}
+              onSelect={selectedItem => setTimeFilter(selectedItem.value)}
+              defaultButtonText="Select time period"
+              buttonStyle={styles.dropdown}
+              buttonTextStyle={styles.dropdownText}
+              defaultValue={timeFilterOptions.find(
+                opt => opt.value === timeFilter,
+              )}
+              rowTextForSelection={item => item.label}
+              buttonTextAfterSelection={selectedItem => selectedItem.label}
+              renderDropdownIcon={isOpened => (
+                <Feather
+                  name={isOpened ? 'chevron-up' : 'chevron-down'}
+                  color={'#444'}
+                  size={18}
+                />
+              )}
+              dropdownIconPosition={'right'}
+            />
+          </View>
+          <View style={styles.modalView}>
+            <Text style={styles.filterLabel}>Staff Role:</Text>
+            <SelectDropdown
+              data={staffFilterOptions}
+              onSelect={selectedItem => setStaffFilter(selectedItem.value)}
+              defaultButtonText="Select staff role"
+              buttonStyle={styles.dropdown}
+              buttonTextStyle={styles.dropdownText}
+              defaultValue={staffFilterOptions.find(
+                opt => opt.value === staffFilter,
+              )}
+              rowTextForSelection={item => item.label}
+              buttonTextAfterSelection={selectedItem => selectedItem.label}
+              renderDropdownIcon={isOpened => (
+                <Feather
+                  name={isOpened ? 'chevron-up' : 'chevron-down'}
+                  color={'#444'}
+                  size={18}
+                />
+              )}
+              dropdownIconPosition={'right'}
+            />
+          </View>
+          <View style={styles.modalView}>
+           <View style={styles.modalButtonContainer}>
+              <Button
+                onPress={applyFilters}
+                style={styles.modalButton}
+                labelStyle={styles.modalButtonText}
+                mode="contained">
+                Apply Filters
+              </Button>
+           </View>
+          </View>
+        </View>
+      </Cards>
+
+      <View style={styles.contentContainer}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading expenses...</Text>
+          </View>
+        ) : filteredExpenses.length > 0 ? (
+          <>
+            <DataTable
+              headerTitles={['Description', 'Amount', 'Staff']}
+              total={calculateTotal()}
+              alignment="center"
+              colStyle={[
+                styles.descriptionCol,
+                styles.amountCol,
+                styles.staffCol,
+              ]}>
+              <FlatList
+                data={filteredExpenses}
+                keyExtractor={item => item.id}
+                renderItem={renderItem}
+                contentContainerStyle={styles.listContent}
+              />
+            </DataTable>
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No expenses recorded yet.</Text>
+          </View>
+        )}
       </View>
-      <DataTable
-        headerTitles={['Description', 'Amount', 'Staff']}
-        total={calculateTotal()}
-        alignment="center">
-        <FlatList
-          keyExtractor={key => key.uid}
-          data={expenses}
-          renderItem={renderItem}
-        />
-      </DataTable>
-      {/* <Modal animationType={'slide'} visible={specificDate} transparent>
-                   <View style={{ flex: 1 ,flexDirection: 'column', justifyContent: 'flex-end'}}>
-                        <View style={{ height: "30%" ,width: '100%',  justifyContent:"center"}}>
-                            <DatePicker
-                                monthDisplayMode={'en-long'}
-                                minDate={'2020-03-06'}
-                                                    confirm={date => {
-                                       setSpecificDate(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY')),
-                                       setSpecificDatePicker(false)
-                                       setFilter(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY'))
-                                       setFilter(moment(date,'YYYY-MM-DD').format('MMMM DD, YYYY'))
-                                    }}
-                                    cancel={date => {
-                                      setSpecificDatePicker(false)
-                                    }}
-                                titleText="Select Start Date"
-                                cancelText="Cancel"
-                                toolBarStyle={{backgroundColor: colors.accent}}
-                                />
-                    </View>
-                    </View>
-          </Modal> */}
+
+      <FAB
+        style={styles.fab}
+        icon="plus"
+        color="#fff"
+        onPress={() => setModalVisible(true)}
+      />
     </View>
   );
 };
 
-ExpensesScreen.navigationOptions = () => {
-  return {
-    headerShown: false,
-  };
-};
-
 const styles = StyleSheet.create({
-  text: {
-    fontSize: 30,
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fd',
   },
-  ColStyle: {
-    width: 120,
+  centeredContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  textColor: {
-    fontSize: 14,
-    color: colors.black,
-    textAlign: 'center',
+  contentContainer: {
+    flex: 1,
+    padding: 5,
   },
-
-  avatarStyle: {
-    borderColor: colors.accent,
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderRadius: 20,
-    backgroundColor: colors.white,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  listStyle: {
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: colors.primary,
+  },
+  summaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    borderColor: colors.accent,
-    borderWidth: 1,
-    shadowColor: '#EBECF0',
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    marginTop: 5,
+  },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    width: '48%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 16,
+    backgroundColor: colors.secondary,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderRadius: 30,
+    marginBottom: 80,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalView: {
+    width: '30%',
+    justifyContent: 'center',
+  },
+  modalView2: {
+    width: '30%',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxWidth: 500,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 5,
+      height: 3,
     },
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
-    elevation: 5,
-    paddingVertical: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    paddingHorizontal: 10,
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+  },
+  modalTitle: {
+    marginBottom: 5,
+    textAlign: 'center',
+    color: colors.primary,
+    fontSize: 22,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  input: {
+    width: '100%',
+    marginBottom: 15,
+    backgroundColor: 'white',
     borderRadius: 10,
   },
-  filterStyle: {
-    backgroundColor: colors.white,
-    paddingVertical: 9,
-    width: '45%',
-    borderRadius: 5,
-    shadowColor: '#EBECF0',
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
-    elevation: 5,
-    borderColor: colors.white,
+  dropdown: {
+    width: '100%',
+    height: 40,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#e0e0e0',
+
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
   },
-  storeList: {
-    flex: 1,
-    borderColor: colors.boldGrey,
-    borderWidth: 1,
-    paddingVertical: 8,
-    marginVertical: 5,
-    borderRadius: 5,
-    backgroundColor: colors.white,
-    shadowColor: '#EBECF0',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
+  dropdownText: {
+    color: '#333',
+    textAlign: 'left',
+    fontSize: 14,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginTop: 20,
+  },
+  modalButton: {
+    marginLeft: 10,
+    minWidth: 100,
+    backgroundColor: colors.secondary,
+  },
+  tableRow: {
+    minHeight: 50,
+    marginHorizontal: 5,
+    marginVertical: 4,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    borderBottomWidth: 0,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    width: screenWidth - 10, // Adjust for horizontal margin
   },
-  dateFilter: {
-    borderWidth: 1,
-    borderRadius: 5,
+  listContent: {
+    paddingBottom: 15,
+  },
+  descriptionCol: {
+    width: screenWidth * 0.5,
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  amountCol: {
+    width: screenWidth * 0.25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  staffCol: {
+    width: screenWidth * 0.25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tableCellText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+  },
+  amountText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  staffBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  staffText: {
+    fontSize: 12,
+    color: '#555',
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderRadius: 20,
+  },
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 25,
+    elevation: 1,
+  },
+  filterButtonText: {
+    color: '#fff',
+    marginLeft: 5,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  activeFiltersContainer: {
     flex: 1,
-    margin: 2,
-    justifyContent: 'center',
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
+    marginLeft: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  filterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f4ff',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    marginRight: 5,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: '#e6eeff',
+  },
+  filterIcon: {
+    marginRight: 4,
+  },
+  activeFilterText: {
+    fontSize: 12,
+    color: '#555',
+    fontWeight: '500',
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+
+    marginBottom: 5,
+    color: colors.primary,
+  },
+  footerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    backgroundColor: colors.primary,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  footerText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  footerTotal: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

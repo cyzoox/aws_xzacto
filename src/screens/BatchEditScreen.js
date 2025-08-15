@@ -7,6 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import {
   DataTable,
@@ -214,8 +216,7 @@ const BatchEditScreen = ({navigation, route}) => {
       return;
     }
 
-    setLoadingVariants(true);
-    setLoadingAddons(true);
+    setLoading(true);
     try {
       console.log('Fetching product details for:', productId);
       const result = await client.graphql({
@@ -260,8 +261,7 @@ const BatchEditScreen = ({navigation, route}) => {
     } catch (error) {
       console.error('Error fetching product details:', error);
     } finally {
-      setLoadingVariants(false);
-      setLoadingAddons(false);
+      setLoading(false);
     }
   };
 
@@ -840,10 +840,12 @@ const BatchEditScreen = ({navigation, route}) => {
   }
 
   return (
-    <View style={styles.container}>
-      <Appbar title="Batch Edit Products" onBack={() => navigation.goBack()} />
-
-      <View style={styles.content}>
+    <SafeAreaView style={styles.container}>
+      <Appbar
+        title="Batch Edit Products"
+        onBack={() => navigation.goBack()}
+      />
+      <View style={[styles.content, {paddingBottom: 120}]}>
         {renderVariantsModal()}
         {renderAddonsModal()}
         <ScrollView horizontal>
@@ -871,7 +873,8 @@ const BatchEditScreen = ({navigation, route}) => {
                             <TextInput
                               style={styles.cellInput}
                               value={
-                                editedProducts[product.id]?.name ?? product.name
+                                editedProducts[product.id]?.name ??
+                                product.name
                               }
                               onChangeText={text =>
                                 handleInputChange(product.id, 'name', text)
@@ -904,7 +907,8 @@ const BatchEditScreen = ({navigation, route}) => {
                             <TextInput
                               style={styles.cellInput}
                               value={
-                                editedProducts[product.id]?.sku ?? product.sku
+                                editedProducts[product.id]?.sku ??
+                                product.sku
                               }
                               onChangeText={text =>
                                 handleInputChange(product.id, 'sku', text)
@@ -1064,18 +1068,26 @@ const BatchEditScreen = ({navigation, route}) => {
           label={`${page + 1} of ${Math.ceil(products.length / itemsPerPage)}`}
         />
 
-        <View style={styles.footer}>
-          <Button
-            mode="contained"
-            onPress={saveChanges}
-            loading={saving}
-            disabled={saving || Object.keys(editedProducts).length === 0}
-            style={styles.saveButton}>
-            Save Changes
-          </Button>
-        </View>
+        {/* Add space at the bottom so content isn't hidden */}
+        <View style={{height: 100}} />
       </View>
-    </View>
+
+      {/* FAB style save button with increased z-index and elevation */}
+      <TouchableOpacity 
+        style={styles.fabContainer}
+        onPress={saveChanges}
+        disabled={saving || Object.keys(editedProducts).length === 0}>
+        <View style={[styles.fab, 
+          (saving || Object.keys(editedProducts).length === 0) && styles.fabDisabled
+        ]}>
+          {saving ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.fabText}>Save Changes</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 };
 
@@ -1083,7 +1095,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingBottom: 16,
+    position: 'relative',
   },
   content: {
     flex: 1,
@@ -1209,8 +1221,39 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#ddd',
   },
-  saveButton: {
+  fabContainer: {
+    position: 'absolute',
+    right: 0,
+    left: 0,
+    bottom: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  fab: {
+    backgroundColor: colors.secondary,
     borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    width: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabDisabled: {
+    backgroundColor: '#B0BEC5',
+    elevation: 4,
+    shadowOpacity: 0.15,
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   dropdownButton: {
     height: 40,

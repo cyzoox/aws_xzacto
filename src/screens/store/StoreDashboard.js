@@ -250,62 +250,31 @@ const StoreDashboard = ({navigation, route}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.enhancedAppbar}>
-        <View style={styles.appbarTop}>
-          <Appbar
-            title={`${store.name} Dashboard`}
-            onBack={() => navigation.goBack()}
-          />
-        </View>
+      <Appbar
+        title={'Store Dashboard'}
+        subtitle={store.name}
+        onBack={() => navigation.goBack()}
+        onMenuPress={() => navigation.toggleDrawer()}
+      />
 
-        {/* New Info Bar */}
-        <View style={styles.infoBar}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Daily Sales</Text>
-            <Text style={styles.infoValue}>
-              ${formatMoney(salesStats.totalSales, {symbol: '', precision: 2})}
-            </Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Orders</Text>
-            <Text style={styles.infoValue}>{salesStats.orderCount}</Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Avg. Order</Text>
-            <Text style={styles.infoValue}>
-              $
-              {formatMoney(salesStats.averageOrder, {symbol: '', precision: 2})}
-            </Text>
-          </View>
-        </View>
-
-        {/* Shortcuts Bar */}
-        <View style={styles.shortcutsBar}>
-          <TouchableOpacity
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('NewOrder', {store})}>
-            <Ionicons name="cart-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>New Sale</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('BillsAndReceipt', {store})}>
-            <Ionicons name="receipt-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>Bills & Receipts</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.shortcutButton}
-            onPress={() => navigation.navigate('SummaryReport', {store})}>
-            <Ionicons name="stats-chart-outline" size={22} color="#fff" />
-            <Text style={styles.shortcutText}>Reports</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Menu Tiles - Positioned at the top */}
+        <CardTiles
+          tiles={[
+            {text: 'Products', routeName: 'ProductDashboard'},
+            {text: 'Deliveries', routeName: 'DeliveryRequest'},
+            {text: 'Suppliers', routeName: 'Supplier'},
+            {text: 'Staffs', routeName: 'Staffs'},
+            {text: 'Customers', routeName: 'Customers'},
+            {text: 'Expenses', routeName: 'Expenses'},
+            {text: 'Reports', routeName: 'Reports'},
+            {text: 'Credits', routeName: 'CreditScreen'},
+            {text: 'Bills', routeName: 'BillsAndReceipt'},
+            {text: 'Settings', routeName: 'Settings'},
+          ]}
+          extraProps={store}
+          numColumns={5}
+        />
         {/* Time Period Selector */}
         <View style={styles.periodSelector}>
           <TouchableOpacity
@@ -445,51 +414,6 @@ const StoreDashboard = ({navigation, route}) => {
             </View>
           )}
         </View>
-        <CardTiles
-          rightTileText="Products"
-          leftTileText="Reports"
-          iconRightName="md-barcode-outline"
-          iconLeftName="../../../assets/xzacto_icons/warehouseicons/report.png"
-          leftRouteName="Reports"
-          rightRouteName="ProductDashboard"
-          centerTileText="Expenses"
-          centerRouteName="Expenses"
-          iconCenterName="document-text-outline"
-          onRightPress={() => navigation.navigate('ProductDashboard', {store})}
-          onLeftPress={() => navigation.navigate('Reports', {store})}
-          onCenterPress={() => navigation.navigate('Expenses', {store})}
-          extraProps={store}
-        />
-        <CardTiles
-          leftTileText="Suppliers"
-          iconLeftName="../../../assets/xzacto_icons/warehouseicons/report.png"
-          leftRouteName="Supplier"
-          centerTileText="Settings"
-          centerRouteName="Settings"
-          iconCenterName="settings-outline"
-          rightTileText="Delivery"
-          iconRightName="md-people-circle-outline"
-          rightRouteName="DeliveryRequest"
-          onRightPress={() => navigation.navigate('DeliveryRequest', {store})}
-          onLeftPress={() => navigation.navigate('Supplier', {store})}
-          onCenterPress={() => navigation.navigate('Settings', {store})}
-          extraProps={store}
-        />
-        <CardTiles
-          rightTileText="Staff"
-          leftTileText="Bills"
-          iconRightName="md-people-circle-outline"
-          iconLeftName="../../../assets/xzacto_icons/warehouseicons/report.png"
-          leftRouteName="BillsAndReceipt"
-          rightRouteName="Staffs"
-          centerTileText="Customers"
-          centerRouteName="Customers"
-          iconCenterName="md-people-circle-outline"
-          onRightPress={() => navigation.navigate('Staffs', {store, staff})}
-          onLeftPress={() => navigation.navigate('BillsAndReceipt', {store})}
-          onCenterPress={() => navigation.navigate('Customers', {store})}
-          extraProps={store}
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -499,6 +423,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    marginBottom: 80,
   },
   enhancedAppbar: {
     backgroundColor: '#3A6EA5',
@@ -506,6 +431,18 @@ const styles = StyleSheet.create({
   },
   appbarTop: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 48, // Balance space with back button
+  },
+  dashboardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   infoBar: {
     flexDirection: 'row',

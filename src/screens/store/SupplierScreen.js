@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   withAuthenticator,
@@ -22,6 +22,7 @@ import {
   Button,
   Overlay,
   SearchBar,
+  FAB,
 } from 'react-native-elements';
 import {
   createSupplier,
@@ -30,10 +31,10 @@ import {
 } from '../../graphql/mutations';
 import {listSuppliers} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
-import AppHeader from '../../components/AppHeader';
+import Appbar from '../../components/Appbar';
 import colors from '../../themes/colors';
-import ModalInputForm from '../../components/ModalInputForm';
-import {ModalInputForm1} from '../../components/ModalInputForm1';
+import {SafeAreaView} from 'react-native-safe-area-context';
+
 
 const userSelector = context => [context.user];
 const KEYS_TO_FILTERS = ['store_id'];
@@ -56,6 +57,7 @@ const Supplier = ({navigation, route}) => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [addModalVisible, setAddModalVisible] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
 
   // Fetch suppliers on component mount
@@ -247,7 +249,7 @@ const Supplier = ({navigation, route}) => {
         containerStyle={{
           borderColor: 'grey',
           borderStyle: 'solid',
-          borderWidth: 1,
+        
           borderRadius: 20,
           backgroundColor: colors.white,
         }}
@@ -275,54 +277,11 @@ const Supplier = ({navigation, route}) => {
   );
 
   return (
-    <View style={styles.container}>
-      <AppHeader
-        centerText="Supplier Management"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={
-          <ModalInputForm
-            title="Add New Supplier"
-            onSave={saveSupplier}
-            displayComponent={
-              <EvilIcons
-                style={{textAlign: 'center'}}
-                name={'plus'}
-                size={30}
-                color={colors.white}
-              />
-            }>
-            <TextInput
-              style={styles.input}
-              placeholder="Supplier Name"
-              value={supplierName}
-              onChangeText={text => setSupplierName(text)}
-            />
-            <View>
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number (format: +123456789)"
-                value={contact}
-                onChangeText={text => setContact(text)}
-                keyboardType="phone-pad"
-              />
-              <Text style={styles.helperText}>
-                Phone must begin with + (e.g., +639123456789)
-              </Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Email (Optional)"
-              value={address}
-              onChangeText={text => setAddress(text)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </ModalInputForm>
-        }
+    <SafeAreaView style={styles.container}>
+      <Appbar
+        title="Supplier Management"
+        subtitle={storeData.name || ''}
+        onBack={() => navigation.goBack()}
       />
 
       {/* Search Bar */}
@@ -349,10 +308,10 @@ const Supplier = ({navigation, route}) => {
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="person-search" size={60} color="#ccc" />
+              <MaterialIcons name="business" size={60} color="#ccc" />
               <Text style={styles.emptyText}>No suppliers found</Text>
               <Text style={styles.emptySubtext}>
-                Add your first supplier using the + button
+                Add your first supplier using the + button below
               </Text>
             </View>
           }
@@ -402,15 +361,87 @@ const Supplier = ({navigation, route}) => {
               onPress={() => setEditModalVisible(false)}
             />
             <Button
-              title="Save Changes"
+              title="Update"
               containerStyle={styles.modalButton}
               onPress={updateSupplierData}
-              loading={loading}
             />
           </View>
         </View>
       </Overlay>
-    </View>
+
+      {/* Add Supplier FAB */}
+      <FAB
+        placement="right"
+        color={colors.primary}
+        size="large"
+        icon={<Ionicons name="add" size={24} color="white" />}
+        onPress={() => {
+          // Reset form fields
+          setSupplierName('');
+          setContact('');
+          setAddress('');
+          
+          // Open Add Supplier Modal
+          setAddModalVisible(true);
+        }}
+        style={styles.fab}
+        buttonStyle={styles.fabButton}
+      />
+
+      {/* Add Supplier Modal */}
+      <Overlay
+        isVisible={addModalVisible}
+        onBackdropPress={() => setAddModalVisible(false)}
+        overlayStyle={styles.modalContainer}>
+        <View>
+          <Text style={styles.modalTitle}>Add New Supplier</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Supplier Name"
+            value={supplierName}
+            onChangeText={text => setSupplierName(text)}
+          />
+          <View>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number (format: +123456789)"
+              value={contact}
+              onChangeText={text => setContact(text)}
+              keyboardType="phone-pad"
+            />
+            <Text style={styles.helperText}>
+              Phone must begin with + (e.g., +639123456789)
+            </Text>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Email (Optional)"
+            value={address}
+            onChangeText={text => setAddress(text)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <View style={styles.modalButtonContainer}>
+            <Button
+              title="Cancel"
+              type="outline"
+              containerStyle={styles.modalButton}
+              onPress={() => setAddModalVisible(false)}
+            />
+            <Button
+              title="Save"
+              containerStyle={styles.modalButton}
+              onPress={() => {
+                saveSupplier();
+                setAddModalVisible(false);
+              }}
+            />
+          </View>
+        </View>
+      </Overlay>
+    </SafeAreaView>
   );
 };
 
@@ -418,6 +449,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 60, // Increased to accommodate bottom tab navigation
+  },
+  fabButton: {
+    height: 56,
+    width: 56,
+    borderRadius: 28,
   },
   searchContainer: {
     backgroundColor: 'transparent',
@@ -433,7 +475,8 @@ const styles = StyleSheet.create({
     height: 40,
   },
   listContainer: {
-    paddingBottom: 20,
+    paddingVertical: 12,
+    paddingBottom: 80, // Extra space for FAB
   },
   listStyle: {
     minHeight: 90,

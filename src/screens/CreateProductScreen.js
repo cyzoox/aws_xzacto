@@ -259,10 +259,13 @@ const CreateProductScreen = ({navigation, route}) => {
         JSON.stringify(productData, null, 2),
       );
       await dispatch(createProductWithDetails(productData));
-
-      Alert.alert('Success', 'Product created successfully', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      
+      // Skip the alert and navigate back immediately to avoid header flashing
+      navigation.navigate('ProductDashboard', {
+        store: currentStore,
+        refresh: true, // Add this flag to trigger refresh
+        timestamp: new Date().getTime() // Add timestamp to force refresh
+      });
     } catch (error) {
       console.error('Error creating product:', error);
       Alert.alert('Error', 'Failed to create product. Please try again.');

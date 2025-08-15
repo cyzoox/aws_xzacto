@@ -29,8 +29,29 @@
     tslib "^2.5.0"
     uuid "^9.0.0"
 
+"@aws-amplify/api-graphql@4.7.21":
+  version "4.7.21"
+  resolved "https://registry.npmjs.org/@aws-amplify/api-graphql/-/api-graphql-4.7.21.tgz"
+  integrity sha512-rSfXtFyCJQeevDGE7TbDgH2xQKvukc+zO+Q9YinevPkGpL9zY4kl9Y5BfxKB/vPCvxR2DQTjeNu4fMlsjt9Zgw==
+  dependencies:
+    "@aws-amplify/api-rest" "4.3.0"
+    "@aws-amplify/core" "6.13.1"
+    "@aws-amplify/data-schema" "^1.7.0"
+    "@aws-sdk/types" "3.387.0"
+    graphql "15.8.0"
+    rxjs "^7.8.1"
+    tslib "^2.5.0"
+    uuid "^11.0.0"
+
 "@aws-amplify/api-rest@4.0.51":
   version "4.0.51"
+  dependencies:
+    tslib "^2.5.0"
+
+"@aws-amplify/api-rest@4.3.0":
+  version "4.3.0"
+  resolved "https://registry.npmjs.org/@aws-amplify/api-rest/-/api-rest-4.3.0.tgz"
+  integrity sha512-gU8/uFOM5iwMN/FJV6UHSMij3tXQXO/cdtQsTuw5XfcwIeauAIefu5MUY6lTyJbIUny8IRbmjs8DjCUsms13Dw==
   dependencies:
     tslib "^2.5.0"
 
@@ -39,6 +60,17 @@
   dependencies:
     "@aws-amplify/api-graphql" "4.4.0"
     "@aws-amplify/api-rest" "4.0.51"
+    tslib "^2.5.0"
+
+"@aws-amplify/api@6.3.17":
+  version "6.3.17"
+  resolved "https://registry.npmjs.org/@aws-amplify/api/-/api-6.3.17.tgz"
+  integrity sha512-r7nmL7F8w60CAaSoOlX0YAUPCtxfHflhObe4XXGsAmXipcRi8xah/+ybGmwVLDp4J40dLir4bUaA84A/BW3doA==
+  dependencies:
+    "@aws-amplify/api-graphql" "4.7.21"
+    "@aws-amplify/api-rest" "4.3.0"
+    "@aws-amplify/data-schema" "^1.7.0"
+    rxjs "^7.8.1"
     tslib "^2.5.0"
 
 "@aws-amplify/auth@6.5.1":
@@ -58,6 +90,20 @@
     tslib "^2.5.0"
     uuid "^9.0.0"
 
+"@aws-amplify/core@6.13.1":
+  version "6.13.1"
+  resolved "https://registry.npmjs.org/@aws-amplify/core/-/core-6.13.1.tgz"
+  integrity sha512-PtSGhC7pv+xdr4Ozy6jzeZraB/kjBZiK9tOLOaBH5Trt0pBuLbh2mneE7a72xHGf64XJbl7v3MWPaVscb8KXkw==
+  dependencies:
+    "@aws-crypto/sha256-js" "5.2.0"
+    "@aws-sdk/types" "3.398.0"
+    "@smithy/util-hex-encoding" "2.0.0"
+    "@types/uuid" "^9.0.0"
+    js-cookie "^3.0.5"
+    rxjs "^7.8.1"
+    tslib "^2.5.0"
+    uuid "^11.0.0"
+
 "@aws-amplify/data-schema-types@*":
   version "1.1.1"
   dependencies:
@@ -73,8 +119,23 @@
     "@types/json-schema" "^7.0.15"
     rxjs "^7.8.1"
 
+"@aws-amplify/datastore@^5.0.88":
+  version "5.0.88"
+  resolved "https://registry.npmjs.org/@aws-amplify/datastore/-/datastore-5.0.88.tgz"
+  integrity sha512-kpmat3af05QBe488pv3Zo07iFVZjA9SkIa3ZJTb8OQYZw+iV717G94fnHnpGrt7+RyyMkxLsxN8NKbEsta9Xcg==
+  dependencies:
+    "@aws-amplify/api" "6.3.17"
+    "@aws-amplify/api-graphql" "4.7.21"
+    buffer "4.9.2"
+    idb "5.0.6"
+    immer "9.0.6"
+    rxjs "^7.8.1"
+    ulid "^2.3.0"
+
 "@aws-amplify/datastore@5.0.53":
   version "5.0.53"
+  resolved "https://registry.npmjs.org/@aws-amplify/datastore/-/datastore-5.0.53.tgz"
+  integrity sha512-O0WcHlY52mSsNWQ0rbJ2MpaTfnFUcOY2Sd5EJxaJvIplZSQq141x5oaNlhUINTaD6M0DvHTmL+lqwvWGcBXWnA==
   dependencies:
     "@aws-amplify/api" "6.0.53"
     buffer "4.9.2"
@@ -594,12 +655,16 @@
 
 "@aws-sdk/types@3.387.0":
   version "3.387.0"
+  resolved "https://registry.npmjs.org/@aws-sdk/types/-/types-3.387.0.tgz"
+  integrity sha512-YTjFabNwjTF+6yl88f0/tWff018qmmgMmjlw45s6sdVKueWxdxV68U7gepNLF2nhaQPZa6FDOBoA51NaviVs0Q==
   dependencies:
     "@smithy/types" "^2.1.0"
     tslib "^2.5.0"
 
 "@aws-sdk/types@3.398.0":
   version "3.398.0"
+  resolved "https://registry.npmjs.org/@aws-sdk/types/-/types-3.398.0.tgz"
+  integrity sha512-r44fkS+vsEgKCuEuTV+TIk0t0m5ZlXHNjSDYEUvzLStbbfUFiNus/YG4UCa0wOk9R7VuQI67badsvvPeVPCGDQ==
   dependencies:
     "@smithy/types" "^2.2.2"
     tslib "^2.5.0"
@@ -1537,6 +1602,14 @@
     deepmerge "^3.2.0"
     hoist-non-react-statics "^3.3.0"
 
+"@craftzdog/react-native-buffer@^6.0.5":
+  version "6.1.0"
+  resolved "https://registry.npmjs.org/@craftzdog/react-native-buffer/-/react-native-buffer-6.1.0.tgz"
+  integrity sha512-lJXdjZ7fTllLbzDrwg/FrJLjQ5sBcAgwcqgAB6OPpXTHdCenEhHZblQpfmBLLe7/S7m0yKXL3kN3jpwOEkpjGg==
+  dependencies:
+    ieee754 "^1.2.1"
+    react-native-quick-base64 "^2.0.5"
+
 "@egjs/hammerjs@^2.0.17":
   version "2.0.17"
   resolved "https://registry.npmjs.org/@egjs/hammerjs/-/hammerjs-2.0.17.tgz"
@@ -1843,10 +1916,10 @@
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
 
-"@react-native-async-storage/async-storage@^2.1.2":
-  version "2.1.2"
-  resolved "https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-2.1.2.tgz"
-  integrity sha512-dvlNq4AlGWC+ehtH12p65+17V0Dx7IecOWl6WanF2ja38O1Dcjjvn7jVzkUHJ5oWkQBlyASurTPlTHgKXyYiow==
+"@react-native-async-storage/async-storage@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-2.2.0.tgz"
+  integrity sha512-gvRvjR5JAaUZF8tv2Kcq/Gbt3JHwbKFYfmb445rhOj6NUMx3qPLixmDx5pZAyb9at1bYvJ4/eTUipU5aki45xw==
   dependencies:
     merge-options "^3.0.4"
 
@@ -2500,13 +2573,10 @@
     "@smithy/util-stream" "^3.1.9"
     tslib "^2.6.2"
 
-"@smithy/types@^2.1.0":
+"@smithy/types@^2.1.0", "@smithy/types@^2.2.2":
   version "2.12.0"
-  dependencies:
-    tslib "^2.6.2"
-
-"@smithy/types@^2.2.2":
-  version "2.12.0"
+  resolved "https://registry.npmjs.org/@smithy/types/-/types-2.12.0.tgz"
+  integrity sha512-QwYgloJ0sVNBeBuBs65cIkTbfzV/Q6ZNPCJ99EICFEdJYG50nGIY/uYXp+TbsdJReIuPr0a0kXmCvren3MbRRw==
   dependencies:
     tslib "^2.6.2"
 
@@ -2601,6 +2671,8 @@
 
 "@smithy/util-hex-encoding@2.0.0":
   version "2.0.0"
+  resolved "https://registry.npmjs.org/@smithy/util-hex-encoding/-/util-hex-encoding-2.0.0.tgz"
+  integrity sha512-c5xY+NUnFqG6d7HFh1IFfrm3mGl29lC+vF+geHv4ToiuJCBmIfzx6IeHLg+OgRdPFKDXIw6pvi+p3CsscaMcMA==
   dependencies:
     tslib "^2.5.0"
 
@@ -3317,6 +3389,11 @@ base-64@^1.0.0:
 base64-js@^1.0.2, base64-js@^1.3.1, base64-js@^1.5.1:
   version "1.5.1"
 
+bcryptjs@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.npmjs.org/bcryptjs/-/bcryptjs-3.0.2.tgz"
+  integrity sha512-k38b3XOZKv60C4E2hVsXTolJWfkGRMbILBIe2IBITXciy5bOsTKot5kDrf3ZfufQtQOUN5mXceUEpU1rTl9Uog==
+
 big-integer@^1.6.16:
   version "1.6.52"
   resolved "https://registry.npmjs.org/big-integer/-/big-integer-1.6.52.tgz"
@@ -3395,6 +3472,14 @@ buffer@^5.5.0:
     base64-js "^1.3.1"
     ieee754 "^1.1.13"
 
+buffer@^5.6.0:
+  version "5.7.1"
+  resolved "https://registry.npmjs.org/buffer/-/buffer-5.7.1.tgz"
+  integrity sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==
+  dependencies:
+    base64-js "^1.3.1"
+    ieee754 "^1.1.13"
+
 buffer@^6.0.3:
   version "6.0.3"
   dependencies:
@@ -3403,6 +3488,8 @@ buffer@^6.0.3:
 
 buffer@4.9.2:
   version "4.9.2"
+  resolved "https://registry.npmjs.org/buffer/-/buffer-4.9.2.tgz"
+  integrity sha512-xq+q3SRMOxGivLhBNaUdC64hDTQwejJ+H0T/NB1XMtTVEwNTrfFF3gAxiyW0Bu/xWEGhjVKgUcMhCrUy2+uCWg==
   dependencies:
     base64-js "^1.0.2"
     ieee754 "^1.1.4"
@@ -3519,6 +3606,8 @@ cli-spinners@^2.5.0:
 
 cliui@^6.0.0:
   version "6.0.0"
+  resolved "https://registry.npmjs.org/cliui/-/cliui-6.0.0.tgz"
+  integrity sha512-t6wbgtoCXvAzst7QgXxJYqPt0usEfbgQdftEPbLL/cvv6HPE5VgvqCuAIDR0NgU52ds6rFwqrgakNLrHEjCbrQ==
   dependencies:
     string-width "^4.2.0"
     strip-ansi "^6.0.0"
@@ -3599,6 +3688,11 @@ color@^4.2.3:
   dependencies:
     color-convert "^2.0.1"
     color-string "^1.9.0"
+
+colord@2.9.2:
+  version "2.9.2"
+  resolved "https://registry.npmjs.org/colord/-/colord-2.9.2.tgz"
+  integrity sha512-Uqbg+J445nc1TKn4FoDPS6ZZqAvEDnwrH42yo8B40JSOgSLxMZ/gt3h4nmCtPLQeXhjJJkqBx7SCY35WnIixaQ==
 
 colorette@^1.0.7:
   version "1.4.0"
@@ -3785,6 +3879,11 @@ data-view-byte-offset@^1.0.0:
     es-errors "^1.3.0"
     is-data-view "^1.0.1"
 
+date-fns@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.npmjs.org/date-fns/-/date-fns-4.1.0.tgz"
+  integrity sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==
+
 dayjs@^1.8.15:
   version "1.11.13"
 
@@ -3885,6 +3984,11 @@ diacritics@^1.3.0:
 
 diff-sequences@^29.6.3:
   version "29.6.3"
+
+dijkstrajs@^1.0.1:
+  version "1.0.3"
+  resolved "https://registry.npmjs.org/dijkstrajs/-/dijkstrajs-1.0.3.tgz"
+  integrity sha512-qiSlmBq9+BCdCA/L46dw8Uy93mloxsPSbwnm5yrKn2vMPiy8KyAskTF6zuV/j5BMsmOGZDPs7KjU+mjb670kfA==
 
 dir-glob@^3.0.1:
   version "3.0.1"
@@ -4338,6 +4442,11 @@ etag@~1.8.1:
 event-target-shim@^5.0.0, event-target-shim@^5.0.1:
   version "5.0.1"
 
+events@^3.3.0:
+  version "3.3.0"
+  resolved "https://registry.npmjs.org/events/-/events-3.3.0.tgz"
+  integrity sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==
+
 execa@^5.0.0, execa@^5.1.1:
   version "5.1.1"
   dependencies:
@@ -4715,6 +4824,13 @@ http-errors@2.0.0:
 
 human-signals@^2.1.0:
   version "2.1.0"
+
+iconv-lite@^0.6.2:
+  version "0.6.3"
+  resolved "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.6.3.tgz"
+  integrity sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==
+  dependencies:
+    safer-buffer ">= 2.1.2 < 3.0.0"
 
 idb@5.0.6:
   version "5.0.6"
@@ -6185,6 +6301,11 @@ pkg-dir@^4.2.0:
   dependencies:
     find-up "^4.0.0"
 
+pngjs@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.npmjs.org/pngjs/-/pngjs-5.0.0.tgz"
+  integrity sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==
+
 point-in-polygon@^1.0.1:
   version "1.1.0"
   resolved "https://registry.npmjs.org/point-in-polygon/-/point-in-polygon-1.1.0.tgz"
@@ -6230,6 +6351,11 @@ pretty-format@^29.7.0:
 process-nextick-args@~2.0.0:
   version "2.0.1"
 
+process@^0.11.10:
+  version "0.11.10"
+  resolved "https://registry.npmjs.org/process/-/process-0.11.10.tgz"
+  integrity sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==
+
 promise@^8.3.0:
   version "8.3.0"
   dependencies:
@@ -6241,7 +6367,7 @@ prompts@^2.0.1, prompts@^2.4.2:
     kleur "^3.0.3"
     sisteransi "^1.0.5"
 
-prop-types@^15.6.2, prop-types@^15.7.2, prop-types@^15.8.1:
+prop-types@^15.6.2, prop-types@^15.7.2, prop-types@^15.8.0, prop-types@^15.8.1:
   version "15.8.1"
   dependencies:
     loose-envify "^1.4.0"
@@ -6258,6 +6384,15 @@ punycode@^2.1.0, punycode@^2.1.1:
 
 pure-rand@^6.0.0:
   version "6.1.0"
+
+qrcode@^1.5.4:
+  version "1.5.4"
+  resolved "https://registry.npmjs.org/qrcode/-/qrcode-1.5.4.tgz"
+  integrity sha512-1ca71Zgiu6ORjHqFBDpnSMTR2ReToX4l1Au1VFLyVeBTFavzQnv5JxMFr3ukHVKpSrSA2MCk0lNJSykjUfz7Zg==
+  dependencies:
+    dijkstrajs "^1.0.1"
+    pngjs "^5.0.0"
+    yargs "^15.3.1"
 
 query-string@^7.1.3:
   version "7.1.3"
@@ -6328,10 +6463,15 @@ react-native-animatable@1.3.3:
   dependencies:
     prop-types "^15.7.2"
 
+react-native-app-intro-slider@^4.0.4:
+  version "4.0.4"
+  resolved "https://registry.npmjs.org/react-native-app-intro-slider/-/react-native-app-intro-slider-4.0.4.tgz"
+  integrity sha512-Zkjaol6X3BbZkHUpVDj2LjdidpS6rCgKi0fx80xgGKa0pHxBRd4swWTv2bHnnvu5k1/HXwYk0mY2TbK+2jHl5w==
+
 react-native-bluetooth-classic@^1.73.0-rc.13:
-  version "1.73.0-rc.13"
-  resolved "https://registry.npmjs.org/react-native-bluetooth-classic/-/react-native-bluetooth-classic-1.73.0-rc.13.tgz"
-  integrity sha512-w3nzC0USrPDLj9BqJ82k9KIrE3ug8Qc7KIqXQi3tnqGo20N+pnPxZCl8jY5PF79Xk7zrBZHdSQ605yY5NWz1RA==
+  version "1.73.0-rc.14"
+  resolved "https://registry.npmjs.org/react-native-bluetooth-classic/-/react-native-bluetooth-classic-1.73.0-rc.14.tgz"
+  integrity sha512-jEQTqZMDsfdHtard604+SkF3aIRTUD5t3tW0qCrNQu4vIYd21Sy+RW+tRDxWxFBUfGt5VcWUWlcoyNL+YaxgGw==
   dependencies:
     buffer "^6.0.3"
 
@@ -6382,6 +6522,8 @@ react-native-gesture-handler@^2.20.2, "react-native-gesture-handler@>= 1.0.0":
 
 react-native-get-random-values@^1.11.0, react-native-get-random-values@>=1.8.0:
   version "1.11.0"
+  resolved "https://registry.npmjs.org/react-native-get-random-values/-/react-native-get-random-values-1.11.0.tgz"
+  integrity sha512-4BTbDbRmS7iPdhYLRcz3PGFIpFJBwNZg9g42iwa2P6FOv9vZj/xJc678RZXnLNZzd0qd7Q3CCF6Yd+CU2eoXKQ==
   dependencies:
     fast-base64-decode "^1.0.0"
 
@@ -6411,6 +6553,31 @@ react-native-paper@^5.13.1:
     "@callstack/react-theme-provider" "^3.0.9"
     color "^3.1.2"
     use-latest-callback "^0.1.5"
+
+react-native-qrcode-svg@^6.3.15:
+  version "6.3.15"
+  resolved "https://registry.npmjs.org/react-native-qrcode-svg/-/react-native-qrcode-svg-6.3.15.tgz"
+  integrity sha512-vLuNImGfstE8u+rlF4JfFpq65nPhmByuDG6XUPWh8yp8MgLQX11rN5eQ8nb/bf4OB+V8XoLTJB/AZF2g7jQSSQ==
+  dependencies:
+    prop-types "^15.8.0"
+    qrcode "^1.5.4"
+    text-encoding "^0.7.0"
+
+react-native-quick-base64@^2.0.5:
+  version "2.2.1"
+  resolved "https://registry.npmjs.org/react-native-quick-base64/-/react-native-quick-base64-2.2.1.tgz"
+  integrity sha512-rAECaDhq3v+P8IM10cLgUVvt3kPJq3v+Jznp7tQRLXk1LlV/VCepump3am0ObwHlE6EoXblm4cddPJoXAlO+CQ==
+
+react-native-quick-crypto@^0.7.17:
+  version "0.7.17"
+  resolved "https://registry.npmjs.org/react-native-quick-crypto/-/react-native-quick-crypto-0.7.17.tgz"
+  integrity sha512-cJzp6oA/dM1lujt+Rwtn46Mgcs3w9F/0oQvNz1jcADc/AXktveAOUTzzKrDMxyg6YPziCYnoqMDzHBo6OLSU1g==
+  dependencies:
+    "@craftzdog/react-native-buffer" "^6.0.5"
+    events "^3.3.0"
+    readable-stream "^4.5.2"
+    string_decoder "^1.3.0"
+    util "^0.12.5"
 
 react-native-ratings@8.0.4:
   version "8.0.4"
@@ -6460,6 +6627,13 @@ react-native-select-dropdown@^3.1.0:
   resolved "https://registry.npmjs.org/react-native-select-dropdown/-/react-native-select-dropdown-3.1.0.tgz"
   integrity sha512-M3urU+Q3H5KbJfkvB6adatTm0s5vsIly+cq6StGzr6AoQMoXa//4KZ+kgKtQ06r3t1O0A6Vx51xDSZw813xilw==
 
+react-native-shadow-2@^7.1.2:
+  version "7.1.2"
+  resolved "https://registry.npmjs.org/react-native-shadow-2/-/react-native-shadow-2-7.1.2.tgz"
+  integrity sha512-K2McEwf3D6MbtofmhQyeEJxTC9L0uebed53vxQcaUvKYIcoDUmfsqgRJtftvx9NHxJwuF5f/K6SfUyhYV2qr4w==
+  dependencies:
+    colord "2.9.2"
+
 react-native-simple-pin@^0.0.3:
   version "0.0.3"
   resolved "https://registry.npmjs.org/react-native-simple-pin/-/react-native-simple-pin-0.0.3.tgz"
@@ -6491,7 +6665,7 @@ react-native-svg-transformer@^1.5.0:
     "@svgr/plugin-svgo" "^8.1.0"
     path-dirname "^1.0.2"
 
-react-native-svg@^15.11.2, "react-native-svg@> 6.4.1", react-native-svg@>=12.0.0:
+react-native-svg@^15.11.2, "react-native-svg@> 6.4.1", react-native-svg@>=12.0.0, react-native-svg@>=12.1.0, react-native-svg@>=14.0.0:
   version "15.11.2"
   resolved "https://registry.npmjs.org/react-native-svg/-/react-native-svg-15.11.2.tgz"
   integrity sha512-+YfF72IbWQUKzCIydlijV1fLuBsQNGMT6Da2kFlo1sh+LE3BIm/2Q7AR1zAAR6L0BFLi1WaQPLfFUC9bNZpOmw==
@@ -6499,6 +6673,15 @@ react-native-svg@^15.11.2, "react-native-svg@> 6.4.1", react-native-svg@>=12.0.0
     css-select "^5.1.0"
     css-tree "^1.1.3"
     warn-once "0.1.1"
+
+react-native-thermal-receipt-printer@^1.2.0-rc.2:
+  version "1.2.0-rc.2"
+  resolved "https://registry.npmjs.org/react-native-thermal-receipt-printer/-/react-native-thermal-receipt-printer-1.2.0-rc.2.tgz"
+  integrity sha512-pSo0DT1coKcl14OAeOZ5VCyngkgvA8TXCkaPJWCWnxBdSSFP/A9Hw6foe7DXx4frXYz7vQdENY2U/GLsRlylmA==
+  dependencies:
+    buffer "^5.6.0"
+    iconv-lite "^0.6.2"
+    string_decoder "^1.3.0"
 
 react-native-url-polyfill@^2.0.0:
   version "2.0.0"
@@ -6510,15 +6693,15 @@ react-native-uuid@^2.0.3:
   resolved "https://registry.npmjs.org/react-native-uuid/-/react-native-uuid-2.0.3.tgz"
   integrity sha512-f/YfIS2f5UB+gut7t/9BKGSCYbRA9/74A5R1MDp+FLYsuS+OSWoiM/D8Jko6OJB6Jcu3v6ONuddvZKHdIGpeiw==
 
-react-native-vector-icons@*, react-native-vector-icons@^10.2.0, react-native-vector-icons@>7.0.0:
-  version "10.2.0"
-  resolved "https://registry.npmjs.org/react-native-vector-icons/-/react-native-vector-icons-10.2.0.tgz"
-  integrity sha512-n5HGcxUuVaTf9QJPs/W22xQpC2Z9u0nb0KgLPnVltP8vdUvOp6+R26gF55kilP/fV4eL4vsAHUqUjewppJMBOQ==
+react-native-vector-icons@*, react-native-vector-icons@^10.3.0, react-native-vector-icons@>7.0.0:
+  version "10.3.0"
+  resolved "https://registry.npmjs.org/react-native-vector-icons/-/react-native-vector-icons-10.3.0.tgz"
+  integrity sha512-IFQ0RE57819hOUdFvgK4FowM5aMXg7C7XKsuGLevqXkkIJatc3QopN0wYrb2IrzUgmdpfP+QVIbI3S6h7M0btw==
   dependencies:
     prop-types "^15.7.2"
     yargs "^16.1.1"
 
-react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", "react-native@^0.70 || ^0.71 || ^0.72 || ^0.73 || ^0.74 || ^0.75", "react-native@>= 0.50.0", "react-native@>= 0.56.0", react-native@>=0.56, react-native@>=0.59, react-native@>=0.59.0, react-native@>=0.62, react-native@>=0.65.0, react-native@>=0.70, react-native@>=0.73.1, react-native@>=0.74.0, react-native@0.74.4:
+react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", "react-native@^0.70 || ^0.71 || ^0.72 || ^0.73 || ^0.74 || ^0.75", "react-native@>= 0.50.0", "react-native@>= 0.56.0", react-native@>=0.56, react-native@>=0.59, react-native@>=0.59.0, react-native@>=0.62, react-native@>=0.63.4, react-native@>=0.65.0, react-native@>=0.70, react-native@>=0.73.1, react-native@>=0.74.0, react-native@0.74.4:
   version "0.74.4"
   dependencies:
     "@jest/create-cache-key-function" "^29.6.3"
@@ -6603,6 +6786,17 @@ readable-stream@^3.4.0:
     inherits "^2.0.3"
     string_decoder "^1.1.1"
     util-deprecate "^1.0.1"
+
+readable-stream@^4.5.2:
+  version "4.7.0"
+  resolved "https://registry.npmjs.org/readable-stream/-/readable-stream-4.7.0.tgz"
+  integrity sha512-oIGGmcpTLwPga8Bn6/Z75SVaH1z5dUut2ibSyAMVhmUggWpmDn2dapB0n7f8nwaSiRtepAsfJyfXIO5DCVAODg==
+  dependencies:
+    abort-controller "^3.0.0"
+    buffer "^6.0.3"
+    events "^3.3.0"
+    process "^0.11.10"
+    string_decoder "^1.3.0"
 
 readable-stream@~2.3.6:
   version "2.3.8"
@@ -6788,6 +6982,8 @@ safe-buffer@~5.1.0, safe-buffer@~5.1.1, safe-buffer@5.1.2:
 
 safe-buffer@~5.2.0:
   version "5.2.1"
+  resolved "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz"
+  integrity sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==
 
 safe-regex-test@^1.0.3:
   version "1.0.3"
@@ -6795,6 +6991,11 @@ safe-regex-test@^1.0.3:
     call-bind "^1.0.6"
     es-errors "^1.3.0"
     is-regex "^1.1.4"
+
+"safer-buffer@>= 2.1.2 < 3.0.0":
+  version "2.1.2"
+  resolved "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz"
+  integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
 
 scheduler@^0.23.0:
   version "0.23.2"
@@ -7011,6 +7212,13 @@ string_decoder@^1.1.1:
   dependencies:
     safe-buffer "~5.2.0"
 
+string_decoder@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.npmjs.org/string_decoder/-/string_decoder-1.3.0.tgz"
+  integrity sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==
+  dependencies:
+    safe-buffer "~5.2.0"
+
 string_decoder@~1.1.1:
   version "1.1.1"
   dependencies:
@@ -7215,6 +7423,11 @@ test-exclude@^6.0.0:
     "@istanbuljs/schema" "^0.1.2"
     glob "^7.1.4"
     minimatch "^3.0.4"
+
+text-encoding@^0.7.0:
+  version "0.7.0"
+  resolved "https://registry.npmjs.org/text-encoding/-/text-encoding-0.7.0.tgz"
+  integrity sha512-oJQ3f1hrOnbRLOcwKz0Liq2IcrvDeZRHXhd9RgLrsT+DjWY/nty1Hi7v3dtkaEYbPYe0mUoOfzRrMwfXXwgPUA==
 
 text-table@^0.2.0:
   version "0.2.0"
@@ -7456,6 +7669,11 @@ util@^0.12.5:
 utils-merge@1.0.1:
   version "1.0.1"
 
+uuid@^11.0.0:
+  version "11.1.0"
+  resolved "https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz"
+  integrity sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==
+
 uuid@^9.0.0, uuid@^9.0.1:
   version "9.0.1"
 
@@ -7571,6 +7789,8 @@ word-wrap@^1.2.5:
 
 wrap-ansi@^6.2.0:
   version "6.2.0"
+  resolved "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-6.2.0.tgz"
+  integrity sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==
   dependencies:
     ansi-styles "^4.0.0"
     string-width "^4.1.0"
@@ -7625,6 +7845,8 @@ xtend@~4.0.1:
 
 y18n@^4.0.0:
   version "4.0.3"
+  resolved "https://registry.npmjs.org/y18n/-/y18n-4.0.3.tgz"
+  integrity sha512-JKhqTOwSrqNA1NY5lSztJ1GrBiUodLMmIZuLiDaMRJ+itFd+ABVE8XBjOvIWL+rSqNDC74LCSFmlb/U4UZ4hJQ==
 
 y18n@^5.0.5:
   version "5.0.8"
@@ -7637,6 +7859,8 @@ yaml@^2.2.1:
 
 yargs-parser@^18.1.2:
   version "18.1.3"
+  resolved "https://registry.npmjs.org/yargs-parser/-/yargs-parser-18.1.3.tgz"
+  integrity sha512-o50j0JeToy/4K6OZcaQmW6lyXXKhq7csREXcDwk2omFPJEwUNOVtJKvmDr9EI1fAJZUyZcRF7kxGBWmRXudrCQ==
   dependencies:
     camelcase "^5.0.0"
     decamelize "^1.2.0"
@@ -7651,6 +7875,23 @@ yargs-parser@^21.1.1:
 
 yargs@^15.1.0:
   version "15.4.1"
+  dependencies:
+    cliui "^6.0.0"
+    decamelize "^1.2.0"
+    find-up "^4.1.0"
+    get-caller-file "^2.0.1"
+    require-directory "^2.1.1"
+    require-main-filename "^2.0.0"
+    set-blocking "^2.0.0"
+    string-width "^4.2.0"
+    which-module "^2.0.0"
+    y18n "^4.0.0"
+    yargs-parser "^18.1.2"
+
+yargs@^15.3.1:
+  version "15.4.1"
+  resolved "https://registry.npmjs.org/yargs/-/yargs-15.4.1.tgz"
+  integrity sha512-aePbxDmcYW++PaqBsJ+HYUFwCdv4LVvdnhBy78E57PIor8/OVvhMrADFFEDh8DHDFRv/O9i3lPhsENjO7QX0+A==
   dependencies:
     cliui "^6.0.0"
     decamelize "^1.2.0"

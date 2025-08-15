@@ -10,6 +10,9 @@ import {
   Switch,
   ScrollView,
   SafeAreaView,
+  TextInput,
+  Platform,
+  Linking,
 } from 'react-native';
 import {Divider, Card} from 'react-native-paper';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -21,6 +24,7 @@ import AppHeader from '../components/AppHeader';
 const PrinterSettingsScreen = ({route, navigation}) => {
   const [isScanning, setIsScanning] = useState(false);
   const [devices, setDevices] = useState([]);
+  const [printers, setPrinters] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [autoPrint, setAutoPrint] = useState(true);
@@ -30,6 +34,8 @@ const PrinterSettingsScreen = ({route, navigation}) => {
     address: 'Store Address',
     phone: 'Phone Number',
   });
+  
+  // Direct text input for store information editing
 
   // Setup header components for back navigation
   const headerLeftComponent = {
@@ -41,6 +47,22 @@ const PrinterSettingsScreen = ({route, navigation}) => {
   useEffect(() => {
     loadSettings();
     checkConnectedDevice();
+  }, []);
+
+  // Initialize BLEPrinter and get device list
+  useEffect(() => {
+    const { BLEPrinter } = require('react-native-thermal-receipt-printer');
+    BLEPrinter.init().then(() => {
+      console.log('BLEPrinter initialized');
+      BLEPrinter.getDeviceList().then(deviceList => {
+        console.log('BLEPrinter device list:', deviceList);
+        setPrinters(deviceList);
+      }).catch(error => {
+        console.error('Error getting BLEPrinter device list:', error);
+      });
+    }).catch(error => {
+      console.error('Error initializing BLEPrinter:', error);
+    });
   }, []);
 
   const loadSettings = async () => {
@@ -117,33 +139,96 @@ const PrinterSettingsScreen = ({route, navigation}) => {
     }
   };
 
-  const startScan = async () => {
+  // To prevent multiple scan presses
+const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+
+const startScan = async () => {
+    // Prevent multiple rapid scan attempts
+    if (isButtonDisabled) return;
+    
     try {
-      const permissionGranted =
-        await PrinterService.requestBluetoothPermission();
+      setIsButtonDisabled(true);
+      // Request permissions and keep requesting if denied
+      let permissionGranted = await PrinterService.requestBluetoothPermission();
+      
       if (!permissionGranted) {
+        // Show alert with option to request again
         Alert.alert(
           'Permission Required',
           'Bluetooth permission is required to use the printer',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Request Permission',
+              onPress: async () => {
+                // Try requesting permission again
+                permissionGranted = await PrinterService.requestBluetoothPermission();
+                if (permissionGranted) {
+                  // If granted on second attempt, start scan
+                  startScan();
+                } else {
+                  // If still not granted, direct to settings
+                  Alert.alert(
+                    'Permission Denied',
+                    'Please enable Bluetooth permissions in your device settings to use this feature.',
+                    [
+                      { text: 'OK' },
+                      { text: 'Go to Settings', onPress: () => {
+                        // On Android this would open app settings
+                        if (Platform.OS === 'android') {
+                          Linking.openSettings();
+                        }
+                      }}
+                    ]
+                  );
+                }
+              },
+            },
+          ],
+          { cancelable: false },
         );
         return;
       }
 
       setIsScanning(true);
-      const foundDevices = await PrinterService.scanBluetoothDevices();
+      // Use longer scan time (10 seconds)
+      const foundDevices = await PrinterService.scanBluetoothDevices({ scanTime: 10000 });
       setDevices(foundDevices);
     } catch (error) {
       Alert.alert('Error', 'Error scanning for devices: ' + error.message);
     } finally {
       setIsScanning(false);
+      // Re-enable the scan button after a short delay
+      setTimeout(() => setIsButtonDisabled(false), 2000);
     }
   };
 
   const connectToDevice = async device => {
     try {
       setIsConnecting(true);
-      await PrinterService.connectBluetoothDevice(device.address);
-      setConnectedDevice(device);
+      console.log('Connecting to device:', device);
+      
+      // Connect using BLEPrinter first to ensure it's properly initialized
+      try {
+        const { BLEPrinter } = require('react-native-thermal-receipt-printer');
+        await BLEPrinter.init();
+        await BLEPrinter.connectPrinter(device.address || device.id);
+        console.log('Successfully connected BLEPrinter directly');
+        device.blePrinterAvailable = true;
+      } catch (bleError) {
+        console.log('Direct BLEPrinter connection failed:', bleError);
+      }
+      
+      // Then use the service to complete the connection process
+      await PrinterService.connectBluetoothDevice(device);
+      
+      setConnectedDevice({
+        ...device,
+        blePrinterAvailable: true
+      });
       Alert.alert('Success', `Connected to ${device.name}`);
 
       // Update settings in AsyncStorage
@@ -414,8 +499,12 @@ const PrinterSettingsScreen = ({route, navigation}) => {
       onPress={() => connectToDevice(item)}
       disabled={isConnecting}>
       <View style={styles.deviceInfo}>
-        <Text style={styles.deviceName}>{item.name}</Text>
-        <Text style={styles.deviceAddress}>{item.address}</Text>
+        <Text style={styles.deviceName}>
+          {item.name ? String(item.name) : 'Unknown Device'}
+        </Text>
+        <Text style={styles.deviceAddress}>
+          {item.address ? String(item.address) : 'No Address'}
+        </Text>
       </View>
       {isConnecting && connectedDevice?.address === item.address ? (
         <ActivityIndicator size="small" color={colors.primary} />
@@ -438,99 +527,54 @@ const PrinterSettingsScreen = ({route, navigation}) => {
         leftComponent={headerLeftComponent}
         screen="Cashier"
       />
+      {/* No modal needed */}
+      
       <ScrollView style={styles.scrollContainer}>
         <Card style={styles.section}>
           <Card.Title title="Store Information" />
           <Card.Content>
             <Text style={styles.label}>Store Name</Text>
-            <TouchableOpacity
-              style={styles.editableField}
-              onPress={() => {
-                Alert.prompt(
-                  'Store Name',
-                  'Enter store name',
-                  [
-                    {text: 'Cancel', style: 'cancel'},
-                    {
-                      text: 'OK',
-                      onPress: text => {
-                        if (text) {
-                          setStoreInfo({...storeInfo, name: text});
-                        }
-                      },
-                    },
-                  ],
-                  'plain-text',
-                  storeInfo.name,
-                );
-              }}>
-              <Text style={styles.fieldValue}>{storeInfo.name}</Text>
+            <View style={styles.editableField}>
+              <TextInput
+                style={styles.textInput}
+                value={storeInfo.name}
+                onChangeText={(text) => setStoreInfo({...storeInfo, name: text})}
+              />
               <Ionicons
                 name="create-outline"
                 size={20}
                 color={colors.primary}
               />
-            </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Store Address</Text>
-            <TouchableOpacity
-              style={styles.editableField}
-              onPress={() => {
-                Alert.prompt(
-                  'Store Address',
-                  'Enter store address',
-                  [
-                    {text: 'Cancel', style: 'cancel'},
-                    {
-                      text: 'OK',
-                      onPress: text => {
-                        if (text) {
-                          setStoreInfo({...storeInfo, address: text});
-                        }
-                      },
-                    },
-                  ],
-                  'plain-text',
-                  storeInfo.address,
-                );
-              }}>
-              <Text style={styles.fieldValue}>{storeInfo.address}</Text>
+            <View style={styles.editableField}>
+              <TextInput
+                style={styles.textInput}
+                value={storeInfo.address}
+                onChangeText={(text) => setStoreInfo({...storeInfo, address: text})}
+              />
               <Ionicons
                 name="create-outline"
                 size={20}
                 color={colors.primary}
               />
-            </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Phone Number</Text>
-            <TouchableOpacity
-              style={styles.editableField}
-              onPress={() => {
-                Alert.prompt(
-                  'Phone Number',
-                  'Enter phone number',
-                  [
-                    {text: 'Cancel', style: 'cancel'},
-                    {
-                      text: 'OK',
-                      onPress: text => {
-                        if (text) {
-                          setStoreInfo({...storeInfo, phone: text});
-                        }
-                      },
-                    },
-                  ],
-                  'plain-text',
-                  storeInfo.phone,
-                );
-              }}>
-              <Text style={styles.fieldValue}>{storeInfo.phone}</Text>
+            <View style={styles.editableField}>
+              <TextInput
+                style={styles.textInput}
+                value={storeInfo.phone}
+                onChangeText={(text) => setStoreInfo({...storeInfo, phone: text})}
+                keyboardType="phone-pad"
+              />
               <Ionicons
                 name="create-outline"
                 size={20}
                 color={colors.primary}
               />
-            </TouchableOpacity>
+            </View>
           </Card.Content>
         </Card>
 
@@ -556,10 +600,10 @@ const PrinterSettingsScreen = ({route, navigation}) => {
               <View style={styles.connectedDevice}>
                 <View>
                   <Text style={styles.connectedDeviceName}>
-                    {connectedDevice.name}
+                    {connectedDevice.name ? String(connectedDevice.name) : 'Unknown Device'}
                   </Text>
                   <Text style={styles.connectedDeviceAddress}>
-                    {connectedDevice.address}
+                    {connectedDevice.address ? String(connectedDevice.address) : 'No Address'}
                   </Text>
                 </View>
                 <Ionicons
@@ -811,6 +855,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.black,
     flex: 1,
+  },
+  textInput: {
+    fontSize: 16,
+    color: colors.black,
+    flex: 1,
+    padding: 0,
   },
 });
 

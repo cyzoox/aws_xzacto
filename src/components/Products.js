@@ -3,6 +3,7 @@ import {TouchableOpacity, Image, StyleSheet, View, Text} from 'react-native';
 import {FlatGrid} from 'react-native-super-grid';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useStore} from '../context/StoreContext';
+import {getUrl} from 'aws-amplify/storage';
 import SearchBar from './SearchBar';
 import colors from '../themes/colors';
 
@@ -19,6 +20,7 @@ export default function Products({
   const [filteredProducts, setFilteredProducts] = useState(products);
   const [selectedCategory, setSelectedCategory] = useState(null); // Default to null (All)
   const [searchTerm, setSearchTerm] = useState(''); // Search query
+  const [imageUrls, setImageUrls] = useState({}); // Store resolved image URLs
 
   // Debug logging when products change
   useEffect(() => {
@@ -32,6 +34,26 @@ export default function Products({
         JSON.stringify(products[0], null, 2),
       );
     }
+
+    // Load image URLs for all products
+    const loadImageUrls = async () => {
+      const urls = {};
+      if (Array.isArray(products)) {
+        for (const product of products) {
+          if (product.img) {
+            try {
+              const { url } = await getUrl({ key: product.img });
+              if (url) urls[product.id] = url.toString();
+            } catch (error) {
+              console.error('Error getting image URL for product', product.id, ':', error);
+            }
+          }
+        }
+      }
+      setImageUrls(urls);
+    };
+    
+    loadImageUrls();
   }, [products]);
 
   // Filter products based on category and search term
@@ -133,7 +155,13 @@ export default function Products({
               }
               style={styles.itemContainer}>
               <Image
-                source={{uri: item.img}}
+                source={
+                  imageUrls[item.id] 
+                    ? {uri: imageUrls[item.id]} 
+                    : item.img 
+                      ? {uri: 'https://via.placeholder.com/100x70?text=Loading...'} 
+                      : {uri: 'https://via.placeholder.com/100x70?text=No+Image'}
+                }
                 resizeMode="stretch"
                 style={{flex: 2, height: 70, width: '90%', marginTop: 5}}
               />
@@ -174,22 +202,37 @@ export default function Products({
                 )}
               </View>
               {item.stock < 10 && (
-                <Text
+                <View
                   style={{
-                    paddingHorizontal: 2,
-                    paddingVertical: 2,
-                    backgroundColor: colors.red,
-                    borderRadius: 15,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 6,
+                    paddingVertical: 3,
+                    backgroundColor: 'rgba(255, 59, 48, 0.85)',
+                    borderRadius: 4,
                     position: 'absolute',
-                    right: 10,
-                    top: 10,
+                    right: 8,
+                    top: 8,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 1,
+                    elevation: 2,
                   }}>
                   <MaterialCommunityIcons
-                    name="alert-octagram-outline"
-                    size={20}
+                    name="alert-circle"
+                    size={12}
                     color={colors.white}
+                    style={{ marginRight: 2 }}
                   />
-                </Text>
+                  <Text style={{ 
+                    fontSize: 10, 
+                    fontWeight: '600', 
+                    color: colors.white 
+                  }}>
+                    Low Stock
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
           )}

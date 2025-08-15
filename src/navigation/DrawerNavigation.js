@@ -9,7 +9,7 @@ import ExpensesScreen from '../screens/cashier/ExpensesScreen';
 import TransactionScreen from '../screens/cashier/TransactionsScreen';
 import TransactionDetailsScreen from '../screens/cashier/TransactionDetailScreen';
 import StaffManagementScreen from '../screens/StaffManagementScreen';
-import StaffProfileScreen from '../screens/StaffProfileScreen';
+import StaffProfileScreen from '../screens/cashier/StaffProfileScreen';
 import ProductsScreen from '../screens/store/ProductsScreen';
 import CreateProductScreen from '../screens/CreateProductScreen';
 import BatchEditScreen from '../screens/BatchEditScreen';
@@ -78,7 +78,7 @@ function DrawerNavigator({route}) {
         options={{headerShown: false}}
       />
       <Drawer.Screen
-        name="Printer Settings"
+        name="PrinterSettings"
         component={PrinterSettingsScreen}
         initialParams={{staffData}}
         options={{headerShown: false}}
@@ -90,7 +90,13 @@ function DrawerNavigator({route}) {
         options={{headerShown: false}}
       />
       <Drawer.Screen
-        name="Staff Profile"
+        name="TransactionsDetails"
+        component={TransactionDetailsScreen}
+        initialParams={{staffData}}
+        options={{headerShown: false}}
+      />
+      <Drawer.Screen
+        name="StaffProfile"
         component={StaffProfileScreen}
         initialParams={{staffData}}
         options={{headerShown: false}}
@@ -119,6 +125,12 @@ function DrawerNavigator({route}) {
           <Drawer.Screen
             name="BatchAdd"
             component={BatchAddScreen}
+            initialParams={{staffData}}
+            options={{headerShown: false}}
+          />
+          <Drawer.Screen
+            name="CustomerScreen"
+            component={CustomerScreen}
             initialParams={{staffData}}
             options={{headerShown: false}}
           />

@@ -12,7 +12,8 @@ import {
 import {TextInput} from 'react-native-paper';
 import {useDispatch, useSelector} from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
-import {generateClient} from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/api';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import {
   listProducts,
   listVariants,
@@ -26,18 +27,20 @@ import {
   setOfflineMode,
 } from '../../redux/slices/categorySlice';
 import {useStore} from '../../context/StoreContext';
-import Appbar from '../../components/Appbar';
-import SearchBar from '../../components/SearchBar';
+
 import ModalInputForm from '../../components/ModalInputForm';
 import Products from '../../components/Products';
 import colors from '../../themes/colors';
+import Appbar from '../../components/Appbar';
+import Cards from '../../components/Cards';
+import ModalInputFormRevamp from '../../components/ModalInputFormRevamp';
 
 const client = generateClient();
 
 const ProductsScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
   // Get store directly from route params if available
-  const storeFromParams = route.params?.store;
+   const STORE = route.params.store;
 
   // Still use StoreContext as fallback
   const {
@@ -49,7 +52,7 @@ const ProductsScreen = ({navigation, route}) => {
 
   // Use store from params if available, otherwise fall back to context
   const [activeStore, setActiveStore] = useState(
-    storeFromParams || contextStore,
+    STORE || contextStore,
   );
 
   const [term, setTerm] = useState('');
@@ -58,6 +61,7 @@ const ProductsScreen = ({navigation, route}) => {
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
 
   // Get categories from Redux store
   const {
@@ -94,6 +98,13 @@ const ProductsScreen = ({navigation, route}) => {
   // Initialize data on mount and when store changes
   useEffect(() => {
     console.log('Route params changed:', route.params);
+    
+    // Check if we need to refresh products (coming from product creation/edit)
+    if (route.params?.refresh) {
+      console.log('Refresh flag detected, refreshing products');
+      fetchProducts();
+    }
+    
     // Update active store if it comes from navigation params
     if (route.params?.store) {
       console.log(
@@ -101,6 +112,11 @@ const ProductsScreen = ({navigation, route}) => {
         route.params.store.name,
       );
       setActiveStore(route.params.store);
+    }
+    
+    // Clear the refresh flag from navigation params to avoid repeated refreshes
+    if (route.params?.refresh) {
+      navigation.setParams({ refresh: undefined, timestamp: undefined });
     }
   }, [route.params]);
 
@@ -403,104 +419,79 @@ const ProductsScreen = ({navigation, route}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar
-        title="Products Dashboard"
-        onMenuPress={() => navigation.toggleDrawer()}
-        onSearchPress={() => console.log('Search pressed')}
-        onNotificationPress={() => console.log('Notifications pressed')}
-        onProfilePress={() => console.log('Profile pressed')}
-      />
-
-      <View style={styles.content}>
-        {/* Quick Actions Deck */}
-        <View style={styles.deck}>
+      <Appbar title="Products Dashboard" hideMenuButton onBack={() => navigation.goBack()} subtitle={activeStore.name}/>
+      <Cards>
+        <View style={styles.metricsContainer}>
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() =>
-              navigation.navigate('CreateProduct', {store: activeStore})
-            }>
-            <Image
-              source={require('../../../assets/add_product.png')}
-              style={styles.actionIcon}
-            />
-            <Text style={styles.actionText}>Add Product</Text>
+            style={styles.metricItem}
+            onPress={() => {
+              const storeCategories = categories.filter(
+                cat => cat.storeId === activeStore?.id,
+              );
+
+              if (!storeCategories || storeCategories.length === 0) {
+                Alert.alert(
+                  'No Categories',
+                  'You need to create at least one category before adding products.',
+                  [
+                    {text: 'Cancel', style: 'cancel'},
+                    {
+                      text: 'Add Category',
+                      onPress: () => {
+                        setCategoryName('');
+                        setCategoryModalVisible(true);
+                      },
+                    },
+                  ],
+                );
+              } else {
+                navigation.navigate('CreateProduct', {store: activeStore});
+              }
+            }}>
+            <View style={[styles.iconContainer, {backgroundColor: '#FFF3E0'}]}>
+              <Icon name="add-shopping-cart" size={24} color="#F57C00" />
+            </View>
+
+            <Text style={styles.metricLabel}>Add Product</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.metricItem}
+            onPress={() =>
+             setCategoryModalVisible(true)
+            }>
+            <View style={[styles.iconContainer, {backgroundColor: '#FFF3E0'}]}>
+              <Icon name="add-to-photos" size={24} color="#F57C00" />
+            </View>
+
+            <Text style={styles.metricLabel}>Add Category</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.metricItem}
             onPress={() =>
               navigation.navigate('BatchEdit', {store: activeStore})
             }>
-            <Image
-              source={require('../../../assets/edit.png')}
-              style={styles.actionIcon}
-            />
-            <Text style={styles.actionText}>Batch Edit</Text>
+            <View style={[styles.iconContainer, {backgroundColor: '#FFF3E0'}]}>
+              <Icon name="edit-note" size={24} color="#F57C00" />
+            </View>
+
+            <Text style={styles.metricLabel}>Batch Edit</Text>
           </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() =>
-              navigation.navigate('DeliveryRequest', {
-                storeId: currentStore?.id,
-                storeName: currentStore?.name,
-              })
-            }>
-            <Image
-              source={require('../../../assets/add_product.png')}
-              style={styles.actionIcon}
-            />
-            <Text style={styles.actionText}>Request Stock</Text>
-          </TouchableOpacity> */}
-
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('StoreRequests')}>
-            <Image
-              source={
-                require('../../../assets/add_product.png') ||
-                require('../../../assets/add_cat.png')
-              }
-              style={styles.actionIcon}
-            />
-            <Text style={styles.actionText}>View Requests</Text>
-          </TouchableOpacity>
-
-          <ModalInputForm
-            displayComponent={
-              <View style={styles.actionButton}>
-                <Image
-                  source={require('../../../assets/add_cat.png')}
-                  style={styles.actionIcon}
-                />
-                <Text style={styles.actionText}>Add Category</Text>
-              </View>
-            }
-            title="Add Category"
-            onSave={saveCategory}>
-            <TextInput
-              mode="outlined"
-              label="Category"
-              placeholder="Category Name"
-              value={categoryName}
-              onChangeText={text => setCategoryName(text)}
-            />
-          </ModalInputForm>
-
-          <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.metricItem}
             onPress={() =>
               navigation.navigate('BatchAdd', {store: activeStore})
             }>
-            <Image
-              source={require('../../../assets/batch_add.png')}
-              style={styles.actionIcon}
-            />
-            <Text style={styles.actionText}>Batch Add</Text>
+            <View style={[styles.iconContainer, {backgroundColor: '#FFF3E0'}]}>
+              <Icon name="add-shopping-cart" size={24} color="#F57C00" />
+            </View>
+
+            <Text style={styles.metricLabel}>Batch Add</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Products Grid */}
+      </Cards>
+      <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -528,7 +519,6 @@ const ProductsScreen = ({navigation, route}) => {
           </View>
         ) : (
           <>
-            {/* Debug info for categories */}
             {categories.length === 0 && (
               <View
                 style={{
@@ -544,23 +534,6 @@ const ProductsScreen = ({navigation, route}) => {
               </View>
             )}
 
-            {/* Debug info for store */}
-            <View
-              style={{
-                padding: 10,
-                backgroundColor: '#cce5ff',
-                margin: 10,
-                borderRadius: 5,
-              }}>
-              <Text style={{color: '#004085'}}>
-                Active Store: {activeStore?.name || 'None'} (ID:{' '}
-                {activeStore?.id || 'None'})
-              </Text>
-              <Text style={{color: '#004085', marginTop: 5}}>
-                Products: {products.length}, Categories: {categories.length}
-              </Text>
-            </View>
-
             <Products
               products={products}
               navigation={navigation}
@@ -569,6 +542,23 @@ const ProductsScreen = ({navigation, route}) => {
             />
           </>
         )}
+
+        <ModalInputFormRevamp
+          isVisible={categoryModalVisible}
+          onCancel={() => setCategoryModalVisible(false)}
+          title="Add Category"
+          onSave={category => {
+            saveCategory(category);
+            setCategoryModalVisible(false);
+          }}>
+          <TextInput
+            mode="outlined"
+            label="Category"
+            placeholder="Category Name"
+            value={categoryName}
+            onChangeText={text => setCategoryName(text)}
+          />
+        </ModalInputFormRevamp>
       </View>
     </SafeAreaView>
   );
@@ -578,6 +568,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    marginBottom: 50,
   },
   content: {
     flex: 1,
@@ -587,7 +578,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     flexWrap: 'wrap',
     gap: 10,
   },
@@ -632,6 +623,36 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  // Metrics
+  metricsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 5,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
 

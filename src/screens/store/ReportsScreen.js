@@ -18,7 +18,7 @@ const ReportsScreen = ({navigation, route}) => {
 
   return (
     <View style={styles.container}>
-      <Appbar title="Reports" onBack={() => navigation.goBack()} />
+      <Appbar title="Reports" onBack={() => navigation.goBack()} subtitle={store.name}/>
 
       <ScrollView style={styles.scrollContainer}>
         <TouchableOpacity
@@ -34,24 +34,24 @@ const ReportsScreen = ({navigation, route}) => {
           <Text style={styles.reportText}>Reports Summary</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.reportCard}
           onPress={() => navigation.navigate('DeliveryStockReport', {store})}>
           <View style={styles.iconContainer}>
             <Ionicons name="cube-outline" size={28} color={colors.primary} />
           </View>
           <Text style={styles.reportText}>Delivery Stock Report</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.reportCard}
           onPress={() => navigation.navigate('PulloutReport', {store})}>
           <View style={styles.iconContainer}>
             <Ionicons name="time-outline" size={28} color={colors.primary} />
           </View>
           <Text style={styles.reportText}>Pullout / Expired Report</Text>
-        </TouchableOpacity>
-
+        </TouchableOpacity> */}
+        {/* 
         <TouchableOpacity
           style={styles.reportCard}
           onPress={() => navigation.navigate('RemainingStockReport', {store})}>
@@ -63,19 +63,44 @@ const ReportsScreen = ({navigation, route}) => {
             />
           </View>
           <Text style={styles.reportText}>Remaining Stock Report</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.reportCard}
-          onPress={() => navigation.navigate('TopSellingReport', {store})}>
+          onPress={() => navigation.navigate('SalesAnalytics', {store})}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name="trending-up-outline"
+              name="analytics-outline"
               size={28}
               color={colors.primary}
             />
           </View>
-          <Text style={styles.reportText}>Top Selling Products</Text>
+          <Text style={styles.reportText}>Sales Analytics</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.reportCard}
+          onPress={() => navigation.navigate('RemainingStock', {store})}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="cube-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.reportText}>Remaining Stock</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.reportCard}
+          onPress={() => navigation.navigate('BillsAndReceiptReports', {store})}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="cube-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.reportText}>Cashiers Reports</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.reportCard}
+          onPress={() => navigation.navigate('BillsAndReceiptItemsReport', {store})}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="cube-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.reportText}>Items Reports</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

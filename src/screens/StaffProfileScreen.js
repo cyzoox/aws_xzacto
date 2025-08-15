@@ -63,7 +63,7 @@ const StaffProfileScreen = ({navigation, route}) => {
 
       const updateInput = {
         id: staffData.id,
-        password: newPin,
+        pin: newPin,
       };
 
       const result = await client.graphql({
@@ -79,6 +79,7 @@ const StaffProfileScreen = ({navigation, route}) => {
       ]);
     } catch (error) {
       setIsLoading(false);
+      console.log('Error updating staff:', JSON.stringify(error));
       Alert.alert('Error', 'Failed to update PIN: ' + error.message);
       console.error('Update PIN error:', error);
     }

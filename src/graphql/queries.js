@@ -1,3 +1,4 @@
+/* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
 export const getStaff = /* GraphQL */ `
@@ -21,6 +22,10 @@ export const getStaff = /* GraphQL */ `
         __typename
       }
       cartItems {
+        nextToken
+        __typename
+      }
+      payments {
         nextToken
         __typename
       }
@@ -350,6 +355,14 @@ export const getStore = /* GraphQL */ `
         nextToken
         __typename
       }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       account {
         id
         ownerId
@@ -359,6 +372,24 @@ export const getStore = /* GraphQL */ `
         subscriptionStartDate
         subscriptionEndDate
         lastModifiedBy
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeSettings {
+        id
+        storeId
+        address
+        phone
+        email
+        logoUrl
+        vatPercentage
+        lowStockThreshold
+        allowCashierSalesView
+        allowCreditSales
+        currencySymbol
+        receiptFooterText
+        businessHours
         createdAt
         updatedAt
         __typename
@@ -453,6 +484,18 @@ export const getSaleTransaction = /* GraphQL */ `
         nextToken
         __typename
       }
+      discounts {
+        nextToken
+        __typename
+      }
+      creditTransactions {
+        nextToken
+        __typename
+      }
+      payments {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -487,6 +530,61 @@ export const listSaleTransactions = /* GraphQL */ `
         paymentMethod
         change
         notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getDiscount = /* GraphQL */ `
+  query GetDiscount($id: ID!) {
+    getDiscount(id: $id) {
+      id
+      name
+      percentage
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listDiscounts = /* GraphQL */ `
+  query ListDiscounts(
+    $filter: ModelDiscountFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listDiscounts(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        name
+        percentage
+        transactionId
         createdAt
         updatedAt
         __typename
@@ -598,6 +696,18 @@ export const getCreditTransaction = /* GraphQL */ `
       remarks
       createdAt
       addedBy
+      transactionId
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
       customer {
         id
         name
@@ -609,6 +719,27 @@ export const getCreditTransaction = /* GraphQL */ `
         creditBalance
         allowCredit
         creditLimit
+        createdAt
+        updatedAt
+        __typename
+      }
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
         createdAt
         updatedAt
         __typename
@@ -637,6 +768,91 @@ export const listCreditTransactions = /* GraphQL */ `
         remarks
         createdAt
         addedBy
+        transactionId
+        storeId
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getPayment = /* GraphQL */ `
+  query GetPayment($id: ID!) {
+    getPayment(id: $id) {
+      id
+      amount
+      paymentMethod
+      transactionId
+      transaction {
+        id
+        items
+        total
+        discount
+        points
+        staffID
+        staffName
+        storeID
+        customerID
+        ownerId
+        status
+        payment_status
+        cash_received
+        paymentMethod
+        change
+        notes
+        createdAt
+        updatedAt
+        __typename
+      }
+      staffId
+      staff {
+        id
+        name
+        password
+        ownerId
+        accountId
+        role
+        log_status
+        device_id
+        device_name
+        createdAt
+        updatedAt
+        __typename
+      }
+      storeId
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listPayments = /* GraphQL */ `
+  query ListPayments(
+    $filter: ModelPaymentFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listPayments(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        amount
+        paymentMethod
+        transactionId
+        staffId
+        storeId
+        createdAt
         updatedAt
         __typename
       }
@@ -1329,6 +1545,68 @@ export const listSubscriptionHistories = /* GraphQL */ `
         changedBy
         previousPlanId
         newPlanId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getStoreSettings = /* GraphQL */ `
+  query GetStoreSettings($id: ID!) {
+    getStoreSettings(id: $id) {
+      id
+      storeId
+      address
+      phone
+      email
+      logoUrl
+      vatPercentage
+      lowStockThreshold
+      allowCashierSalesView
+      allowCreditSales
+      currencySymbol
+      receiptFooterText
+      businessHours
+      createdAt
+      updatedAt
+      store {
+        id
+        name
+        location
+        ownerId
+        accountId
+        createdAt
+        updatedAt
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+export const listStoreSettings = /* GraphQL */ `
+  query ListStoreSettings(
+    $filter: ModelStoreSettingsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listStoreSettings(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        storeId
+        address
+        phone
+        email
+        logoUrl
+        vatPercentage
+        lowStockThreshold
+        allowCashierSalesView
+        allowCreditSales
+        currencySymbol
+        receiptFooterText
+        businessHours
         createdAt
         updatedAt
         __typename

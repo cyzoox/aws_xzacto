@@ -1,4 +1,5 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
+import {hashPassword, verifyPassword} from '../utils/PasswordUtils';
 import {
   View,
   TextInput,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {generateClient} from 'aws-amplify/api';
+import {updateStaff} from '../graphql/mutations';
 import {listStaff} from '../graphql/queries';
 import {authService} from '../services/authService';
 import {getCurrentUser} from '@aws-amplify/auth';
@@ -19,6 +21,47 @@ import {createStaff, createAccount} from '../graphql/mutations';
 import {listSubscriptionPlans} from '../graphql/queries';
 
 const client = generateClient();
+
+// Helper function to migrate a plain text password to a hashed version
+const migrateToHashedPassword = async (staffId, plainTextPin) => {
+  try {
+    // Use our custom password hashing utility
+    const hashedPin = hashPassword(plainTextPin);
+    
+    // Update the staff record with the hashed password
+    const client = generateClient();
+    await client.graphql({
+      query: updateStaff,
+      variables: {
+        input: {
+          id: staffId,
+          password: hashedPin,
+        },
+      },
+    });
+    
+    console.log('Successfully migrated password to hashed version');
+  } catch (error) {
+    // Don't block the login process if migration fails
+    console.error('Error migrating password to hashed version:', error);
+  }
+};
+
+// Helper function to verify a PIN using our custom password utility
+// This provides backward compatibility for existing users while new pins are hashed
+const verifyStaffPin = (storedPassword, enteredPin) => {
+  // Nothing to verify against
+  if (!storedPassword) return false;
+
+  try {
+    // Use our custom verification that handles both formats
+    return verifyPassword(storedPassword, enteredPin);
+  } catch (error) {
+    console.error('Error verifying PIN:', error);
+    // Fallback to plain text comparison if verification fails
+    return storedPassword === enteredPin;
+  }
+};
 
 const RoleSelectionScreen = ({navigation}) => {
   const [username, setUsername] = useState('');
@@ -192,7 +235,7 @@ const RoleSelectionScreen = ({navigation}) => {
           },
         });
 
-        const plans = plansResponse.data.listSubscriptionPlans.items;
+        const plans = plansResponse.data?.listSubscriptionPlans?.items;
         if (plans && plans.length > 0) {
           freePlan = plans[0];
           console.log('Found free plan:', freePlan.id);
@@ -224,13 +267,27 @@ const RoleSelectionScreen = ({navigation}) => {
       const newAccount = accountResponse.data.createAccount;
       console.log('Account created:', newAccount.id);
 
-      // Create SuperAdmin staff with custom name and PIN
+      // Hash the PIN before creating the SuperAdmin
+      let hashedPin;
+      try {
+        // Use our custom password hashing utility
+        hashedPin = hashPassword(adminPin || '00000');
+        console.log('Created hashed PIN for SuperAdmin');
+      } catch (hashError) {
+        console.error('Error hashing SuperAdmin PIN:', hashError);
+        // Error handling - don't fall back to plain text
+        Alert.alert('Error', 'There was a problem with security. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      // Create SuperAdmin staff with custom name and hashed PIN
       const staffResponse = await client.graphql({
         query: createStaff,
         variables: {
           input: {
             name: adminName || 'Super Admin',
-            password: adminPin || '00000', // Use custom PIN or default if not provided
+            password: hashedPin, // Use hashed PIN
             role: ['SuperAdmin'], // Schema requires array of roles
             log_status: 'INACTIVE',
             device_id: '',
@@ -315,10 +372,22 @@ const RoleSelectionScreen = ({navigation}) => {
         return;
       }
 
-      // Verify PIN
-      if (staff.password !== pin) {
+      // Verify PIN - handle both bcrypt hashed and plain text passwords
+      const isValidPin = verifyStaffPin(staff.password, pin);
+      
+      if (!isValidPin) {
+        console.log('PIN verification failed');
         Alert.alert('Error', 'Invalid username or PIN');
         return;
+      }
+      
+      console.log('PIN verification successful');
+      
+      // If login was successful with a plain text password, upgrade it to a hashed version
+      // This ensures smooth migration of existing accounts
+      if (isValidPin && staff.password === pin) {
+        console.log('Migrating plain text password to hashed version');
+        migrateToHashedPassword(staff.id, pin);
       }
 
       // Get assigned store for staff

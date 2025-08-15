@@ -20,13 +20,14 @@ import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import SelectDropdown from 'react-native-select-dropdown';
 import AppHeader from '../../components/AppHeader';
-import ModalInputForm from '../../components/ModalInputForm';
+import ModalInputFormRevamp from '../../components/ModalInputFormRevamp';
 import colors from '../../themes/colors';
 import DataTable from '../../components/DataTable';
 
 import {generateClient} from 'aws-amplify/api';
 import {createExpense} from '../../graphql/mutations';
 import {listExpenses} from '../../graphql/queries';
+import Appbar from '../../components/Appbar';
 const client = generateClient();
 
 const ExpensesScreen = ({navigation, route}) => {
@@ -40,6 +41,8 @@ const ExpensesScreen = ({navigation, route}) => {
   const [staffList, setStaffList] = useState(['All Staff', staffData.name]);
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
 
   const descriptions = [
     'Rental Expense',
@@ -204,80 +207,16 @@ const ExpensesScreen = ({navigation, route}) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader
-        centerText="Expenses"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={30} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={
-          <ModalInputForm
-            displayComponent={
-              <View style={styles.addButtonContainer}>
-                <EvilIcons name={'plus'} size={30} color={colors.white} />
-                <Text style={styles.addButtonText}>Expense</Text>
-              </View>
-            }
-            title="Add Expenses"
-            onSave={saveExpense}>
-            <SelectDropdown
-              data={descriptions}
-              defaultButtonText={description}
-              onSelect={selectedItem => {
-                setDescription(selectedItem);
-              }}
-              buttonTextAfterSelection={selectedItem => selectedItem}
-              rowTextForSelection={item => item}
-              buttonStyle={styles.dropdown}
-              buttonTextStyle={styles.dropdownText}
-            />
-
-            {description === 'Others please specify' && (
-              <TextInput
-                mode="outlined"
-                label="Please specify"
-                placeholder="Please specify"
-                value={other}
-                onChangeText={text => setOthers(text)}
-                style={styles.textInput}
-              />
-            )}
-
-            <TextInput
-              mode="outlined"
-              label="Amount"
-              placeholder="Amount"
-              value={amount}
-              keyboardType="numeric"
-              onChangeText={text => setAmount(text)}
-              style={styles.textInput}
-            />
-          </ModalInputForm>
-        }
+      <Appbar
+        title="Expenses"
+        hideMenuButton
+        onBack={() => navigation.goBack()}
       />
-
+      {/* Filters */}
       <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Date:</Text>
-        <SelectDropdown
-          data={filterOptions}
-          defaultValue={filter}
-          onSelect={selectedItem => setFilter(selectedItem)}
-          buttonStyle={styles.filterDropdown}
-          buttonTextStyle={styles.filterDropdownText}
-          dropdownStyle={styles.filterDropdownMenu}
-        />
-        <Text style={[styles.filterLabel, {marginLeft: 15}]}>Staff:</Text>
-        <SelectDropdown
-          data={staffList}
-          defaultValue={staffFilter}
-          onSelect={handleStaffFilterChange}
-          buttonStyle={styles.filterDropdown}
-          buttonTextStyle={styles.filterDropdownText}
-          dropdownStyle={styles.filterDropdownMenu}
-        />
+        {/* ... your filter dropdowns ... */}
       </View>
-
+      {/* Data Table */}
       <DataTable
         headerTitles={['Description', 'Amount', 'Staff']}
         total={calculateTotal()}
@@ -298,9 +237,54 @@ const ExpensesScreen = ({navigation, route}) => {
           </View>
         )}
       </DataTable>
+   
+      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+      {/* Modal */}
+      <ModalInputFormRevamp
+        title="Add Expenses"
+        onSave={() => {
+          saveExpense();
+          setShowModal(false);
+        }}
+        fullScreen={false}
+        isVisible={showModal} // <-- pass state to control visibility
+        onCancel={() => setShowModal(false)}>
+        <SelectDropdown
+          data={descriptions}
+          defaultButtonText={description}
+          onSelect={selectedItem => setDescription(selectedItem)}
+          buttonTextAfterSelection={selectedItem => selectedItem}
+          rowTextForSelection={item => item}
+          buttonStyle={styles.dropdown}
+          buttonTextStyle={styles.dropdownText}
+        />
+
+        {description === 'Others please specify' && (
+          <TextInput
+            mode="outlined"
+            label="Please specify"
+            placeholder="Please specify"
+            value={other}
+            onChangeText={text => setOthers(text)}
+            style={styles.textInput}
+          />
+        )}
+
+        <TextInput
+          mode="outlined"
+          label="Amount"
+          placeholder="Amount"
+          value={amount}
+          keyboardType="numeric"
+          onChangeText={text => setAmount(text)}
+          style={styles.textInput}
+        />
+      </ModalInputFormRevamp>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -392,6 +376,23 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: colors.charcoalGrey,
+  },
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 80,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#3498DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+  },
+  fabText: {
+    fontSize: 30,
+    color: '#fff',
+    lineHeight: 30,
   },
 });
 

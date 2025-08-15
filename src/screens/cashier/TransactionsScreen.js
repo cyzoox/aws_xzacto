@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Text,
   StyleSheet,
@@ -13,13 +14,13 @@ import {
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import AppHeader from '../../components/AppHeader';
+import {Picker} from '@react-native-picker/picker';
+import CustomAppbar from '../../components/Appbar';
 import colors from '../../themes/colors';
 import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
-import DataTable from '../../components/DataTable';
-import {Grid, Col, Row} from 'react-native-easy-grid';
-import {TextInput, Button, Modal, Portal, Provider} from 'react-native-paper';
+import {Card, Title, Paragraph, Button} from 'react-native-paper';
+import {TextInput, Modal, Portal, Provider} from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const windowWidth = Dimensions.get('window').width;
@@ -30,6 +31,7 @@ import {listSaleTransactions, getSale, getProduct} from '../../graphql/queries';
 import {updateSaleTransaction, updateProduct} from '../../graphql/mutations';
 import {generateClient} from 'aws-amplify/api';
 import {theme} from '../../constants';
+import Appbar from '../../components/Appbar';
 const client = generateClient();
 
 const TransactionScreen = ({navigation, route}) => {
@@ -57,54 +59,59 @@ const TransactionScreen = ({navigation, route}) => {
   const [pinCode, setPinCode] = useState('');
   const [voidError, setVoidError] = useState('');
 
-  // Fetch transactions on initial load
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTransactions();
+    }, [])
+  );
 
-  // Filter transactions when filter period or dates change
   useEffect(() => {
     filterTransactionsByDate();
   }, [filterPeriod, startDate, endDate, transactions, selected]);
 
-  // Main function to fetch transactions
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
-      const result = await client.graphql({
-        query: listSaleTransactions,
-        variables: {
-          filter: {
-            storeID: {eq: staffData.store_id},
-            // If you want to filter by owner as well, uncomment the line below
-            // ownerId: { eq: staffData.ownerId }
+      const client = generateClient();
+      let resultList = [];
+      
+      if (staffData?.store_id) {
+        const result = await client.graphql({
+          query: listSaleTransactions,
+          variables: {
+            filter: {
+              storeID: {eq: staffData.store_id},
+            },
           },
-        },
-      });
+        });
+        resultList = result.data.listSaleTransactions.items;
+      } else {
+        const result = await client.graphql({
+          query: listSaleTransactions,
+        });
+        resultList = result.data.listSaleTransactions.items;
+      }
+      
+      // Filter out any null or malformed items to ensure data consistency
+      const validTransactions = resultList.filter(
+        item => item && item.id && item.createdAt && item.status && typeof item.total !== 'undefined' && item.total !== null
+      );
 
-      const resultList = result.data.listSaleTransactions.items;
-
-      // Sort transactions by creation date (newest first)
-      const sortedTransactions = resultList.sort(
+      const sortedTransactions = validTransactions.sort(
         (a, b) => moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf(),
       );
-
+      
       setTransactions(sortedTransactions);
-
-      // Filter transactions
-      const completed = sortedTransactions.filter(
-        transaction => transaction.status === 'Completed',
-      );
-      const voided = sortedTransactions.filter(
-        transaction => transaction.status === 'Voided',
-      );
-
-      // Set filtered lists in state
+      
+      const completed = sortedTransactions.filter(t => t.status === 'Completed');
+      const voided = sortedTransactions.filter(t => t.status === 'Voided');
+      
       setCompletedTransactions(completed);
       setVoidedTransactions(voided);
 
-      // Initial filtering
-      filterTransactionsByDate();
+      // Manually trigger filtering to ensure UI updates on initial load
+      filterTransactionsByDate(completed, voided);
+      
     } catch (error) {
       console.error('Error fetching transactions:', error);
       Alert.alert('Error', 'Failed to load transactions. Please try again.');
@@ -113,13 +120,11 @@ const TransactionScreen = ({navigation, route}) => {
     }
   };
 
-  // Function to filter transactions based on selected date period
-  const filterTransactionsByDate = () => {
-    const transactionsToFilter =
-      selected === 0 ? completedTransactions : voidedTransactions;
-    let filtered = [];
+  const filterTransactionsByDate = (completed = completedTransactions, voided = voidedTransactions) => {
+    const transactionsToFilter = selected === 0 ? completed : voided;
+    
     let start, end;
-
+    
     switch (filterPeriod) {
       case 'today':
         start = moment().startOf('day');
@@ -129,13 +134,17 @@ const TransactionScreen = ({navigation, route}) => {
         start = moment().subtract(1, 'days').startOf('day');
         end = moment().subtract(1, 'days').endOf('day');
         break;
-      case 'thisWeek':
+      case 'this_week':
         start = moment().startOf('week');
         end = moment().endOf('week');
         break;
-      case 'thisMonth':
+      case 'this_month':
         start = moment().startOf('month');
         end = moment().endOf('month');
+        break;
+      case 'last_6_months':
+        start = moment().subtract(6, 'months').startOf('day');
+        end = moment().endOf('day');
         break;
       case 'custom':
         start = moment(startDate);
@@ -145,43 +154,37 @@ const TransactionScreen = ({navigation, route}) => {
         start = moment().startOf('day');
         end = moment().endOf('day');
     }
-
-    filtered = transactionsToFilter.filter(transaction => {
+    
+    const filtered = transactionsToFilter.filter(transaction => {
+      if (!transaction || !transaction.createdAt) return false;
       const transactionDate = moment(transaction.createdAt);
-      return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
+      return transactionDate.isBetween(start, end, null, '[]');
     });
-
+    
     setFilteredTransactions(filtered);
   };
 
-  // Handler for date picker
   const onDateChange = (event, selectedDate) => {
-    if (event.type === 'dismissed') {
-      setDatePickerVisible(false);
-      return;
-    }
-
-    if (selectedDate) {
+    setDatePickerVisible(false);
+    if (event.type === 'set' && selectedDate) {
       if (dateType === 'start') {
-        // If selecting start date, set it to beginning of day
         setStartDate(moment(selectedDate).startOf('day').toDate());
       } else {
-        // If selecting end date, set it to end of day
         setEndDate(moment(selectedDate).endOf('day').toDate());
       }
     }
-
-    setDatePickerVisible(false);
-    setFilterPeriod('custom');
   };
 
-  // Show date picker for start or end date
   const showDatePicker = type => {
     setDateType(type);
     setDatePickerVisible(true);
   };
 
-  // Handle void transaction
+  const openVoidModal = (transaction) => {
+    setSelectedTransaction(transaction);
+    setVoidModalVisible(true);
+  };
+
   const voidTransaction = async () => {
     if (!voidReason.trim()) {
       setVoidError('Please enter a reason for voiding this transaction');
@@ -195,23 +198,8 @@ const TransactionScreen = ({navigation, route}) => {
 
     setIsLoading(true);
     try {
-      // 1. Get the transaction's related sales to restore stock
-      const salesResponse = await client.graphql({
-        query: listSaleTransactions,
-        variables: {
-          filter: {
-            id: {eq: selectedTransaction.id},
-          },
-        },
-      });
-
-      const transaction = salesResponse.data.listSaleTransactions.items[0];
-
-      if (!transaction) {
-        throw new Error('Transaction not found');
-      }
-
-      // 2. Update the transaction status to Voided
+      const client = generateClient();
+      
       await client.graphql({
         query: updateSaleTransaction,
         variables: {
@@ -224,48 +212,8 @@ const TransactionScreen = ({navigation, route}) => {
         },
       });
 
-      // 3. Restore product stock for each item in the transaction
-      // This requires additional API calls to get the sales items
-      // For each product ID in the transaction items array
-      for (const productId of transaction.items) {
-        try {
-          // Get the product
-          const productResponse = await client.graphql({
-            query: getProduct,
-            variables: {id: productId},
-          });
-
-          const product = productResponse.data.getProduct;
-
-          if (product) {
-            // Determine quantity sold in this transaction for this product
-            // This would need to be fetched from your Sale records
-            // For now we're assuming 1 as a placeholder
-            const quantitySold = 1;
-
-            // Update the product stock
-            await client.graphql({
-              query: updateProduct,
-              variables: {
-                input: {
-                  id: productId,
-                  stock: product.stock + quantitySold,
-                },
-              },
-            });
-          }
-        } catch (error) {
-          console.error(
-            `Error restoring stock for product ${productId}:`,
-            error,
-          );
-        }
-      }
-
-      // 4. Refresh the transactions list
       fetchTransactions();
 
-      // 5. Reset state and close modal
       setVoidModalVisible(false);
       setVoidReason('');
       setPinCode('');
@@ -281,7 +229,6 @@ const TransactionScreen = ({navigation, route}) => {
     }
   };
 
-  // Calculate totals for the displayed transactions
   const calculateTotals = () => {
     let totalAmount = 0;
     let totalTransactions = filteredTransactions.length;
@@ -296,292 +243,73 @@ const TransactionScreen = ({navigation, route}) => {
     };
   };
 
-  // Render table for completed transactions
-  const renderCompletedTable = () => (
-    <DataTable
-      total={calculateTotals().totalAmount}
-      headerTitles={[
-        'Time',
-        'Date',
-        'Type',
-        'Receipt',
-        'Discount',
-        'Amount',
-        'Action',
-        'View',
-      ]}
-      alignment="center">
-      {isLoading ? (
-        <ActivityIndicator
-          size="large"
-          color={colors.primary}
-          style={{marginTop: 20}}
-        />
-      ) : filteredTransactions.length > 0 ? (
-        <FlatList
-          keyExtractor={item => item.id}
-          data={filteredTransactions}
-          style={{marginTop: 10, borderRadius: 5}}
-          renderItem={renderCompletedItem}
-        />
-      ) : (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>No transactions found</Text>
-        </View>
-      )}
-    </DataTable>
-  );
-
-  // Render table for voided transactions
-  const renderVoidedTable = () => (
-    <DataTable
-      total={calculateTotals().totalAmount}
-      headerTitles={[
-        'Time',
-        'Date',
-        'Type',
-        'Receipt',
-        'Reason',
-        'Discount',
-        'Amount',
-        'View',
-      ]}
-      alignment="center">
-      {isLoading ? (
-        <ActivityIndicator
-          size="large"
-          color={colors.primary}
-          style={{marginTop: 20}}
-        />
-      ) : filteredTransactions.length > 0 ? (
-        <FlatList
-          keyExtractor={item => item.id}
-          data={filteredTransactions}
-          style={{marginTop: 10, borderRadius: 5}}
-          renderItem={renderVoidedItem}
-        />
-      ) : (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>No voided transactions found</Text>
-        </View>
-      )}
-    </DataTable>
-  );
-
-  // Render completed transaction item
-  const renderCompletedItem = ({item}) => (
-    <Grid>
-      <Row style={{height: 30, backgroundColor: colors.white}}>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {moment(item.createdAt).format('hh:mm A')}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {moment(item.createdAt).format('DD MMM YYYY')}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.payment_status || 'Cash'}</Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.id.substring(0, 8)}</Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {formatMoney(item.discount || 0, {symbol: '₱', precision: 2})}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {formatMoney(item.total, {symbol: '₱', precision: 2})}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <TouchableOpacity
-            style={styles.voidStyle}
-            onPress={() => {
-              setSelectedTransaction(item);
-              setVoidModalVisible(true);
-            }}>
-            <Text style={{color: colors.white, fontSize: 11}}>VOID</Text>
-          </TouchableOpacity>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <TouchableOpacity
-            style={styles.viewStyle}
+  const renderCompletedItem = ({item}) => {
+    if (!item) return null;
+    const createdAt = moment(item.createdAt);
+    return (
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.cardRow}>
+            <Title style={styles.cardTitle}>#{item.id.substring(0, 8)}</Title>
+            <Title style={styles.cardTotal}>
+              {formatMoney(item.total, {symbol: '₱', precision: 2})}
+            </Title>
+          </View>
+          <View style={styles.cardRow}>
+            <Paragraph style={styles.cardSubtitle}>
+              {createdAt.format('DD MMM YYYY, hh:mm A')}
+            </Paragraph>
+            <Paragraph style={styles.cardSubtitle}>
+              {item.payment_status || 'Cash'}
+            </Paragraph>
+          </View>
+        </Card.Content>
+        <Card.Actions style={styles.cardActions}>
+          <Button
+            mode="contained"
+            onPress={() => openVoidModal(item)}
+            style={styles.voidButton}
+            labelStyle={styles.voidButtonText}>
+            Void
+          </Button>
+          <Button
+            mode="outlined"
             onPress={() =>
-              navigation.navigate('TransactionDetails', {
+              navigation.navigate('TransactionsDetails', {
                 transactions: item,
                 staffData: staffData,
               })
             }>
-            <Text style={{color: colors.white, fontSize: 11}}>View</Text>
-          </TouchableOpacity>
-        </Col>
-      </Row>
-    </Grid>
-  );
-
-  // Render voided transaction item
-  const renderVoidedItem = ({item}) => (
-    <Grid>
-      <Row style={{height: 30, backgroundColor: colors.white}}>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {moment(item.createdAt).format('hh:mm A')}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {moment(item.createdAt).format('DD MMM YYYY')}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.payment_status || 'Cash'}</Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.id.substring(0, 8)}</Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>{item.notes || 'N/A'}</Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {formatMoney(item.discount || 0, {symbol: '₱', precision: 2})}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <Text style={styles.textColor}>
-            {formatMoney(item.total, {symbol: '₱', precision: 2})}
-          </Text>
-        </Col>
-        <Col style={[styles.ColStyle, {alignItems: 'center'}]}>
-          <TouchableOpacity
-            style={styles.viewStyle}
-            onPress={() =>
-              navigation.navigate('TransactionDetails', {
-                transactions: item,
-                staffData: staffData,
-              })
-            }>
-            <Text style={{color: colors.white, fontSize: 11}}>View</Text>
-          </TouchableOpacity>
-        </Col>
-      </Row>
-    </Grid>
-  );
-
-  // Render filter buttons
-  const renderFilterButtons = () => (
-    <View style={styles.filterContainer}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filterPeriod === 'today' && styles.filterButtonActive,
-          ]}
-          onPress={() => setFilterPeriod('today')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterPeriod === 'today' && styles.filterButtonTextActive,
-            ]}>
-            Today
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filterPeriod === 'yesterday' && styles.filterButtonActive,
-          ]}
-          onPress={() => setFilterPeriod('yesterday')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterPeriod === 'yesterday' && styles.filterButtonTextActive,
-            ]}>
-            Yesterday
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filterPeriod === 'thisWeek' && styles.filterButtonActive,
-          ]}
-          onPress={() => setFilterPeriod('thisWeek')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterPeriod === 'thisWeek' && styles.filterButtonTextActive,
-            ]}>
-            This Week
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filterPeriod === 'thisMonth' && styles.filterButtonActive,
-          ]}
-          onPress={() => setFilterPeriod('thisMonth')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterPeriod === 'thisMonth' && styles.filterButtonTextActive,
-            ]}>
-            This Month
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filterPeriod === 'custom' && styles.filterButtonActive,
-          ]}
-          onPress={() => setFilterPeriod('custom')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterPeriod === 'custom' && styles.filterButtonTextActive,
-            ]}>
-            Custom
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-
-  // Render custom date range selector
-  const renderCustomDateRange = () =>
-    filterPeriod === 'custom' && (
-      <View style={styles.dateRangeContainer}>
-        <TouchableOpacity
-          style={styles.datePickerButton}
-          onPress={() => showDatePicker('start')}>
-          <Text style={styles.datePickerLabel}>From:</Text>
-          <Text style={styles.datePickerText}>
-            {moment(startDate).format('MMM DD, YYYY')}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={styles.dateRangeSeparator}>-</Text>
-
-        <TouchableOpacity
-          style={styles.datePickerButton}
-          onPress={() => showDatePicker('end')}>
-          <Text style={styles.datePickerLabel}>To:</Text>
-          <Text style={styles.datePickerText}>
-            {moment(endDate).format('MMM DD, YYYY')}
-          </Text>
-        </TouchableOpacity>
-      </View>
+            View
+          </Button>
+        </Card.Actions>
+      </Card>
     );
+  };
 
-  // Render transaction summary
+  const renderVoidedItem = ({item}) => {
+    if (!item) return null;
+    const createdAt = moment(item.createdAt);
+    return (
+      <Card style={[styles.card, styles.voidedCard]}>
+        <Card.Content>
+          <View style={styles.cardRow}>
+            <Title style={styles.cardTitle}>#{item.id.substring(0, 8)}</Title>
+            <Title style={styles.cardTotal}>{formatMoney(item.total, { symbol: '₱', precision: 2 })}</Title>
+          </View>
+          <View style={styles.cardRow}>
+            <Paragraph style={styles.cardSubtitle}>{createdAt.format('DD MMM YYYY, hh:mm A')}</Paragraph>
+            <Paragraph style={styles.cardSubtitle}>{item.payment_status || 'Cash'}</Paragraph>
+          </View>
+          <Paragraph style={styles.voidedReason}>Reason: {item.notes || 'N/A'}</Paragraph>
+        </Card.Content>
+        <Card.Actions style={styles.cardActions}>
+          <Button mode="outlined" onPress={() => navigation.navigate('TransactionsDetails', { transactions: item, staffData: staffData })}>View</Button>
+        </Card.Actions>
+      </Card>
+    );
+  };
+
   const renderTransactionSummary = () => {
     const {totalAmount, totalTransactions} = calculateTotals();
 
@@ -602,43 +330,80 @@ const TransactionScreen = ({navigation, route}) => {
     );
   };
 
-  // Main render function
+  const renderCustomDateRange = () => {
+    return (
+      <View style={styles.dateRangeContainer}>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => showDatePicker('start')}>
+          <Text style={styles.dateButtonText}>
+            From: {moment(startDate).format('DD MMM YYYY')}
+          </Text>
+        </TouchableOpacity>
+        <Text style={{marginHorizontal: 10}}>-</Text>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => showDatePicker('end')}>
+          <Text style={styles.dateButtonText}>
+            To: {moment(endDate).format('DD MMM YYYY')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <Provider>
-      <View style={{flex: 1}}>
-        <AppHeader
-          centerText="Transactions"
-          leftComponent={
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <EvilIcons name={'arrow-left'} size={35} color={colors.white} />
-            </TouchableOpacity>
-          }
-          rightComponent={
-            <TouchableOpacity onPress={fetchTransactions}>
-              <MaterialIcons name={'refresh'} size={26} color={colors.white} />
-            </TouchableOpacity>
-          }
-        />
+      <View style={styles.mainContainer}>
+        <Appbar title="Transactions" onBack={() => navigation.goBack()} />
 
-        {renderFilterButtons()}
-        {renderCustomDateRange()}
-        {renderTransactionSummary()}
+        <View style={{paddingHorizontal: 16, paddingTop: 20, flex: 1}}>
+          <SegmentedControl
+            values={['Completed', 'Voided']}
+            selectedIndex={selected}
+            onChange={event =>
+              setSelected(event.nativeEvent.selectedSegmentIndex)
+            }
+            style={{marginBottom: 16}}
+          />
 
-        <SegmentedControl
-          style={styles.segmentedControl}
-          values={['Completed', 'Voided']}
-          selectedIndex={selected}
-          onChange={event => {
-            setSelected(event.nativeEvent.selectedSegmentIndex);
-          }}
-        />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={filterPeriod}
+              onValueChange={(itemValue) => setFilterPeriod(itemValue)}
+              style={styles.picker}
+              dropdownIconColor={colors.primary}
+            >
+              <Picker.Item label="Today" value="today" />
+              <Picker.Item label="Yesterday" value="yesterday" />
+              <Picker.Item label="This Week" value="this_week" />
+              <Picker.Item label="This Month" value="this_month" />
+              <Picker.Item label="Last 6 Months" value="last_6_months" />
+              <Picker.Item label="Custom Range" value="custom" />
+            </Picker>
+          </View>
+          
+          {filterPeriod === 'custom' && renderCustomDateRange()}
 
-        {/* Main content - render different tables based on selected tab */}
-        <View style={{flex: 1}}>
-          {selected === 0 ? renderCompletedTable() : renderVoidedTable()}
+          {renderTransactionSummary()}
+
+          {isLoading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{marginTop: 20, flex: 1}} />
+          ) : (
+            <FlatList
+              data={filteredTransactions}
+              renderItem={selected === 0 ? renderCompletedItem : renderVoidedItem}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{paddingBottom: 100}}
+              ListEmptyComponent={() => (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No transactions found</Text>
+                </View>
+              )}
+            />
+          )}
         </View>
 
-        {/* Date picker modal */}
         {datePickerVisible && (
           <DateTimePicker
             value={dateType === 'start' ? startDate : endDate}
@@ -648,7 +413,6 @@ const TransactionScreen = ({navigation, route}) => {
           />
         )}
 
-        {/* Void transaction modal */}
         <Portal>
           <Modal
             visible={voidModalVisible}
@@ -659,54 +423,50 @@ const TransactionScreen = ({navigation, route}) => {
               setVoidError('');
             }}
             contentContainerStyle={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Void Transaction</Text>
+            <Text style={styles.modalTitle}>Void Transaction</Text>
 
-              {voidError ? (
-                <Text style={styles.errorText}>{voidError}</Text>
-              ) : null}
+            <TextInput
+              label="Reason"
+              value={voidReason}
+              onChangeText={setVoidReason}
+              mode="outlined"
+              style={styles.input}
+            />
 
-              <TextInput
-                label="Reason for Voiding"
-                value={voidReason}
-                onChangeText={setVoidReason}
-                style={styles.input}
+            <TextInput
+              label="Staff PIN"
+              value={pinCode}
+              onChangeText={setPinCode}
+              mode="outlined"
+              secureTextEntry
+              keyboardType="numeric"
+              style={styles.input}
+            />
+
+            {voidError ? <Text style={styles.errorText}>{voidError}</Text> : null}
+
+            <View style={styles.buttonContainer}>
+              <Button
+                mode="contained"
+                onPress={voidTransaction}
+                style={styles.button}
+                loading={isLoading}
+                disabled={isLoading}>
+                Confirm
+              </Button>
+              <Button
                 mode="outlined"
-              />
-
-              <TextInput
-                label="Enter PIN to Confirm"
-                value={pinCode}
-                onChangeText={setPinCode}
-                style={styles.input}
-                secureTextEntry
-                keyboardType="numeric"
-                mode="outlined"
-              />
-
-              <View style={styles.modalButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setVoidModalVisible(false);
-                    setVoidReason('');
-                    setPinCode('');
-                    setVoidError('');
-                  }}
-                  style={styles.cancelButton}>
-                  Cancel
-                </Button>
-
-                <Button
-                  mode="contained"
-                  onPress={voidTransaction}
-                  style={styles.confirmButton}
-                  loading={isLoading}
-                  disabled={isLoading}>
-                  Confirm Void
-                </Button>
+                onPress={() => {
+                  setVoidModalVisible(false);
+                  setVoidReason('');
+                  setPinCode('');
+                  setVoidError('');
+                }}
+                style={styles.button}
+                disabled={isLoading}>
+                Cancel
+              </Button>
               </View>
-            </View>
           </Modal>
         </Portal>
       </View>
@@ -715,123 +475,96 @@ const TransactionScreen = ({navigation, route}) => {
 };
 
 const styles = StyleSheet.create({
-  text: {
-    fontSize: 30,
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  textColor: {
-    fontSize: 12,
-    color: colors.black,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  ColStyle: {
-    width:
-      windowWidth < 375
-        ? windowWidth / 4 - 5
-        : windowWidth < 414
-        ? windowWidth / 4.2 - 3
-        : windowWidth / 4.5 - 2,
-    justifyContent: 'center',
-    paddingBottom: 5,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.charcoalGrey,
-  },
-  voidStyle: {
-    marginTop: 3,
-    backgroundColor: colors.red,
-    paddingHorizontal: 8,
-    paddingVertical: 1.5,
-    borderRadius: 10,
-    shadowColor: '#EBECF0',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  viewStyle: {
-    marginTop: 3,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 1.5,
-    borderRadius: 10,
-    shadowColor: '#EBECF0',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  filterContainer: {
-    marginHorizontal: 10,
+  card: {
     marginVertical: 8,
-  },
-  filterButton: {
+    elevation: 3,
+    borderRadius: 12,
     backgroundColor: colors.white,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  voidedCard: {
+    backgroundColor: '#fff1f0',
+    borderColor: colors.red,
     borderWidth: 1,
-    borderColor: colors.lightGrey,
   },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  filterButtonText: {
-    color: colors.charcoalGrey,
-    fontWeight: '500',
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  filterButtonTextActive: {
+  cardTotal: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#666',
+  },
+  cardActions: {
+    justifyContent: 'flex-end',
+  },
+  voidButton: {
+    backgroundColor: colors.error,
+    marginRight: 8,
+  },
+  voidButtonText: {
     color: colors.white,
+  },
+  voidedReason: {
+    marginTop: 10,
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: colors.error,
+  },
+  pickerContainer: {
+    marginBottom: 10,
+    borderColor: colors.grey,
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: colors.white,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
   dateRangeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 10,
     marginBottom: 10,
   },
-  datePickerButton: {
+  dateButton: {
     backgroundColor: colors.white,
     padding: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.lightGrey,
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
   },
-  datePickerLabel: {
+  dateButtonText: {
     color: colors.charcoalGrey,
-    marginRight: 5,
     fontWeight: '500',
-  },
-  datePickerText: {
-    color: colors.black,
-    fontWeight: '600',
-  },
-  dateRangeSeparator: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: 'bold',
+    textAlign: 'center',
   },
   summaryContainer: {
     flexDirection: 'row',
-    marginHorizontal: 10,
     marginBottom: 10,
     backgroundColor: colors.white,
     borderRadius: 8,
     padding: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     elevation: 2,
   },
   summaryItem: {
@@ -848,12 +581,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
-  segmentedControl: {
-    marginHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: colors.boldGrey,
-  },
   noDataContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
@@ -868,9 +597,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
   },
-  modalContent: {
-    width: '100%',
-  },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -881,19 +607,14 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 15,
   },
-  modalButtons: {
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
   },
-  cancelButton: {
+  button: {
     flex: 1,
-    marginRight: 10,
-    borderColor: colors.accent,
-  },
-  confirmButton: {
-    flex: 1,
-    backgroundColor: colors.accent,
+    marginHorizontal: 5,
   },
   errorText: {
     color: colors.red,

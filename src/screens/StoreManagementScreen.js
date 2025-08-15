@@ -13,7 +13,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Appbar from '../components/Appbar';
 import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {addStore, fetchStores} from '../store/slices/storeSlice';
+import {createStoreSettings} from '../redux/slices/storeSettingsSlice';
 import {getCurrentUser} from '@aws-amplify/auth';
+import colors from '../themes/colors';
 
 export default function StoreManagementScreen({navigation}) {
   const dispatch = useDispatch();
@@ -112,8 +114,7 @@ export default function StoreManagementScreen({navigation}) {
       const freshLimitsData = await AsyncStorage.getItem('subscriptionLimits');
       if (freshLimitsData) {
         const freshLimits = JSON.parse(freshLimitsData);
-        console.log('Fetched fresh subscription limits:', freshLimits);
-
+        
         // Update state for future use
         setSubscriptionLimits(freshLimits);
 
@@ -122,23 +123,11 @@ export default function StoreManagementScreen({navigation}) {
         currentPlanName = freshLimits.planName || '';
       }
     } catch (error) {
-      console.error('Error fetching fresh subscription limits:', error);
+      // Handle error silently
     }
 
     // Check against subscription store limit
     const currentStoreCount = stores.length;
-
-    console.log('DEBUG - Current store count:', currentStoreCount);
-    console.log('DEBUG - Store limit:', currentLimit);
-    console.log('DEBUG - Plan name:', currentPlanName);
-    console.log('DEBUG - Fresh limits used:', {currentLimit, currentPlanName});
-    console.log(
-      'DEBUG - Is condition met?',
-      currentLimit > 0 && currentStoreCount >= currentLimit,
-    );
-    console.log('DEBUG - Part 1:', currentLimit > 0);
-    console.log('DEBUG - Part 2:', currentStoreCount >= currentLimit);
-    console.log('DEBUG - Stores array:', JSON.stringify(stores));
 
     // Only apply limit if it's a positive number and we've reached or exceeded the limit
     // If limit is 0 or negative, it means unlimited
@@ -168,14 +157,33 @@ export default function StoreManagementScreen({navigation}) {
       status: 'ACTIVE',
     };
 
-    console.log(
-      `Creating store with ownerId: ${currentUserId} (${
-        currentStoreCount + 1
-      }/${currentLimit > 0 ? currentLimit : '∞'} stores)`,
-    );
-
     // Dispatch action to add store
-    dispatch(addStore(storeInput));
+    const storeResult = await dispatch(addStore(storeInput));
+    
+    // Create default store settings for the new store
+    if (storeResult.payload && storeResult.payload.id) {
+      const storeId = storeResult.payload.id;
+      
+      // Create default store settings
+      const storeSettingsData = {
+        storeId: storeId,
+        name: newStore.name,
+        address: newStore.location,
+        phone: '',
+        email: '',
+        logoUrl: '',
+        vatPercentage: 0,
+        lowStockThreshold: 5, // Default low stock threshold
+        allowCashierSalesView: true,
+        allowCreditSales: true,
+        currencySymbol: '$',
+        receiptFooterText: 'Thank you for your business!',
+        businessHours: ''
+      };
+      
+      // Dispatch action to create store settings
+      await dispatch(createStoreSettings(storeSettingsData));
+    }
 
     // Reset form
     setNewStore({
@@ -188,8 +196,8 @@ export default function StoreManagementScreen({navigation}) {
     Alert.alert(
       'Success',
       isOnline
-        ? 'Store added successfully'
-        : 'Store added and will be synced when online',
+        ? 'Store and default settings added successfully'
+        : 'Store and settings added and will be synced when online',
     );
   };
 
@@ -309,6 +317,10 @@ export default function StoreManagementScreen({navigation}) {
 }
 
 const styles = StyleSheet.create({
+  submitButton:{
+    marginTop: 16,
+    backgroundColor: colors.secondary
+    },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -319,7 +331,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     margin: 16,
-    backgroundColor: '#2196F3',
+    backgroundColor: colors.secondary,
   },
   modal: {
     backgroundColor: 'white',
@@ -392,4 +404,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+
 });

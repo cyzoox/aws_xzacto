@@ -24,6 +24,7 @@ import {addStore} from '../store/slices/storeSlice';
 import {fetchStaff} from '../store/slices/staffSlice';
 import {Card} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import colors from '../themes/colors';
 
 export default function SuperAdminScreen({navigation, route}) {
   const [accountsWithoutSubscription, setAccountsWithoutSubscription] =
@@ -296,6 +297,7 @@ export default function SuperAdminScreen({navigation, route}) {
         subtitle={
           hasPendingChanges ? `${pendingChangesCount} pending changes` : ''
         }
+        hideMenuButton
         onBack={null} // No back button for dashboard
       />
 
@@ -414,7 +416,7 @@ export default function SuperAdminScreen({navigation, route}) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, {backgroundColor: '#8E44AD'}]}
+            style={styles.actionButton}
             onPress={() => navigation.navigate('Subscription', {staffData})}>
             <Icon
               name="card-membership"
@@ -656,7 +658,7 @@ const styles = StyleSheet.create({
   },
   // Actions
   actionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.secondary,
     padding: 16,
     borderRadius: 10,
     marginVertical: 8,

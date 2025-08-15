@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from 'react-native-modal';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 import List from '../../components/List';
 import Spacer from '../../components/Spacer';
 import colors from '../../themes/colors';
@@ -19,6 +20,7 @@ import formatMoney from 'accounting-js/lib/formatMoney.js';
 import ProductsCashier from '../../components/ProductsCashier';
 import {listCartItems} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
+import Appbar from '../../components/Appbar';
 
 const client = generateClient();
 
@@ -151,19 +153,11 @@ const CashierScreen = ({navigation, route}) => {
 
   return (
     <View style={{flex: 1}}>
-      <AppHeader
-        centerText="Home"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.openDrawer()}>
-            <EvilIcons name={'navicon'} size={35} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={
-          <TouchableOpacity onPress={handleLogout}>
-            <Ionicons name={'log-out-outline'} size={24} color={colors.white} />
-          </TouchableOpacity>
-        }
+      <Appbar
+        title="POS Dashboard"
+        onMenuPress={() => navigation.openDrawer()}
       />
+
       <ProductsCashier
         route={route}
         cart={cart}
@@ -172,15 +166,28 @@ const CashierScreen = ({navigation, route}) => {
       />
       <View style={styles.bottomView}>
         <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          style={styles.checkoutBtn}>
-          <Text style={styles.checkoutText}>
-            Subtotal{' '}
-            {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
-          </Text>
-          <Text style={styles.checkoutText}>
-            Qty {formatMoney(calculateQty(), {symbol: '', precision: 2})}
-          </Text>
+          style={styles.checkoutBtn}
+          onPress={() => setModalVisible(true)}>
+          <LinearGradient
+            colors={['#00A7D5', '#00A7D5']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 0}}
+            style={styles.checkoutGradient}>
+            <View style={styles.checkoutContent}>
+              <Text style={styles.checkoutQtyText}>{calculateQty()} items</Text>
+              <Text style={styles.checkoutTotalText}>
+                {formatMoney(calculateTotal(), {symbol: '₱', precision: 2})}
+              </Text>
+              <View style={styles.checkoutActionContainer}>
+                <Text style={styles.checkoutActionText}>Checkout</Text>
+                <Ionicons
+                  name="arrow-forward-outline"
+                  size={20}
+                  color={colors.white}
+                />
+              </View>
+            </View>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
       <Modal
@@ -189,7 +196,7 @@ const CashierScreen = ({navigation, route}) => {
         animationOutTiming={500}
         useNativeDriver={true}
         onBackButtonPress={() => setModalVisible(false)}
-        backdropOpacity={0.1}
+        backdropOpacity={0}
         isVisible={modalVisible}
         style={[
           styles.modalView,
@@ -250,46 +257,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomView: {
-    flex: 1,
-    width: '100%',
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
     position: 'absolute',
     bottom: 20,
-    borderRadius: 20,
+    left: 20,
+    right: 20,
   },
   checkoutBtn: {
-    backgroundColor: colors.accent,
-    width: '80%',
-    paddingVertical: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
     borderRadius: 30,
-    shadowColor: '#EBECF0',
-    shadowOffset: {width: 0, height: 5},
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
     elevation: 1,
   },
-  checkoutText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.white,
+  checkoutGradient: {
+    borderRadius: 30,
+    overflow: 'hidden',
   },
-  payButtonContainer: {
+  checkoutContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  checkoutQtyText: {
+    color: colors.white,
+    fontSize: 16,
+  },
+  checkoutTotalText: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  checkoutActionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkoutActionText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 5,
+  },
+  payButtonContainer: {
+    padding: 20,
     backgroundColor: 'white',
   },
   payButton: {
-    marginRight: 2,
-    borderRadius: 15,
-    paddingVertical: 10,
+    borderRadius: 30,
+    paddingVertical: 15,
+    width: '100%',
   },
   payButtonText: {
     textAlign: 'center',
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {View, StyleSheet, Image, TouchableOpacity, Text} from 'react-native';
 import {DrawerItem, DrawerContentScrollView} from '@react-navigation/drawer';
+import {useSelector} from 'react-redux';
 import colors from '../themes/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Alert from './Alert';
@@ -8,6 +9,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export function DrawerContent(props) {
   const {staffData} = props;
+
   const [alerts, setAlert] = useState(false);
   const [switch_alerts, setSwitchAlert] = useState(false);
   const [switchStore, setSwitchStore] = useState(false);
@@ -45,9 +47,10 @@ export function DrawerContent(props) {
     setSwitchAlert(false);
   };
   // Handler for drawer item press with navigation
-  const handleItemPress = (screen, itemName) => {
+  const handleItemPress = (itemName, screen, params = {}) => {
     setActiveItem(itemName);
-    props.navigation.navigate(screen);
+    props.navigation.navigate(screen, params);
+    console.log(`Navigating to ${screen} with params:`, params);
   };
 
   return (
@@ -84,7 +87,7 @@ export function DrawerContent(props) {
 
             <TouchableOpacity
               style={styles.attendantInfo}
-              onPress={() => props.navigation.navigate('Attendance')}>
+              onPress={() => props.navigation.navigate('StaffProfile')}>
               <View style={styles.avatarContainer}>
                 <Image
                   source={require('../../assets/assets/cashier.png')}
@@ -118,7 +121,7 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Home' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Home', 'Home')}>
+              onPress={() => handleItemPress('Home', 'Home', { staffData })}>
               <Ionicons
                 name="home-outline"
                 size={22}
@@ -135,6 +138,38 @@ export function DrawerContent(props) {
               </Text>
             </TouchableOpacity>
 
+            {/* Customers */}
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                activeItem === 'Customers' && styles.activeMenuItem,
+              ]} onPress={() => {
+                console.log('Customer navigation - staffData:', staffData);
+                if (staffData) {
+                  const storeParam = staffData.store_id 
+                    ? { store: { id: staffData.store_id } }
+                    : { store: { id: staffData?.stores?.items?.[0]?.storeId || 'default' } };
+                  console.log('Store param for CustomerScreen:', storeParam);
+                  handleItemPress('Customers', 'Customers', storeParam);
+                }
+              }}>
+             
+              <Ionicons
+                name="people-outline"
+                size={22}
+                color={
+                  activeItem === 'Customers' ? colors.primary : colors.charcoalGrey
+                }
+              />
+              <Text
+                style={[
+                  styles.menuItemText,
+                  activeItem === 'Customers' && styles.activeMenuItemText,
+                ]}>
+                Customers
+              </Text>
+            </TouchableOpacity>
+
             {/* Staff Management (only for Admin) */}
             {isSuperAdmin && (
               <TouchableOpacity
@@ -143,7 +178,7 @@ export function DrawerContent(props) {
                   activeItem === 'Staff Management' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Staff Management', 'Staff Management')
+                  handleItemPress('Staff Management', 'StaffManagementScreen', { staffData })
                 }>
                 <Ionicons
                   name="people-outline"
@@ -171,7 +206,7 @@ export function DrawerContent(props) {
                 activeItem === 'Printer Settings' && styles.activeMenuItem,
               ]}
               onPress={() =>
-                handleItemPress('Printer Settings', 'Printer Settings')
+                handleItemPress('Printer Settings', 'PrinterSettings', { staffData })
               }>
               <Ionicons
                 name="print-outline"
@@ -197,7 +232,7 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Expenses' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Expenses', 'Expenses')}>
+              onPress={() => handleItemPress('Expenses', 'Expenses', { staffData })}>
               <Ionicons
                 name="cash-outline"
                 size={22}
@@ -221,7 +256,7 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Transactions' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Transactions', 'Transactions')}>
+              onPress={() => handleItemPress('Transactions', 'Transactions', { staffData })}>
               <Ionicons
                 name="swap-horizontal-outline"
                 size={22}
@@ -252,7 +287,7 @@ export function DrawerContent(props) {
                   activeItem === 'Products Dashboard' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Products Dashboard', 'Products Dashboard')
+                  handleItemPress('Products Dashboard', 'ProductsDashboard', { staffData })
                 }>
                 <Ionicons
                   name="grid-outline"
@@ -279,7 +314,7 @@ export function DrawerContent(props) {
                   activeItem === 'Create Product' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Create Product', 'Create Product')
+                  handleItemPress('Create Product', 'CreateProduct', { staffData })
                 }>
                 <Ionicons
                   name="add-circle-outline"
@@ -311,7 +346,7 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Staff Profile' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Staff Profile', 'Staff Profile')}>
+              onPress={() => handleItemPress('StaffProfile', 'StaffProfile', { staffData })}>
               <Ionicons
                 name="person-outline"
                 size={22}

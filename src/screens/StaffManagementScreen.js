@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
+import {hashPassword} from '../utils/PasswordUtils';
 import {
   View,
   StyleSheet,
@@ -38,6 +39,7 @@ import {fetchStores} from '../store/slices/storeSlice';
 import {getCurrentUser} from '@aws-amplify/auth';
 import * as mutations from '../graphql/mutations';
 import * as queries from '../graphql/queries';
+import colors from '../themes/colors';
 
 function StaffManagementScreen({navigation}) {
   const dispatch = useDispatch();
@@ -366,22 +368,22 @@ function StaffManagementScreen({navigation}) {
             // Check limits for target stores
             for (const storeId of newStaff.stores) {
               // Admin limit check
-              if (adminPerStoreLimit > 0 && newStaff.role === 'Admin') {
-                if (storeAdminMap[storeId] >= adminPerStoreLimit) {
-                  Alert.alert(
-                    'Admin Limit Reached',
-                    `Your ${planName} plan allows a maximum of ${adminPerStoreLimit} admins per store.`,
-                    [
-                      {text: 'OK'},
-                      {
-                        text: 'Upgrade Subscription',
-                        onPress: () => navigation.navigate('Subscription'),
-                      },
-                    ],
-                  );
-                  return;
-                }
-              }
+              // if (adminPerStoreLimit > 0 && newStaff.role === 'Admin') {
+              //   if (storeAdminMap[storeId] >= adminPerStoreLimit) {
+              //     Alert.alert(
+              //       'Admin Limit Reached',
+              //       `Your ${planName} plan allows a maximum of ${adminPerStoreLimit} admins per store.`,
+              //       [
+              //         {text: 'OK'},
+              //         {
+              //           text: 'Upgrade Subscription',
+              //           onPress: () => navigation.navigate('Subscription'),
+              //         },
+              //       ],
+              //     );
+              //     return;
+              //   }
+              // }
 
               // Staff limit check for all roles
               if (staffPerStoreLimit > 0) {
@@ -409,15 +411,33 @@ function StaffManagementScreen({navigation}) {
       setIsSaving(true);
 
       // Prepare staff data
-      const staffData = {
+      let staffData = {
         name: newStaff.name.trim(),
         role: Array.isArray(newStaff.role) ? newStaff.role : [newStaff.role],
         ownerId: currentUserId,
-        password: selectedStaffId ? undefined : '00000', // Default password for new staff
         log_status: 'INACTIVE',
         device_id: '',
         device_name: '',
       };
+      
+      // Hash password for new staff
+      if (!selectedStaffId) {
+        try {
+          // Default password for new staff with secure hashing
+          const defaultPassword = '00000';
+          // Use our custom password hashing utility
+          const hashedPassword = hashPassword(defaultPassword);
+          
+          console.log('Created hashed password for new staff');
+          staffData.password = hashedPassword;
+        } catch (hashError) {
+          console.error('Error hashing password:', hashError);
+          // Don't continue if hashing fails - security first
+          Alert.alert('Error', 'There was a problem with security. Please try again.');
+          setIsSaving(false);
+          return;
+        }
+      }
 
       // Generate a local ID for new staff with a prefix to identify local IDs
       const tempId = selectedStaffId || `local_${Date.now()}`;
@@ -962,6 +982,7 @@ function StaffManagementScreen({navigation}) {
                       setSelectedStaffId(null);
                       setNewStaff({name: '', role: '', stores: []});
                     }}
+                     labelStyle={{color: colors.red}}
                     style={styles.cancelButton}
                     disabled={isSaving}>
                     Cancel
@@ -970,6 +991,7 @@ function StaffManagementScreen({navigation}) {
                     mode="contained"
                     onPress={handleAddStaff}
                     style={[styles.actionButton, styles.submitButton]}
+                    labelStyle={{color: colors.white}}
                     disabled={
                       isSaving ||
                       !newStaff.name ||
@@ -996,6 +1018,10 @@ function StaffManagementScreen({navigation}) {
 }
 
 const styles = StyleSheet.create({
+  addButton: {
+      margin: 16,
+      backgroundColor: colors.secondary,
+    },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -1270,17 +1296,17 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   actionButton: {
-    minWidth: 120,
-    marginLeft: 12,
+ 
     borderRadius: 20,
-    paddingVertical: 6,
+ 
+    marginTop: 10
   },
   cancelButton: {
-    borderColor: '#666',
+    borderColor: colors.red,
     borderWidth: 1.5,
   },
   submitButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: colors.secondary,
     elevation: 2,
   },
 });

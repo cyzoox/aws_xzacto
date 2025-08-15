@@ -38,11 +38,11 @@ const AlertwithChild = ({
                 margin: 15,
               }}>
               <Text style={styles.modalText}>{title}</Text>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 onPress={onPressAddbtn}
                 style={{justifyContent: 'center'}}>
                 <EvilIcons name={'plus'} size={26} color={colors.red} />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
 
             {children}

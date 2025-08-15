@@ -32,6 +32,7 @@ import colors from '../../themes/colors';
 // GraphQL
 import {listSaleTransactions, getSaleTransaction} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
+import Cards from '../../components/Cards';
 const client = generateClient();
 
 const {width} = Dimensions.get('window');
@@ -374,29 +375,111 @@ const BillsAndReceipt = ({navigation, route}) => {
     const summary = calculateSummary();
 
     return (
-      <View style={styles.summaryContainer}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{summary.totalTransactions}</Text>
-          <Text style={styles.summaryLabel}>Total Bills</Text>
+      <Cards>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+          }}>
+          <Text style={styles.summaryTitle}>Sales Overview</Text>
+          <View style={styles.periodFilter}>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'today' && styles.activePeriod,
+              ]}
+              onPress={() => setFilterPeriod('today')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'today' && styles.activePeriodText,
+                ]}>
+                Today
+              </Text>
+            </TouchableOpacity>
+            {/* <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'yesterday' && styles.activePeriod,
+              ]}
+              onPress={() => setFilterPeriod('yesterday')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'yesterday' && styles.activePeriodText,
+                ]}>
+                Yesterday
+              </Text>
+            </TouchableOpacity> */}
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'thisWeek' && styles.activePeriod,
+              ]}
+              onPress={() => setFilterPeriod('thisWeek')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'thisWeek' && styles.activePeriodText,
+                ]}>
+                This Week
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'thisMonth' && styles.activePeriod,
+              ]}
+              onPress={() => setFilterPeriod('thisMonth')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'thisMonth' && styles.activePeriodText,
+                ]}>
+                This Month
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'custom' && styles.activePeriod,
+              ]}
+              onPress={() => setFilterPeriod('custom')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'custom' && styles.activePeriodText,
+                ]}>
+                Custom
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+        <View style={styles.summaryContainer}>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>{summary.totalTransactions}</Text>
+            <Text style={styles.summaryLabel}>Total Bills</Text>
+          </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>
-            {formatMoney(summary.totalAmount, {symbol: '₱', precision: 2})}
-          </Text>
-          <Text style={styles.summaryLabel}>Total Sales</Text>
-        </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {formatMoney(summary.totalAmount, {symbol: '₱', precision: 2})}
+            </Text>
+            <Text style={styles.summaryLabel}>Total Sales</Text>
+          </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>
-            {formatMoney(summary.averageTransaction, {
-              symbol: '₱',
-              precision: 2,
-            })}
-          </Text>
-          <Text style={styles.summaryLabel}>Avg. Bill</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {formatMoney(summary.averageTransaction, {
+                symbol: '₱',
+                precision: 2,
+              })}
+            </Text>
+            <Text style={styles.summaryLabel}>Avg. Bill</Text>
+          </View>
         </View>
-      </View>
+      </Cards>
     );
   };
 
@@ -866,30 +949,20 @@ const BillsAndReceipt = ({navigation, route}) => {
       <View style={styles.container}>
         <Appbar
           title="Bills & Receipts"
+          subtitle={store.name}
           onBack={() => navigation.goBack()}
-          rightComponent={
-            <TouchableOpacity onPress={fetchTransactions}>
-              <MaterialIcons name="refresh" size={24} color={colors.white} />
-            </TouchableOpacity>
-          }
+          
         />
 
-        {/* View Mode Selector */}
-        {renderViewModeSelector()}
-
+        {renderSummary()}
         {/* Filters and Date Range */}
-        {renderFilterButtons()}
+        {/* {renderFilterButtons()} */}
         {renderCustomDateRange()}
 
         {/* Summary Statistics */}
-        {renderSummary()}
 
         {/* Main Content */}
-        <View style={styles.contentContainer}>
-          {viewMode === 'all' && renderTransactionTable()}
-          {viewMode === 'cashier' && renderCashierReport()}
-          {viewMode === 'item' && renderItemReport()}
-        </View>
+        <View style={styles.contentContainer}>{renderTransactionTable()}</View>
 
         {/* Transaction Details Modal */}
         {renderTransactionDetailsModal()}
@@ -914,6 +987,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   contentContainer: {
+    marginTop:10,
     flex: 1,
     paddingHorizontal: 10,
   },
@@ -945,6 +1019,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
     marginHorizontal: 10,
     marginBottom: 10,
   },
@@ -977,13 +1052,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 10,
     backgroundColor: colors.white,
-    borderRadius: 8,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  
   },
   summaryCard: {
     flex: 1,
@@ -998,6 +1067,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: colors.primary,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginHorizontal: 10,
+    marginVertical: 10,
   },
   viewModeContainer: {
     flexDirection: 'row',
@@ -1182,6 +1258,47 @@ const styles = StyleSheet.create({
     color: colors.charcoalGrey,
     fontSize: 14,
   },
+  // Filter card styles
+    filterCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    filterTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.textDark,
+      marginBottom: 12,
+    },
+    periodFilter: {
+      flexDirection: 'row',
+      backgroundColor: '#F5F5F5',
+      borderRadius: 20,
+      padding: 2,
+      justifyContent: 'center',
+    },
+    periodButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 18,
+    },
+    activePeriod: {
+      backgroundColor: colors.primary,
+    },
+    periodText: {
+      color: colors.textDark,
+      fontSize: 14,
+    },
+    activePeriodText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+    },
 });
 
 export default BillsAndReceipt;

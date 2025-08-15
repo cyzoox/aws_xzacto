@@ -10,14 +10,12 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
-import AntDesign from 'react-native-vector-icons/AntDesign';
 import colors from '../../themes/colors';
 import {ListItem, Card, Overlay} from 'react-native-elements';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import moment from 'moment';
 import {useFocusEffect} from '@react-navigation/native';
-import AppHeader from '../../components/AppHeader';
+import Appbar from '../../components/Appbar';
 import AlertwithChild from '../../components/AlertwithChild';
 import SearchInput, {createFilter} from 'react-native-search-filter';
 import {getSaleTransaction, getProduct, listSales} from '../../graphql/queries';
@@ -38,6 +36,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
   const [code, setCode] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVoidingTransaction, setIsVoidingTransaction] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [saleItems, setSaleItems] = useState([]);
 
@@ -176,6 +175,78 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     setSelectedItem(null);
   };
 
+  const handleVoidTransaction = async () => {
+    if (!reason.trim()) {
+      setError('Please provide a reason for voiding.');
+      return;
+    }
+    if (code !== staffData?.password) {
+      setError('Invalid PIN code.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 1. Restore stock for each item in the transaction
+      for (const item of saleItems) {
+        const productResult = await client.graphql({
+          query: getProduct,
+          variables: {id: item.productID},
+        });
+        const currentProduct = productResult.data.getProduct;
+        if (currentProduct) {
+          await client.graphql({
+            query: updateProduct,
+            variables: {
+              input: {
+                id: item.productID,
+                quantity: currentProduct.quantity + item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      // 2. Update the status of each sale item to 'VOIDED'
+      await Promise.all(
+        saleItems.map(item =>
+          client.graphql({
+            query: updateSale,
+            variables: {
+              input: {
+                id: item.id,
+                status: 'VOIDED',
+              },
+            },
+          }),
+        ),
+      );
+
+      // 3. Update the transaction status to 'Voided'
+      await client.graphql({
+        query: updateSaleTransaction,
+        variables: {
+          input: {
+            id: transactions.id,
+            status: 'Voided',
+            void_reason: reason,
+          },
+        },
+      });
+
+      Alert.alert('Success', 'Transaction has been voided successfully.');
+      setPinVisible(false);
+      fetchTransactionDetails(); // Refresh details
+    } catch (err) {
+      console.error('Error voiding transaction:', err);
+      setError('Failed to void transaction. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleVoidItem = async () => {
     if (!selectedItem) {
       return;
@@ -224,7 +295,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
             variables: {
               input: {
                 id: selectedItem.productID,
-                stock: product.stock + selectedItem.quantity,
+                quantity: product.quantity + selectedItem.quantity,
               },
             },
           });
@@ -402,19 +473,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
 
   const renderHeader = () => (
     <View>
-      <AppHeader
-        centerText="Transaction Details"
-        leftComponent={
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <EvilIcons name={'arrow-left'} size={35} color={colors.white} />
-          </TouchableOpacity>
-        }
-        rightComponent={
-          <TouchableOpacity onPress={printReceipt}>
-            <AntDesign name={'printer'} size={25} color={colors.white} />
-          </TouchableOpacity>
-        }
-      />
+      <Appbar title="Transaction Details" onBack={() => navigation.goBack()} />
       <View style={styles.transactionDetails}>
         <View style={styles.transactionInfo}>
           <Text style={styles.transactionText}>
@@ -436,14 +495,6 @@ const TransactionDetailsScreen = ({navigation, route}) => {
               {transactions.status || 'Completed'}
             </Text>
           </Text>
-          <Text style={styles.transactionText}>
-            Payment Method: {transactions.payment_status || 'Cash'}
-          </Text>
-          {transactions.notes && (
-            <Text style={styles.transactionText}>
-              Notes: {transactions.notes}
-            </Text>
-          )}
         </View>
       </View>
       <ListItem bottomDivider>
@@ -521,6 +572,19 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           </Text>
         </ListItem.Content>
       </ListItem>
+
+      {transactionDetails?.status !== 'Voided' && (
+        <TouchableOpacity
+          style={styles.voidTransactionButton}
+          onPress={() => {
+            setIsVoidingTransaction(true);
+            setPinVisible(true);
+          }}>
+          <Text style={styles.voidTransactionButtonText}>
+            Void Entire Transaction
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -555,7 +619,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       onBackdropPress={() => setPinVisible(false)}
       overlayStyle={styles.overlay}>
       <View style={styles.pinContainer}>
-        <Text style={styles.pinTitle}>Enter PIN</Text>
+        <Text style={styles.pinTitle}>{isVoidingTransaction ? 'Void Transaction' : 'Enter PIN'}</Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <TextInput
           placeholder="Enter PIN"
@@ -565,6 +629,14 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           secureTextEntry
           style={styles.pinInput}
         />
+        {isVoidingTransaction && (
+          <TextInput
+            placeholder="Reason for voiding"
+            value={reason}
+            onChangeText={setReason}
+            style={styles.reasonInput}
+          />
+        )}
         <View style={styles.pinButtonContainer}>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -572,12 +644,13 @@ const TransactionDetailsScreen = ({navigation, route}) => {
               setPinVisible(false);
               setError('');
               setCode('');
+              setIsVoidingTransaction(false);
             }}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={handleVoidItem}>
+            onPress={isVoidingTransaction ? handleVoidTransaction : handleVoidItem}>
             <Text style={styles.confirmButtonText}>Confirm</Text>
           </TouchableOpacity>
         </View>
@@ -847,13 +920,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pinInput: {
-    width: '100%',
     borderWidth: 1,
-    borderColor: colors.lightGrey,
-    borderRadius: 5,
+    borderColor: colors.darkblue,
     padding: 10,
-    fontSize: 16,
-    marginBottom: 15,
+    borderRadius: 5,
+    width: '100%',
+    marginBottom: 20,
+  },
+  voidTransactionButton: {
+    backgroundColor: colors.red,
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  voidTransactionButtonText: {
+    color: colors.white,
+    fontWeight: 'bold',
   },
   pinButtonContainer: {
     flexDirection: 'row',

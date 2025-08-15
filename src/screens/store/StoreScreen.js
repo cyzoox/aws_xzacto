@@ -33,43 +33,46 @@ const StoreSummaryCard = ({store, isDefault, onPress}) => {
   return (
     <ListItem
       containerStyle={[styles.storeCard, isDefault && styles.defaultStore]}
+      underlayColor="#f0f0f0"
+      activeOpacity={0.9}
       onPress={onPress}>
       <View style={styles.storeIconContainer}>
         <Text style={styles.storeIcon}>{store.name?.charAt(0) || 'S'}</Text>
       </View>
 
       <ListItem.Content>
-        <View style={styles.storeHeader}>
-          <Text style={styles.storeName}>{store.name}</Text>
+        
+          <View style={styles.storeHeader}>
+            <Text style={styles.storeName}>{store.name}</Text>
 
-          <View style={styles.badgeContainer}>
-            {isDefault && (
-              <Badge
-                value="Default"
-                badgeStyle={{backgroundColor: colors.primary}}
-                textStyle={styles.badgeText}
-                containerStyle={styles.defaultBadge}
-              />
-            )}
+            <View style={styles.badgeContainer}>
+              {isDefault && (
+                <Badge
+                  value="Default"
+                  badgeStyle={{backgroundColor: colors.primary}}
+                  textStyle={styles.badgeText}
+                  containerStyle={styles.defaultBadge}
+                />
+              )}
+            </View>
           </View>
-        </View>
 
-        <View style={styles.locationContainer}>
-          <Icon
-            name="map-pin"
-            size={14}
-            color="#6c757d"
-            style={{marginRight: 5}}
-          />
-          <Text style={styles.locationText}>
-            {store.location || 'No location set'}
-          </Text>
-        </View>
-
+          <View style={styles.locationContainer}>
+            <Icon
+              name="map-pin"
+              size={14}
+              color="#6c757d"
+              style={{marginRight: 5}}
+            />
+            <Text style={styles.locationText}>
+              {store.location || 'No location set'}
+            </Text>
+          </View>
+        
         <View style={styles.storeFooter}>
           <Text style={styles.tapToSelect}>Tap to select this store</Text>
         </View>
-      </ListItem.Content>
+    </ListItem.Content>
     </ListItem>
   );
 };
@@ -270,7 +273,7 @@ const StoreScreen = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <Appbar title="Your Stores" subtitle={`${currentUserRole || 'User'}`} />
+      <Appbar hideMenuButton title="Your Stores" subtitle={`${currentUserRole || 'User'}`} />
 
       {loading || storeLoading ? (
         <View style={styles.centered}>
@@ -373,7 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   storeName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#212529',
   },
@@ -390,7 +393,7 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 5,
   },
   locationText: {
     fontSize: 14,
@@ -441,8 +444,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   storeFooter: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 5,
+    paddingTop: 5,
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
   },

@@ -6,13 +6,18 @@ import {Provider as ReduxProvider} from 'react-redux';
 import {Provider as PaperProvider} from 'react-native-paper';
 import {PersistGate} from 'redux-persist/integration/react';
 import {withAuthenticator} from '@aws-amplify/ui-react-native';
-import {Amplify} from 'aws-amplify';
+import {Amplify, Hub} from 'aws-amplify';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import awsconfig from './src/aws-exports';
 
-// Configure Amplify
+// We're no longer using DataStore for store settings due to initialization issues
+// Using AsyncStorage instead for a simpler and more reliable approach
+
+// Configure Amplify basic services
 Amplify.configure(awsconfig);
 
 // Import components
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import RoleSelectionScreen from './src/screens/RoleSelectionScreen';
 import SuperAdminScreen from './src/screens/SuperAdminScreen';
 import CheckSubscriptionsScreen from './src/screens/CheckSubscriptionsScreen';
@@ -50,19 +55,74 @@ const FallbackScreen = () => (
   </View>
 );
 
+// Import DataSyncService
+import DataSyncService from './src/services/DataSyncService';
+
 const App = () => {
-  // Immediately hide any splash screens when app starts
-  // useEffect(() => {
-  //   try {
-  //     // Hide react-native-splash-screen if it exists
-  //     if (SplashScreen && SplashScreen.hide) {
-  //       SplashScreen.hide();
-  //       console.log('Splash screen hidden successfully');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error hiding splash screen:', error);
-  //   }
-  // }, []);
+  // State to track if onboarding has been seen
+  const [initialRoute, setInitialRoute] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataStoreReady, setDataStoreReady] = useState(false);
+
+  // Initialize app services
+  useEffect(() => {
+    const initializeServices = async () => {
+      try {
+        console.log('Initializing app services...');
+        
+        // Initialize services that don't require DataStore
+        // We've removed DataStore for store settings due to initialization issues
+        
+        // Initialize any other services needed here
+        
+        // Preload any critical app data from AsyncStorage
+        // This aligns with the optimization strategy to prefetch data at startup
+        try {
+          // You can add any critical data preloading here
+          // Example: await AsyncStorage.getItem('@AppSettings');
+        } catch (storageError) {
+          console.error('Error preloading data:', storageError);
+        }
+        
+        // Mark app as ready to render
+        setDataStoreReady(true);
+        console.log('App services initialized successfully');
+      } catch (error) {
+        console.error('Error during app initialization:', error);
+        // Continue the app flow despite initialization error
+        setDataStoreReady(true);
+      }
+    };
+    
+    initializeServices();
+  }, []);
+  
+  // Check if user has seen onboarding on app startup
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        if (hasSeenOnboarding === 'true') {
+          setInitialRoute('RoleSelection');
+        } else {
+          setInitialRoute('Onboarding');
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Default to showing onboarding if there's an error
+        setInitialRoute('Onboarding');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, []);
+
+  // Show loading screen until we determine the initial route and DataStore is ready
+  if (isLoading || !dataStoreReady) {
+    return <FallbackScreen />;
+  }
 
   // Main app content once it's ready
   return (
@@ -71,7 +131,14 @@ const App = () => {
         <PersistGate loading={<FallbackScreen />} persistor={persistor}>
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <NavigationContainer>
-            <Stack.Navigator screenOptions={{headerShown: false}}>
+            <Stack.Navigator 
+              initialRouteName={initialRoute}
+              screenOptions={{headerShown: false}}>
+              <Stack.Screen 
+                name="Onboarding"
+                component={OnboardingScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen
                 name="RoleSelection"
                 component={RoleSelectionScreen}

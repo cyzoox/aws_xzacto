@@ -7,30 +7,26 @@ import formatMoney from 'accounting-js/lib/formatMoney.js';
 import colors from '../themes/colors';
 import Spacer from './Spacer';
 const windowWidth = Dimensions.get('window').width;
-const DataTable = ({alignment, headerTitles, children, total, ototal}) => {
+const DataTable = ({alignment, headerTitles, children, total, colStyle}) => {
   return (
     <View style={{flex: 1}}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Spacer>
-          <Grid>
-            <Row
-              style={{
-                height: 40,
-                backgroundColor: colors.coverDark,
-                marginHorizontal: 5,
-              }}>
-              {headerTitles.map(rowData => (
-                <Col
-                  key={rowData}
-                  style={[styles.ColStyle, {alignItems: alignment}]}>
-                  <Text style={styles.textColor}>{rowData}</Text>
-                </Col>
-              ))}
-            </Row>
-            {children}
-          </Grid>
-        </Spacer>
-      </ScrollView>
+      <Grid>
+        <Row
+          style={{
+            height: 40,
+            backgroundColor: colors.coverDark,
+            marginHorizontal: 5,
+          }}>
+          {headerTitles.map((rowData, index) => (
+            <Col
+              key={rowData}
+              style={[colStyle ? colStyle[index] : styles.ColStyle, {alignItems: alignment}]}>
+              <Text style={styles.textColor}>{rowData}</Text>
+            </Col>
+          ))}
+        </Row>
+        {children}
+      </Grid>
       <View style={styles.footerContainer}>
         <View>
           <Text style={styles.footerBar}>Total</Text>
