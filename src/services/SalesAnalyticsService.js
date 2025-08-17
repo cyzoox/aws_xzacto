@@ -1,7 +1,7 @@
 // Sales Analytics Service for handling product performance metrics
-import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { listSales } from '../graphql/queries';
+import {generateClient} from 'aws-amplify/api';
+import {getCurrentUser} from 'aws-amplify/auth';
+import {listSales} from '../graphql/queries';
 
 const client = generateClient();
 
@@ -9,30 +9,32 @@ const client = generateClient();
 export const getSalesAnalytics = async (storeId, startDate, endDate) => {
   try {
     // Get auth user
-    const { userId: ownerId } = await getCurrentUser();
-    
+    const {userId: ownerId} = await getCurrentUser();
+
     // Fetch sales data for the period
     const salesResponse = await client.graphql({
       query: listSales,
       variables: {
         filter: {
           and: [
-            { ownerId: { eq: ownerId } },
-            { status: { eq: "COMPLETED" } }, // Only count completed sales
-            { createdAt: { 
-              between: [startDate.toISOString(), endDate.toISOString()] 
-            }}
-          ]
+            {ownerId: {eq: ownerId}},
+            {status: {eq: 'COMPLETED'}}, // Only count completed sales
+            {
+              createdAt: {
+                between: [startDate.toISOString(), endDate.toISOString()],
+              },
+            },
+          ],
         },
         limit: 1000, // Adjust as needed for your data volume
       },
     });
-    
+
     const sales = salesResponse.data.listSales.items || [];
-    
+
     // Process sales data to get product performance
     const productPerformance = processProductPerformance(sales);
-    
+
     return productPerformance;
   } catch (error) {
     console.error('Error fetching sales analytics:', error);
@@ -41,10 +43,10 @@ export const getSalesAnalytics = async (storeId, startDate, endDate) => {
 };
 
 // Process raw sales data into product performance metrics
-const processProductPerformance = (sales) => {
+const processProductPerformance = sales => {
   // Group sales by productID
   const productMap = {};
-  
+
   sales.forEach(sale => {
     if (!productMap[sale.productID]) {
       productMap[sale.productID] = {
@@ -55,29 +57,39 @@ const processProductPerformance = (sales) => {
         transactionCount: 0,
       };
     }
-    
+
     productMap[sale.productID].totalQuantity += sale.quantity || 0;
     productMap[sale.productID].totalSales += sale.total || 0;
     productMap[sale.productID].transactionCount += 1;
   });
-  
+
   // Convert map to array and calculate averages
   const productPerformance = Object.values(productMap).map(product => {
     return {
       ...product,
-      averagePrice: product.totalQuantity > 0 ? 
-        product.totalSales / product.totalQuantity : 
-        0
+      averagePrice:
+        product.totalQuantity > 0
+          ? product.totalSales / product.totalQuantity
+          : 0,
     };
   });
-  
+
   return productPerformance;
 };
 
 // Get top selling products
-export const getTopSellingProducts = async (storeId, startDate, endDate, limit = 10) => {
-  const productPerformance = await getSalesAnalytics(storeId, startDate, endDate);
-  
+export const getTopSellingProducts = async (
+  storeId,
+  startDate,
+  endDate,
+  limit = 10,
+) => {
+  const productPerformance = await getSalesAnalytics(
+    storeId,
+    startDate,
+    endDate,
+  );
+
   // Sort by quantity in descending order
   return productPerformance
     .sort((a, b) => b.totalQuantity - a.totalQuantity)
@@ -85,9 +97,18 @@ export const getTopSellingProducts = async (storeId, startDate, endDate, limit =
 };
 
 // Get least selling products
-export const getLeastSellingProducts = async (storeId, startDate, endDate, limit = 10) => {
-  const productPerformance = await getSalesAnalytics(storeId, startDate, endDate);
-  
+export const getLeastSellingProducts = async (
+  storeId,
+  startDate,
+  endDate,
+  limit = 10,
+) => {
+  const productPerformance = await getSalesAnalytics(
+    storeId,
+    startDate,
+    endDate,
+  );
+
   // Sort by quantity in ascending order
   return productPerformance
     .sort((a, b) => a.totalQuantity - b.totalQuantity)

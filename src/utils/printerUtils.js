@@ -18,7 +18,7 @@ export const getAutoPrintSetting = async () => {
 };
 
 // Save printer settings
-export const savePrinterSettings = async (settings) => {
+export const savePrinterSettings = async settings => {
   try {
     // Get existing settings first
     const printerSettingsStr = await AsyncStorage.getItem('printerSettings');
@@ -27,7 +27,7 @@ export const savePrinterSettings = async (settings) => {
       : {};
 
     // Update with new settings
-    const updatedSettings = { ...printerSettings, ...settings };
+    const updatedSettings = {...printerSettings, ...settings};
 
     // Save back to storage
     await AsyncStorage.setItem(
@@ -42,6 +42,6 @@ export const savePrinterSettings = async (settings) => {
 };
 
 // Update just the autoPrint setting
-export const saveAutoPrintSetting = async (autoPrintEnabled) => {
-  return await savePrinterSettings({ autoPrint: autoPrintEnabled });
+export const saveAutoPrintSetting = async autoPrintEnabled => {
+  return await savePrinterSettings({autoPrint: autoPrintEnabled});
 };

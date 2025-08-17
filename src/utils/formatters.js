@@ -3,7 +3,7 @@
  * @param {number} amount The number to format.
  * @returns {string} The formatted currency string.
  */
-export const formatCurrency = (amount) => {
+export const formatCurrency = amount => {
   if (typeof amount !== 'number') {
     return '';
   }
@@ -19,10 +19,10 @@ export const formatCurrency = (amount) => {
  * @param {string} dateString The ISO date string.
  * @returns {string} The formatted date.
  */
-export const formatDate = (dateString) => {
+export const formatDate = dateString => {
   if (!dateString) {
     return '';
   }
-  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  const options = {year: 'numeric', month: 'short', day: 'numeric'};
   return new Date(dateString).toLocaleDateString('en-US', options);
 };

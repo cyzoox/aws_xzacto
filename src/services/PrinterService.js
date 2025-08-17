@@ -1,8 +1,10 @@
 import RNBluetoothClassic from 'react-native-bluetooth-classic';
 import {PermissionsAndroid, Platform} from 'react-native';
-import { BLEPrinter, NetPrinter, USBPrinter } from 'react-native-thermal-receipt-printer';
-
-
+import {
+  BLEPrinter,
+  NetPrinter,
+  USBPrinter,
+} from 'react-native-thermal-receipt-printer';
 
 // Printer connection instance
 let printerConnection = null;
@@ -34,12 +36,12 @@ const isUSBPrinterAvailable = () => {
 };
 
 // Utility function for safe printer operations in reports
-const safePrinterOperation = async (operation) => {
+const safePrinterOperation = async operation => {
   try {
     if (!printerConnection || !printerConnection.blePrinterAvailable) {
       throw new Error('BLE printer is not available');
     }
-    
+
     // Use BLEPrinter for all printing operations
     console.log('Executing BLE printing operation...');
     await operation();
@@ -89,7 +91,7 @@ let isDiscoveryInProgress = false;
 export const scanBluetoothDevices = async (options = {}) => {
   // Default scan time is 12 seconds, longer scan for better results
   const scanTime = options.scanTime || 12000;
-  
+
   try {
     // Handle concurrent scanning attempts
     if (isDiscoveryInProgress) {
@@ -97,14 +99,14 @@ export const scanBluetoothDevices = async (options = {}) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Wait briefly
       throw new Error('Scanning already in progress. Please wait.');
     }
-    
+
     isDiscoveryInProgress = true;
-    
+
     // First ensure we have Bluetooth permissions
     await requestBluetoothPermission();
-    
+
     console.log('Starting device scan...');
-    
+
     // Get paired devices from RNBluetoothClassic first
     let bondedDevices = [];
     try {
@@ -113,58 +115,63 @@ export const scanBluetoothDevices = async (options = {}) => {
       if (!isEnabled) {
         await RNBluetoothClassic.requestBluetoothEnabled();
       }
-      
+
       bondedDevices = await RNBluetoothClassic.getBondedDevices();
       console.log('Found paired devices:', bondedDevices.length);
     } catch (error) {
       console.log('Error getting paired devices:', error);
       // Continue even if this fails
     }
-    
+
     // Now try using the BLEPrinter library for scanning
     try {
       console.log('Initializing BLE printer scanning...');
       await BLEPrinter.init();
-      
+
       // Try to scan for Bluetooth LE devices
-      console.log(`Scanning for BLE devices for ${scanTime/1000} seconds...`);
-      
+      console.log(`Scanning for BLE devices for ${scanTime / 1000} seconds...`);
+
       // For BLE scanning we rely on the BluetoothManager
-      const bleDevices = await new Promise((resolve) => {
+      const bleDevices = await new Promise(resolve => {
         try {
           // Get devices that are available now
-          BLEPrinter.getDeviceList().then(devices => {
-            console.log('Initial BLE devices:', devices?.length || 0);
-            
-            // Schedule resolution after scanTime
-            setTimeout(async () => {
-              try {
-                const finalDevices = await BLEPrinter.getDeviceList();
-                console.log('Final BLE scan results:', finalDevices?.length || 0);
-                resolve(finalDevices || []);
-              } catch (e) {
-                console.log('Error getting final device list:', e);
-                resolve([]);
-              }
-            }, scanTime);
-          }).catch(error => {
-            console.log('Error getting initial device list:', error);
-            // Still wait for the scan time
-            setTimeout(() => resolve([]), scanTime);
-          });
+          BLEPrinter.getDeviceList()
+            .then(devices => {
+              console.log('Initial BLE devices:', devices?.length || 0);
+
+              // Schedule resolution after scanTime
+              setTimeout(async () => {
+                try {
+                  const finalDevices = await BLEPrinter.getDeviceList();
+                  console.log(
+                    'Final BLE scan results:',
+                    finalDevices?.length || 0,
+                  );
+                  resolve(finalDevices || []);
+                } catch (e) {
+                  console.log('Error getting final device list:', e);
+                  resolve([]);
+                }
+              }, scanTime);
+            })
+            .catch(error => {
+              console.log('Error getting initial device list:', error);
+              // Still wait for the scan time
+              setTimeout(() => resolve([]), scanTime);
+            });
         } catch (error) {
           console.log('Error in BLE scan setup:', error);
           setTimeout(() => resolve([]), scanTime);
         }
       });
-      
+
       // Combine the results, formatting BLE devices to match the format expected
       const combinedDevices = [...bondedDevices];
-      
+
       // Add BLE devices if they exist and aren't already in the list
       if (bleDevices && Array.isArray(bleDevices)) {
         const existingIds = new Set(bondedDevices.map(d => d.id || d.address));
-        
+
         bleDevices.forEach(bleDevice => {
           // Format BLE device to match the expected format
           const formattedDevice = {
@@ -173,19 +180,18 @@ export const scanBluetoothDevices = async (options = {}) => {
             name: bleDevice.name || `Printer ${bleDevice.address}`,
             // Add additional properties BLEPrinter might need
             device_name: bleDevice.name,
-            isBLE: true
+            isBLE: true,
           };
-          
+
           // Only add if not already in the list
           if (!existingIds.has(formattedDevice.id)) {
             combinedDevices.push(formattedDevice);
           }
         });
       }
-      
+
       console.log(`Total devices found: ${combinedDevices.length}`);
       return combinedDevices;
-      
     } catch (bleError) {
       console.error('Error in BLE scanning:', bleError);
       // If BLE scanning fails, return whatever classic devices we found
@@ -203,19 +209,22 @@ export const scanBluetoothDevices = async (options = {}) => {
 };
 
 // Helper function to initialize and reconnect BLEPrinter
-export const reconnectBLEPrinter = async (deviceAddress) => {
+export const reconnectBLEPrinter = async deviceAddress => {
   if (!deviceAddress && printerConnection) {
     deviceAddress = printerConnection.address || printerConnection.id;
   }
-  
+
   if (!deviceAddress) {
     console.error('No device address available for BLEPrinter reconnection');
     return false;
   }
-  
+
   try {
-    console.log('Attempting to reconnect BLEPrinter with address:', deviceAddress);
-    
+    console.log(
+      'Attempting to reconnect BLEPrinter with address:',
+      deviceAddress,
+    );
+
     // Clear any existing connections first
     try {
       await BLEPrinter.closeConn();
@@ -224,73 +233,80 @@ export const reconnectBLEPrinter = async (deviceAddress) => {
       // Ignore errors when closing non-existent connections
       console.log('No existing connections to close or error:', closeError);
     }
-    
+
     // Make sure BLEPrinter is initialized
     await BLEPrinter.init();
     console.log('BLEPrinter initialized');
-    
+
     // Try to connect with a timeout
     const connectPromise = BLEPrinter.connectPrinter(deviceAddress);
     const connectTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('BLEPrinter connection timeout')), 5000);
+      setTimeout(
+        () => reject(new Error('BLEPrinter connection timeout')),
+        5000,
+      );
     });
-    
     await Promise.race([connectPromise, connectTimeout]);
-    
+
     console.log('BLEPrinter successfully reconnected');
-    
+
     // Update the printer connection status
     if (printerConnection) {
       printerConnection.blePrinterAvailable = true;
       printerConnection.thermalPrinterFailed = false;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Failed to reconnect BLEPrinter:', error);
-    
+
     // Update the printer connection status
     if (printerConnection) {
       printerConnection.blePrinterAvailable = false;
       printerConnection.thermalPrinterFailed = true;
     }
-    
+
     return false;
   }
 };
 
 // Connect to a Bluetooth device by address
-export const connectBluetoothDevice = async (deviceOrAddress) => {
+export const connectBluetoothDevice = async deviceOrAddress => {
   try {
     // Check if we received a device object or just an address string
     let deviceAddress;
     let deviceObj;
-    
+
     if (typeof deviceOrAddress === 'string') {
       // If just address was provided
       deviceAddress = deviceOrAddress;
-      deviceObj = { address: deviceAddress, id: deviceAddress };
-    } else if (deviceOrAddress && (deviceOrAddress.id || deviceOrAddress.address)) {
+      deviceObj = {address: deviceAddress, id: deviceAddress};
+    } else if (
+      deviceOrAddress &&
+      (deviceOrAddress.id || deviceOrAddress.address)
+    ) {
       // If device object was provided
       deviceAddress = deviceOrAddress.id || deviceOrAddress.address;
       deviceObj = deviceOrAddress;
     } else {
       throw new Error('Invalid device information provided');
     }
-    
+
     console.log('Connecting to device address:', deviceAddress);
-    
+
     // Connect with RNBluetoothClassic for general device connection
-    const connectedDevice = await RNBluetoothClassic.connectToDevice(deviceAddress);
+    const connectedDevice = await RNBluetoothClassic.connectToDevice(
+      deviceAddress,
+    );
     console.log('Connected to device:', connectedDevice?.name || deviceAddress);
-    
+
     // Connect with the thermal printer library
     try {
       // Check if BLEPrinter API is available first
       if (typeof BLEPrinter !== 'undefined' && BLEPrinter !== null) {
         // Try to reconnect using our helper function
         const bleConnected = await reconnectBLEPrinter(deviceAddress);
-        
+
         if (bleConnected) {
           console.log('Successfully connected printer with BLEPrinter');
           deviceObj.blePrinterAvailable = true;
@@ -312,10 +328,10 @@ export const connectBluetoothDevice = async (deviceOrAddress) => {
       deviceObj.blePrinterAvailable = false;
       deviceObj.thermalPrinterFailed = true;
     }
-    
+
     // Store the connection information
     printerConnection = deviceObj;
-    
+
     return connectedDevice;
   } catch (error) {
     console.error('Error connecting to device:', error);
@@ -353,16 +369,17 @@ export const isBluetoothDeviceConnected = async () => {
         // Try to initialize BLEPrinter if needed
         if (typeof BLEPrinter !== 'undefined' && BLEPrinter !== null) {
           await BLEPrinter.init();
-          
+
           // Get the device list to verify printer is there
           const devices = await BLEPrinter.getDeviceList();
-          
+
           // Check if our device is in the list
           const bleDeviceFound = devices.some(
-            device => device.address === printerConnection.address ||
-                     device.id === printerConnection.address
+            device =>
+              device.address === printerConnection.address ||
+              device.id === printerConnection.address,
           );
-          
+
           if (bleDeviceFound) {
             // Update our connection status
             printerConnection.blePrinterAvailable = true;
@@ -388,7 +405,7 @@ export const isBluetoothDeviceConnected = async () => {
 export const printReceipt = async (transaction, storeInfo) => {
   try {
     console.log('Preparing receipt...');
-    
+
     // Validate the connection
     if (!printerConnection) {
       throw new Error('Printer not connected');
@@ -398,31 +415,36 @@ export const printReceipt = async (transaction, storeInfo) => {
     if (!transaction) {
       throw new Error('No transaction data provided');
     }
-    
+
     // Try to reconnect BLEPrinter if needed before printing
     if (!printerConnection.blePrinterAvailable) {
       console.log('BLEPrinter not available, attempting reconnection...');
       await reconnectBLEPrinter();
     }
-    
+
     // Extract data
     const cartItems = transaction.items || [];
     const payments = transaction.payments || [];
-    const subtotal = cartItems.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    const subtotal = cartItems.reduce(
+      (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+      0,
+    );
     const returnAmount = transaction.change_amount || 0;
-    
+
     // Format date for receipt
-    const txnDate = transaction.transaction_date ? new Date(transaction.transaction_date) : new Date();
+    const txnDate = transaction.transaction_date
+      ? new Date(transaction.transaction_date)
+      : new Date();
     const formattedDate = txnDate.toLocaleDateString();
     const formattedTime = txnDate.toLocaleTimeString();
-    
+
     // Format the receipt with HTML-like tags for BLEPrinter
     let formattedReceipt = '';
-    
+
     // Create formatted receipt for BLEPrinter
     // BLEPrinter uses HTML-like tags for formatting: <C> for center, <B> for bold
     let receiptContent = '';
-    
+
     // Header
     receiptContent += `<C><B>${storeInfo?.name || 'Store Receipt'}</B></C>\n`;
     receiptContent += `<C>${storeInfo?.address || ''}</C>\n`;
@@ -432,18 +454,18 @@ export const printReceipt = async (transaction, storeInfo) => {
     receiptContent += '<C>--------------------------------</C>\n';
     receiptContent += '<C><B>SALES INVOICE</B></C>\n';
     receiptContent += '<C>--------------------------------</C>\n';
-    
+
     // Transaction details
     receiptContent += `Date: ${formattedDate || 'N/A'}\n`;
     receiptContent += `Time: ${formattedTime || 'N/A'}\n`;
     receiptContent += `Invoice: ${transaction.transaction_id || 'N/A'}\n`;
     receiptContent += `Cashier: ${transaction.cashier_name || 'Staff'}\n`;
     receiptContent += '--------------------------------\n';
-    
+
     // Item headers
     receiptContent += '<B>Item                          Qty    Amount</B>\n';
     receiptContent += '--------------------------------\n';
-    
+
     // Items
     for (const item of cartItems) {
       // Handle item with variants/addons
@@ -451,49 +473,60 @@ export const printReceipt = async (transaction, storeInfo) => {
       if (item?.parsedVariantData?.name) {
         itemName += ` (${item.parsedVariantData.name})`;
       }
-      
+
       const quantity = item?.quantity || 1;
       const price = item?.price || 0;
       const amount = (price * quantity).toFixed(2);
-      
+
       // Format name to fit within column width
-      const truncatedName = itemName.length > 26 
-        ? itemName.substring(0, 23) + '...'
-        : itemName.padEnd(26);
-      
+      const truncatedName =
+        itemName.length > 26
+          ? itemName.substring(0, 23) + '...'
+          : itemName.padEnd(26);
+
       const qtyStr = quantity.toString().padStart(5);
       const amtStr = amount.padStart(9);
       receiptContent += `${truncatedName}${qtyStr}₱${amtStr}\n`;
-      
+
       // If there's an addon, print it as a separate line with indent
       if (item?.parsedAddonData?.name) {
         receiptContent += `  + ${item.parsedAddonData.name}\n`;
       }
     }
-    
+
     // Totals
     receiptContent += '--------------------------------\n';
     receiptContent += `SUBTOTAL:${' '.repeat(23)}₱${subtotal.toFixed(2)}\n`;
-    
+
     // Discount
     if (transaction.discount && transaction.discount > 0) {
       const discountAmount = subtotal * (transaction.discount / 100);
       const discountStr = transaction.discount.toString();
       const spacesCount = Math.max(1, 15 - discountStr.length);
-      receiptContent += `DISCOUNT (${transaction.discount}%):${' '.repeat(spacesCount)}₱${discountAmount.toFixed(2)}\n`;
+      receiptContent += `DISCOUNT (${transaction.discount}%):${' '.repeat(
+        spacesCount,
+      )}₱${discountAmount.toFixed(2)}\n`;
     }
 
     // Total
-    const totalAmount = (typeof transaction.totalAmount === 'number') ? transaction.totalAmount : subtotal;
-    receiptContent += `<B>TOTAL:${' '.repeat(27)}₱${totalAmount.toFixed(2)}</B>\n`;
+    const totalAmount =
+      typeof transaction.totalAmount === 'number'
+        ? transaction.totalAmount
+        : subtotal;
+    receiptContent += `<B>TOTAL:${' '.repeat(27)}₱${totalAmount.toFixed(
+      2,
+    )}</B>\n`;
 
     // Payment details
     if (payments && Array.isArray(payments) && payments.length > 0) {
       for (const payment of payments) {
         if (payment) {
           const method = payment.method || 'CASH';
-          const amount = typeof payment.amount === 'number' ? payment.amount : 0;
-          receiptContent += `${method}:${' '.repeat(25)}₱${amount.toFixed(2)}\n`;
+          const amount =
+            typeof payment.amount === 'number' ? payment.amount : 0;
+          receiptContent += `${method}:${' '.repeat(25)}₱${amount.toFixed(
+            2,
+          )}\n`;
         }
       }
     }
@@ -502,16 +535,16 @@ export const printReceipt = async (transaction, storeInfo) => {
     receiptContent += '--------------------------------\n';
     receiptContent += '<C>Thank you for your purchase!</C>\n';
     receiptContent += '<C>Please come again</C>\n\n';
-    
+
     try {
       // Check if BLEPrinter is available
       if (!printerConnection.blePrinterAvailable) {
         throw new Error('BLEPrinter is not available');
       }
-      
+
       console.log('Printing with BLEPrinter...');
       await BLEPrinter.printText(receiptContent);
-      await BLEPrinter.printBill("\n\n\n"); // Add extra space at the end for cutting
+      await BLEPrinter.printBill('\n\n\n'); // Add extra space at the end for cutting
       console.log('Successfully printed receipt with BLEPrinter');
       return true;
     } catch (error) {
@@ -536,24 +569,26 @@ export const printXReport = async (
     if (!printerConnection) {
       throw new Error('Printer not connected');
     }
-    
+
     // Validate transactions
     if (!transactions || transactions.length === 0) {
       throw new Error('No transactions to report');
     }
-    
+
     console.log('Printing X Report...');
-    
+
     // Try to reconnect BLEPrinter if needed before printing
     if (!printerConnection.blePrinterAvailable) {
-      console.log('BLEPrinter not available for X Report, attempting reconnection...');
+      console.log(
+        'BLEPrinter not available for X Report, attempting reconnection...',
+      );
       await reconnectBLEPrinter();
     }
-    
+
     // Generate report data for either printer method
     const startDate = new Date(startTime);
     const endDate = new Date(endTime || Date.now());
-    
+
     // Calculate sales summary (used by both printer methods)
     const totalSales = transactions.reduce(
       (sum, trx) => sum + (trx.totalAmount || 0),
@@ -563,26 +598,30 @@ export const printXReport = async (
       (sum, trx) =>
         sum +
         (trx.items
-          ? trx.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0)
+          ? trx.items.reduce(
+              (itemSum, item) => itemSum + (item.quantity || 0),
+              0,
+            )
           : 0),
       0,
     );
     const totalTransactions = transactions.length;
-    
+
     // Process payment methods (used by both printer methods)
     const paymentMethods = {};
     transactions.forEach(trx => {
       if (trx.payments && Array.isArray(trx.payments)) {
         trx.payments.forEach(payment => {
           const method = payment.method || 'CASH';
-          paymentMethods[method] = (paymentMethods[method] || 0) + payment.amount;
+          paymentMethods[method] =
+            (paymentMethods[method] || 0) + payment.amount;
         });
       }
     });
-    
+
     // Format receipt for BLEPrinter with HTML-like tags for formatting
     let formattedReport = '';
-    
+
     // Header section with formatting tags
     formattedReport += `<C><B>${storeInfo.name}</B></C>\n`;
     formattedReport += `<C>${storeInfo.address || ''}</C>\n`;
@@ -596,36 +635,40 @@ export const printXReport = async (
     formattedReport += `Period: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}\n`;
     formattedReport += `Cashier: ${cashierName || 'All'}\n`;
     formattedReport += '--------------------------------\n';
-    
+
     // Sales summary with bold headers
     formattedReport += '<B>SALES SUMMARY</B>\n';
-    formattedReport += `TOTAL SALES:${' '.repeat(20)}₱${totalSales.toFixed(2)}\n`;
+    formattedReport += `TOTAL SALES:${' '.repeat(20)}₱${totalSales.toFixed(
+      2,
+    )}\n`;
     formattedReport += `TRANSACTIONS:${' '.repeat(19)}${totalTransactions}\n`;
     formattedReport += `ITEMS SOLD:${' '.repeat(21)}${totalItems}\n`;
     formattedReport += '--------------------------------\n';
-    
+
     // Payment methods
     formattedReport += '<B>PAYMENT METHODS</B>\n';
     Object.entries(paymentMethods).forEach(([method, amount]) => {
       const methodLabel = method + ':';
       const spaces = 30 - methodLabel.length - amount.toFixed(2).length - 1; // -1 for the ₱ symbol
-      formattedReport += `${methodLabel}${' '.repeat(spaces)}₱${amount.toFixed(2)}\n`;
+      formattedReport += `${methodLabel}${' '.repeat(spaces)}₱${amount.toFixed(
+        2,
+      )}\n`;
     });
-    
+
     // Footer
     formattedReport += '--------------------------------\n';
     formattedReport += '<C><B>*** X REPORT ***</B></C>\n';
     formattedReport += '<C>This is not a Z Report</C>\n';
     formattedReport += '<C>Registers are still active</C>\n\n';
-    
+
     // Use BLEPrinter to print the formatted report
     console.log('Printing X Report with BLEPrinter...');
-    
+
     // Check if BLEPrinter is available
     if (!printerConnection.blePrinterAvailable) {
       throw new Error('BLEPrinter is not available');
     }
-      
+
     await BLEPrinter.printText(formattedReport);
     await BLEPrinter.printBill('\n\n\n'); // Add extra space for cutting
     console.log('Successfully printed X Report');
@@ -647,24 +690,26 @@ export const printZReport = async (
     if (!printerConnection) {
       throw new Error('Printer not connected');
     }
-    
+
     // Validate transactions
     if (!transactions || transactions.length === 0) {
       throw new Error('No transactions to report');
     }
-    
+
     console.log('Printing Z Report...');
-    
+
     // Try to reconnect BLEPrinter if needed before printing
     if (!printerConnection.blePrinterAvailable) {
-      console.log('BLEPrinter not available for Z Report, attempting reconnection...');
+      console.log(
+        'BLEPrinter not available for Z Report, attempting reconnection...',
+      );
       await reconnectBLEPrinter();
     }
-    
+
     // Generate report data for either printer method
     const startDate = new Date(startTime);
     const endDate = new Date(endTime || Date.now());
-    
+
     // Calculate sales summary (used by both printer methods)
     const totalSales = transactions.reduce(
       (sum, trx) => sum + (trx.totalAmount || 0),
@@ -674,30 +719,35 @@ export const printZReport = async (
       (sum, trx) =>
         sum +
         (trx.items
-          ? trx.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0)
+          ? trx.items.reduce(
+              (itemSum, item) => itemSum + (item.quantity || 0),
+              0,
+            )
           : 0),
       0,
     );
     const totalTransactions = transactions.length;
-    
+
     // Process payment methods (used by both printer methods)
     const paymentMethodsMap = {};
     transactions.forEach(trx => {
       if (trx.payments && Array.isArray(trx.payments)) {
         trx.payments.forEach(payment => {
           const method = payment.method || 'CASH';
-          paymentMethodsMap[method] = (paymentMethodsMap[method] || 0) + payment.amount;
+          paymentMethodsMap[method] =
+            (paymentMethodsMap[method] || 0) + payment.amount;
         });
       } else {
         // Default to CASH if no payment methods specified
         const method = 'CASH';
-        paymentMethodsMap[method] = (paymentMethodsMap[method] || 0) + (trx.totalAmount || 0);
+        paymentMethodsMap[method] =
+          (paymentMethodsMap[method] || 0) + (trx.totalAmount || 0);
       }
     });
-    
+
     // Format receipt for BLEPrinter with HTML-like tags for formatting
     let formattedReport = '';
-    
+
     // Header section with formatting tags
     formattedReport += `<C><B>${storeInfo.name}</B></C>\n`;
     formattedReport += `<C>${storeInfo.address || ''}</C>\n`;
@@ -711,34 +761,38 @@ export const printZReport = async (
     formattedReport += `Period: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}\n`;
     formattedReport += `Cashier: ${cashierName || 'All'}\n`;
     formattedReport += '--------------------------------\n';
-    
+
     // Sales summary with bold headers
     formattedReport += '<B>SALES SUMMARY</B>\n';
-    formattedReport += `TOTAL SALES:${' '.repeat(20)}₱${totalSales.toFixed(2)}\n`;
+    formattedReport += `TOTAL SALES:${' '.repeat(20)}₱${totalSales.toFixed(
+      2,
+    )}\n`;
     formattedReport += `TRANSACTIONS:${' '.repeat(19)}${totalTransactions}\n`;
     formattedReport += `ITEMS SOLD:${' '.repeat(21)}${totalItems}\n`;
     formattedReport += '--------------------------------\n';
-    
+
     // Payment methods
     formattedReport += '<B>PAYMENT METHODS</B>\n';
     Object.entries(paymentMethodsMap).forEach(([method, amount]) => {
       const methodLabel = method + ':';
       const spaces = 30 - methodLabel.length - amount.toFixed(2).length - 1; // -1 for the ₱ symbol
-      formattedReport += `${methodLabel}${' '.repeat(spaces)}₱${amount.toFixed(2)}\n`;
+      formattedReport += `${methodLabel}${' '.repeat(spaces)}₱${amount.toFixed(
+        2,
+      )}\n`;
     });
-    
+
     // Footer
     formattedReport += '--------------------------------\n';
     formattedReport += '<C><B>*** Z REPORT ***</B></C>\n';
     formattedReport += '<C>This is the final summary</C>\n';
     formattedReport += '<C>Register data has been reset</C>\n\n';
-    
+
     try {
       // Check if BLEPrinter is available
       if (!printerConnection.blePrinterAvailable) {
         throw new Error('BLEPrinter is not available');
       }
-      
+
       console.log('Printing Z Report with BLEPrinter...');
       await BLEPrinter.printText(formattedReport);
       await BLEPrinter.printBill('\n\n\n'); // Add extra space for cutting

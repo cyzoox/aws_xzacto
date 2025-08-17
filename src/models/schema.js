@@ -1,163 +1,153 @@
-import { Schema } from '@aws-amplify/datastore';
+import {Schema} from '@aws-amplify/datastore';
 
 export const schema = {
   models: {
     StoreSettings: {
-      name: "StoreSettings",
+      name: 'StoreSettings',
       fields: {
         id: {
-          name: "id",
+          name: 'id',
           isArray: false,
-          type: "ID",
+          type: 'ID',
           isRequired: true,
-          attributes: []
+          attributes: [],
         },
         storeId: {
-          name: "storeId",
+          name: 'storeId',
           isArray: false,
-          type: "ID",
+          type: 'ID',
           isRequired: true,
-          attributes: []
+          attributes: [],
         },
         address: {
-          name: "address",
+          name: 'address',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         phone: {
-          name: "phone",
+          name: 'phone',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         email: {
-          name: "email",
+          name: 'email',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         logoUrl: {
-          name: "logoUrl",
+          name: 'logoUrl',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         vatPercentage: {
-          name: "vatPercentage",
+          name: 'vatPercentage',
           isArray: false,
-          type: "Float",
+          type: 'Float',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         lowStockThreshold: {
-          name: "lowStockThreshold",
+          name: 'lowStockThreshold',
           isArray: false,
-          type: "Int",
+          type: 'Int',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         allowCashierSalesView: {
-          name: "allowCashierSalesView",
+          name: 'allowCashierSalesView',
           isArray: false,
-          type: "Boolean",
+          type: 'Boolean',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         allowCreditSales: {
-          name: "allowCreditSales",
+          name: 'allowCreditSales',
           isArray: false,
-          type: "Boolean",
+          type: 'Boolean',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         currencySymbol: {
-          name: "currencySymbol",
+          name: 'currencySymbol',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         receiptFooterText: {
-          name: "receiptFooterText",
+          name: 'receiptFooterText',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         businessHours: {
-          name: "businessHours",
+          name: 'businessHours',
           isArray: false,
-          type: "String",
+          type: 'String',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         createdAt: {
-          name: "createdAt",
+          name: 'createdAt',
           isArray: false,
-          type: "AWSDateTime",
+          type: 'AWSDateTime',
           isRequired: false,
-          attributes: []
+          attributes: [],
         },
         updatedAt: {
-          name: "updatedAt",
+          name: 'updatedAt',
           isArray: false,
-          type: "AWSDateTime",
+          type: 'AWSDateTime',
           isRequired: false,
-          attributes: []
-        }
+          attributes: [],
+        },
       },
       syncable: true,
-      pluralName: "StoreSettings",
+      pluralName: 'StoreSettings',
       attributes: [
         {
-          type: "model",
-          properties: {}
+          type: 'model',
+          properties: {},
         },
         {
-          type: "key",
+          type: 'key',
           properties: {
-            name: "byStoreId",
-            fields: ["storeId"]
-          }
+            name: 'byStoreId',
+            fields: ['storeId'],
+          },
         },
         {
-          type: "auth",
+          type: 'auth',
           properties: {
             rules: [
               {
-                provider: "userPools",
-                ownerField: "owner",
-                allow: "owner",
-                identityClaim: "cognito:username",
-                operations: [
-                  "create",
-                  "update",
-                  "delete",
-                  "read"
-                ]
+                provider: 'userPools',
+                ownerField: 'owner',
+                allow: 'owner',
+                identityClaim: 'cognito:username',
+                operations: ['create', 'update', 'delete', 'read'],
               },
               {
-                allow: "public",
-                operations: [
-                  "create",
-                  "update",
-                  "delete",
-                  "read"
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    }
+                allow: 'public',
+                operations: ['create', 'update', 'delete', 'read'],
+              },
+            ],
+          },
+        },
+      ],
+    },
   },
   enums: {},
   nonModels: {},
-  codegenVersion: "3.4.4",
-  version: "LATEST"
+  codegenVersion: '3.4.4',
+  version: 'LATEST',
 };

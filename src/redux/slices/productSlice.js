@@ -49,7 +49,7 @@ export const createProductWithDetails = createAsyncThunk(
           type: 'CREATE',
           data: productData,
           timestamp: Date.now(),
-          id: product.id,
+          id: productData.product.id,
         };
 
         const pendingActions = await AsyncStorage.getItem(
@@ -65,13 +65,20 @@ export const createProductWithDetails = createAsyncThunk(
         // Store in offline products
         const offlineProducts = await AsyncStorage.getItem('offline_products');
         const products = offlineProducts ? JSON.parse(offlineProducts) : [];
-        products.push({...product, variants, addons, _offline: true});
+        // eslint-disable-next-line prettier/prettier, no-undef
+        products.push({
+          ...productData.product,
+          variants,
+          addons,
+          _offline: true,
+        });
         await AsyncStorage.setItem(
           'offline_products',
           JSON.stringify(products),
         );
 
-        return {...product, variants, addons, _offline: true};
+        // eslint-disable-next-line no-undef
+        return {...productData.product, variants, addons, _offline: true};
       }
 
       // Online creation

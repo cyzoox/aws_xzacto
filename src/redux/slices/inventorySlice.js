@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
+import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
+import {generateClient} from 'aws-amplify/api';
+import {getCurrentUser} from 'aws-amplify/auth';
 import {
   listInventoryRequests,
   listRequestItems,
@@ -12,21 +12,18 @@ const client = generateClient();
 // Async thunk to fetch inventory requests for a specific store
 export const fetchInventoryRequests = createAsyncThunk(
   'inventory/fetchInventoryRequests',
-  async (storeId, { dispatch, rejectWithValue }) => {
+  async (storeId, {dispatch, rejectWithValue}) => {
     if (!storeId) {
       return rejectWithValue('No store ID provided.');
     }
     try {
-      const { userId: ownerId } = await getCurrentUser();
+      const {userId: ownerId} = await getCurrentUser();
       const response = await client.graphql({
         query: listInventoryRequests,
         variables: {
           filter: {
-            and: [
-              { storeId: { eq: storeId } },
-              { ownerId: { eq: ownerId } }
-            ]
-          }
+            and: [{storeId: {eq: storeId}}, {ownerId: {eq: ownerId}}],
+          },
         },
       });
       const requests = response.data.listInventoryRequests.items || [];
@@ -41,13 +38,13 @@ export const fetchInventoryRequests = createAsyncThunk(
       console.error('Error fetching inventory requests:', error);
       return rejectWithValue('Failed to fetch inventory requests.');
     }
-  }
+  },
 );
 
 // Async thunk to fetch items for given request IDs
 export const fetchRequestItems = createAsyncThunk(
   'inventory/fetchRequestItems',
-  async (requestIds, { rejectWithValue }) => {
+  async (requestIds, {rejectWithValue}) => {
     if (!requestIds || requestIds.length === 0) {
       return {}; // Return empty object if no IDs
     }
@@ -55,7 +52,7 @@ export const fetchRequestItems = createAsyncThunk(
       const requestItemPromises = requestIds.map(async requestId => {
         const response = await client.graphql({
           query: listRequestItems,
-          variables: { filter: { requestId: { eq: requestId } } },
+          variables: {filter: {requestId: {eq: requestId}}},
         });
         const items = response.data.listRequestItems.items || [];
 
@@ -65,7 +62,7 @@ export const fetchRequestItems = createAsyncThunk(
               try {
                 const productResponse = await client.graphql({
                   query: getWarehouseProduct,
-                  variables: { id: item.warehouseProductId },
+                  variables: {id: item.warehouseProductId},
                 });
                 const product = productResponse.data.getWarehouseProduct;
                 return {
@@ -73,14 +70,17 @@ export const fetchRequestItems = createAsyncThunk(
                   productName: product?.name || 'Unknown Product',
                 };
               } catch (productError) {
-                console.error(`Error fetching product for item ${item.id}:`, productError);
-                return { ...item, productName: 'Unknown Product' };
+                console.error(
+                  `Error fetching product for item ${item.id}:`,
+                  productError,
+                );
+                return {...item, productName: 'Unknown Product'};
               }
             }
-            return { ...item, productName: 'Unknown Product' };
-          })
+            return {...item, productName: 'Unknown Product'};
+          }),
         );
-        return { requestId, items: itemsWithProducts };
+        return {requestId, items: itemsWithProducts};
       });
 
       const results = await Promise.all(requestItemPromises);
@@ -95,7 +95,7 @@ export const fetchRequestItems = createAsyncThunk(
       console.error('Error fetching request items:', error);
       return rejectWithValue('Failed to fetch request items.');
     }
-  }
+  },
 );
 
 const inventorySlice = createSlice({
@@ -121,7 +121,7 @@ const inventorySlice = createSlice({
       .addCase(fetchInventoryRequests.fulfilled, (state, action) => {
         state.requests = action.payload;
         if (action.payload.length === 0) {
-            state.loading = false;
+          state.loading = false;
         }
       })
       .addCase(fetchInventoryRequests.rejected, (state, action) => {
@@ -134,7 +134,7 @@ const inventorySlice = createSlice({
       })
       .addCase(fetchRequestItems.fulfilled, (state, action) => {
         state.loading = false;
-        state.requestItems = { ...state.requestItems, ...action.payload };
+        state.requestItems = {...state.requestItems, ...action.payload};
       })
       .addCase(fetchRequestItems.rejected, (state, action) => {
         state.loading = false;
@@ -145,5 +145,5 @@ const inventorySlice = createSlice({
   },
 });
 
-export const { resetInventoryError } = inventorySlice.actions;
+export const {resetInventoryError} = inventorySlice.actions;
 export default inventorySlice.reducer;

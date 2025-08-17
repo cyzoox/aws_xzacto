@@ -1,4 +1,10 @@
-import React, {createContext, useState, useEffect, useContext} from 'react';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from 'react';
 import {Auth} from 'aws-amplify'; // For authentication
 
 import {generateClient} from 'aws-amplify/api';
@@ -352,10 +358,10 @@ export const StoreProvider = ({children}) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentStore, fetchStores]);
 
   // Fetch stores and initialize current store if needed
-  async function fetchStores() {
+  const fetchStores = useCallback(async () => {
     try {
       const storeData = await client.graphql({
         query: listStores,
@@ -396,7 +402,7 @@ export const StoreProvider = ({children}) => {
     } catch (err) {
       console.error('Error fetching stores:', err);
     }
-  }
+  }, [currentStaff]);
 
   // Add a new store
   async function addStore() {
@@ -419,6 +425,7 @@ export const StoreProvider = ({children}) => {
       const newStore = {name, location, ownerId, password};
 
       await client.graphql({
+        // eslint-disable-next-line no-undef
         query: createStore,
         variables: {input: newStore},
       });

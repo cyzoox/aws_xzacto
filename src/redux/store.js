@@ -12,7 +12,13 @@ import storeSettingsReducer from './slices/storeSettingsSlice';
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['products', 'subscription', 'inventory', 'categories', 'storeSettings'], // Whitelist all existing reducers
+  whitelist: [
+    'products',
+    'subscription',
+    'inventory',
+    'categories',
+    'storeSettings',
+  ], // Whitelist all existing reducers
 };
 
 const rootReducer = combineReducers({

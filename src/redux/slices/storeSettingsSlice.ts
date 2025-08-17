@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Simple store settings interface without DataStore dependencies
@@ -38,44 +38,41 @@ const initialState: StoreSettingsState = {
   settings: null,
   loading: false,
   error: null,
-  isConnected: true,  // Assuming connected by default
+  isConnected: true, // Assuming connected by default
   pendingChanges: false,
   lastSyncTime: null,
 };
 
 // Async thunks for AsyncStorage operations with proper typing
 export const fetchStoreSettings = createAsyncThunk<
-  StoreSettingsInterface | null, 
+  StoreSettingsInterface | null,
   string,
-  { rejectValue: string }
->(
-  'storeSettings/fetchSettings',
-  async (storeId: string, { rejectWithValue }) => {
-    try {
-      // Create a storage key based on storeId
-      const storageKey = `@StoreSettings_${storeId}`;
-      
-      // Retrieve settings from AsyncStorage
-      const storedSettings = await AsyncStorage.getItem(storageKey);
-      
-      if (storedSettings) {
-        return JSON.parse(storedSettings) as StoreSettingsInterface;
-      }
-      return null;
-    } catch (error: any) {
-      console.error('Error fetching store settings:', error);
-      return rejectWithValue(error.message || 'Failed to fetch store settings');
+  {rejectValue: string}
+>('storeSettings/fetchSettings', async (storeId: string, {rejectWithValue}) => {
+  try {
+    // Create a storage key based on storeId
+    const storageKey = `@StoreSettings_${storeId}`;
+
+    // Retrieve settings from AsyncStorage
+    const storedSettings = await AsyncStorage.getItem(storageKey);
+
+    if (storedSettings) {
+      return JSON.parse(storedSettings) as StoreSettingsInterface;
     }
+    return null;
+  } catch (error: any) {
+    console.error('Error fetching store settings:', error);
+    return rejectWithValue(error.message || 'Failed to fetch store settings');
   }
-);
+});
 
 export const createStoreSettings = createAsyncThunk<
   StoreSettingsInterface,
   Partial<StoreSettingsInterface>,
-  { rejectValue: string }
+  {rejectValue: string}
 >(
   'storeSettings/createSettings',
-  async (settings: Partial<StoreSettingsInterface>, { rejectWithValue }) => {
+  async (settings: Partial<StoreSettingsInterface>, {rejectWithValue}) => {
     try {
       // Make sure required fields are present
       if (!settings.storeId) {
@@ -83,14 +80,20 @@ export const createStoreSettings = createAsyncThunk<
       }
 
       // Generate a unique ID if not provided
-      const settingsId = settings.id || `settings-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const settingsId =
+        settings.id ||
+        `settings-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
       // Set up the timeout promise for better UX
-      const timeoutPromise = new Promise<StoreSettingsInterface>((_, reject) => {
-        setTimeout(() => reject(new Error('Save operation timed out')), 3000);
-      });
+      const timeoutPromise = new Promise<StoreSettingsInterface>(
+        (_, reject) => {
+          setTimeout(() => reject(new Error('Save operation timed out')), 3000);
+        },
+      );
 
-      console.log(`Creating store settings with ID ${settingsId} for store ${settings.storeId}`);
+      console.log(
+        `Creating store settings with ID ${settingsId} for store ${settings.storeId}`,
+      );
 
       // Create the settings object with defaults
       const newSettings: StoreSettingsInterface = {
@@ -107,12 +110,12 @@ export const createStoreSettings = createAsyncThunk<
         allowCreditSales: settings.allowCreditSales ?? true,
         currencySymbol: settings.currencySymbol || '$',
         receiptFooterText: settings.receiptFooterText || '',
-        businessHours: settings.businessHours || ''
+        businessHours: settings.businessHours || '',
       };
 
       // Create a storage key based on storeId
       const storageKey = `@StoreSettings_${settings.storeId}`;
-      
+
       // Save promise
       const savePromise = (async () => {
         await AsyncStorage.setItem(storageKey, JSON.stringify(newSettings));
@@ -123,50 +126,54 @@ export const createStoreSettings = createAsyncThunk<
       return await Promise.race([savePromise, timeoutPromise]);
     } catch (error: any) {
       console.error('Error creating store settings:', error);
-      return rejectWithValue(error.message || 'Failed to create store settings');
+      return rejectWithValue(
+        error.message || 'Failed to create store settings',
+      );
     }
-  }
+  },
 );
 
 export const updateStoreSettings = createAsyncThunk<
   StoreSettingsInterface,
-  { id: string; storeId: string; updates: Partial<StoreSettingsInterface> },
-  { rejectValue: string }
+  {id: string; storeId: string; updates: Partial<StoreSettingsInterface>},
+  {rejectValue: string}
 >(
   'storeSettings/updateSettings',
-  async ({ id, storeId, updates }, { rejectWithValue }) => {
+  async ({storeId, updates}, {rejectWithValue}) => {
     try {
       // Create storage key based on storeId
       const storageKey = `@StoreSettings_${storeId}`;
-      
+
       // Get original settings
       const storedSettings = await AsyncStorage.getItem(storageKey);
-      
+
       if (!storedSettings) {
         return rejectWithValue('Store settings not found');
       }
-      
+
       // Parse stored settings
       const original = JSON.parse(storedSettings) as StoreSettingsInterface;
-      
+
       // Create updated settings by merging original with updates
       const updated: StoreSettingsInterface = {
         ...original,
         ...updates,
         // Ensure these fields are never undefined
         id: original.id,
-        storeId: original.storeId
+        storeId: original.storeId,
       };
-      
+
       // Save updated settings
       await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
-      
+
       return updated;
     } catch (error: any) {
       console.error('Error updating store settings:', error);
-      return rejectWithValue(error.message || 'Failed to update store settings');
+      return rejectWithValue(
+        error.message || 'Failed to update store settings',
+      );
     }
-  }
+  },
 );
 
 const storeSettingsSlice = createSlice({
@@ -177,22 +184,22 @@ const storeSettingsSlice = createSlice({
     setNetworkStatus(state, action: PayloadAction<boolean>) {
       state.isConnected = action.payload;
     },
-    
+
     // When settings are saved successfully to AsyncStorage
     saveSucceeded(state) {
       state.pendingChanges = false;
       state.lastSyncTime = new Date().toISOString();
     },
-    
+
     // When a store setting is updated (from AsyncStorage)
     settingsUpdated(state, action: PayloadAction<StoreSettingsInterface>) {
       state.settings = action.payload;
-    }
+    },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
       // Fetch settings
-      .addCase(fetchStoreSettings.pending, (state) => {
+      .addCase(fetchStoreSettings.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -204,9 +211,9 @@ const storeSettingsSlice = createSlice({
         state.loading = false;
         state.error = action.payload || 'An error occurred';
       })
-      
+
       // Create settings
-      .addCase(createStoreSettings.pending, (state) => {
+      .addCase(createStoreSettings.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -218,9 +225,9 @@ const storeSettingsSlice = createSlice({
         state.loading = false;
         state.error = action.payload || 'An error occurred';
       })
-      
+
       // Update settings
-      .addCase(updateStoreSettings.pending, (state) => {
+      .addCase(updateStoreSettings.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -232,17 +239,24 @@ const storeSettingsSlice = createSlice({
         state.loading = false;
         state.error = action.payload || 'An error occurred';
       });
-  }
+  },
 });
 
-export const { setNetworkStatus, saveSucceeded, settingsUpdated } = storeSettingsSlice.actions;
+export const {setNetworkStatus, saveSucceeded, settingsUpdated} =
+  storeSettingsSlice.actions;
 
 // Selectors with proper typing and null checks to handle possible undefined state
-export const selectStoreSettings = (state: RootState) => state.storeSettings?.settings || null;
-export const selectIsLoading = (state: RootState) => state.storeSettings?.loading || false;
-export const selectError = (state: RootState) => state.storeSettings?.error || null;
-export const selectIsConnected = (state: RootState) => state.storeSettings?.isConnected ?? true;
-export const selectHasPendingChanges = (state: RootState) => state.storeSettings?.pendingChanges || false;
-export const selectLastSyncTime = (state: RootState) => state.storeSettings?.lastSyncTime || null;
+export const selectStoreSettings = (state: RootState) =>
+  state.storeSettings?.settings || null;
+export const selectIsLoading = (state: RootState) =>
+  state.storeSettings?.loading || false;
+export const selectError = (state: RootState) =>
+  state.storeSettings?.error || null;
+export const selectIsConnected = (state: RootState) =>
+  state.storeSettings?.isConnected ?? true;
+export const selectHasPendingChanges = (state: RootState) =>
+  state.storeSettings?.pendingChanges || false;
+export const selectLastSyncTime = (state: RootState) =>
+  state.storeSettings?.lastSyncTime || null;
 
 export default storeSettingsSlice.reducer;

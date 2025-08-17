@@ -331,8 +331,8 @@ export const migrateStaffToNewSchema = async staff => {
 
   try {
     // Get all stores to assign to SuperAdmin
-    const {data} = await API.graphql(graphqlOperation(listStores));
-    const stores = data.listStores.items;
+    // const {data} = await API.graphql(graphqlOperation(listStores));
+    // const stores = data.listStores.items;
 
     // Create new staff object with required fields
     const migratedStaff = {
@@ -347,22 +347,22 @@ export const migrateStaffToNewSchema = async staff => {
     };
 
     // For SuperAdmin, assign all stores
-    if (migratedStaff.role.includes('SuperAdmin')) {
-      for (const store of stores) {
-        try {
-          await API.graphql(
-            graphqlOperation(createStaffStore, {
-              input: {
-                staffId: migratedStaff.id,
-                storeId: store.id,
-              },
-            }),
-          );
-        } catch (error) {
-          console.error('Error connecting SuperAdmin to store:', error);
-        }
-      }
-    }
+    // if (migratedStaff.role.includes('SuperAdmin')) {
+    //   for (const store of stores) {
+    //     try {
+    //       await API.graphql(
+    //         graphqlOperation(createStaffStore, {
+    //           input: {
+    //             staffId: migratedStaff.id,
+    //             storeId: store.id,
+    //           },
+    //         }),
+    //       );
+    //     } catch (error) {
+    //       console.error('Error connecting SuperAdmin to store:', error);
+    //     }
+    //   }
+    // }
 
     return migratedStaff;
   } catch (error) {
