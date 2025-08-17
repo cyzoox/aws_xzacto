@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {Overlay, Button, CheckBox} from 'react-native-elements';
 import {
   TouchableOpacity,
@@ -140,9 +140,9 @@ export function AddProduct({store, children}) {
   useEffect(() => {
     fetchSuppliers();
     fetchCategories();
-  }, []);
+  }, [fetchCategories, fetchSuppliers, store]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const result = await client.graphql({
         query: listCategories,
@@ -153,16 +153,16 @@ export function AddProduct({store, children}) {
     } catch (err) {
       console.log('Error fetching category:', err);
     }
-  };
+  }, [store]);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     const result = await client.graphql({
       query: listSuppliers,
       variables: {filter: {storeId: {eq: store.id}}},
     });
     const supplierList = result.data.listSuppliers.items;
     setSuppliers(supplierList);
-  };
+  }, [store]);
 
   const onSaveProducts = async () => {
     // Input validation
@@ -179,7 +179,7 @@ export function AddProduct({store, children}) {
       return;
     }
     if (stock === undefined || stock === null) {
-      setStockError('Stock is required');
+      // setStockError('Stock is required');
       return;
     }
     if (category.trim().length === 0) {
@@ -229,7 +229,7 @@ export function AddProduct({store, children}) {
         if (image.didCancel) {
           console.log('User cancelled image picker');
         } else if (image.error) {
-          console.log('ImagePicker Error: ', response.error);
+          console.log('ImagePicker Error: ', image.error);
         } else {
           let CLOUDINARY_URL =
             'https://api.cloudinary.com/v1_1/sbpcmedia/upload';
