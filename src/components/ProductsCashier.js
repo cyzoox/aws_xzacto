@@ -1,19 +1,13 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   TouchableOpacity,
-  ImageBackground,
   StyleSheet,
   View,
   Text,
-  Alert as Alert2,
-  Dimensions,
-  TouchableWithoutFeedback,
   ScrollView,
-  TextInput,
   Image,
 } from 'react-native';
 import FlatGrid from 'react-native-super-grid';
-import {Button, Input} from 'react-native-elements';
 import Modal from 'react-native-modal';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import {
@@ -24,15 +18,8 @@ import {
   listAddons,
 } from '../graphql/queries';
 import {createCartItem, updateCartItem} from '../graphql/mutations';
-import {
-  calculateFinalPrice,
-  formatPrice,
-  getProductPriceDisplay,
-} from '../utils/priceCalculations';
+import {calculateFinalPrice, formatPrice} from '../utils/priceCalculations';
 
-
-
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Alert from './Alert';
 import colors from '../themes/colors';
@@ -64,11 +51,11 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
 
   const setVariables = itemss => {
     setItems(itemss);
-    if (stores[0].attendant === '') {
-      alertVisible(true);
-      setItems([]);
-      return;
-    }
+    // if (stores[0].attendant === '') {
+    //   alertVisible(true);
+    //   setItems([]);
+    //   return;
+    // }
     if (itemss.unit === 'Kilo' || itemss.unit === 'Gram') {
       overlayVisible(true);
       return;
@@ -82,7 +69,7 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
   useEffect(() => {
     fetchCategories();
     fetchProducts();
-  }, []); // Initial fetch only
+  }, [fetchCategories, fetchProducts]); // Initial fetch only
 
   // Effect to load image URLs when products change
   useEffect(() => {
@@ -92,10 +79,20 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
         for (const product of products) {
           if (product.img) {
             try {
-              const {url} = await getUrl({key: product.img, options: {level: 'public'}});
-              if (url) urls[product.id] = url.toString();
+              const {url} = await getUrl({
+                key: product.img,
+                options: {level: 'public'},
+              });
+              if (url) {
+                urls[product.id] = url.toString();
+              }
             } catch (error) {
-              console.error('Error getting image URL for product', product.id, ':', error);
+              console.error(
+                'Error getting image URL for product',
+                product.id,
+                ':',
+                error,
+              );
             }
           }
         }
@@ -139,7 +136,7 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
     setFilteredProducts(filtered);
   }, [products, selectedCategory, searchTerm, category]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const result = await client.graphql({
         query: listCategories,
@@ -154,9 +151,9 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
     } catch (err) {
       console.log('Error fetching category:', err);
     }
-  };
+  }, [staffData.store_id]);
 
-  const fetchList = async () => {
+  const fetchList = useCallback(async () => {
     try {
       const result = await client.graphql({
         query: listCartItems,
@@ -185,10 +182,10 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
     } catch (err) {
       console.log('Error fetching cart items:', err.message);
     }
-  };
+  }, [staffData.store_id, staffData.id, setCart]);
 
   // Helper function to fetch product details (variants and addons)
-  const fetchProductDetails = async productId => {
+  const fetchProductDetails = useCallback(async productId => {
     try {
       console.log('Fetching product details for:', productId);
 
@@ -225,9 +222,9 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
       console.error('Error fetching product details:', error);
       return {variants: [], addons: []};
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       // Fetch basic product information first
       const result = await client.graphql({
@@ -256,224 +253,170 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
     } catch (err) {
       console.error('Error fetching products:', err);
     }
-  };
+  }, [fetchProductDetails, staffData.store_id]);
 
-  const addToCart = async item => {
-    try {
-      if (!staffData || !staffData.id) {
-        console.error('No staff data available');
-        return;
-      }
-
-      // Check if product has variants or addons
-      const hasVariants =
-        Array.isArray(item.variants?.items) && item.variants.items.length > 0;
-      const hasAddons =
-        Array.isArray(item.addons?.items) && item.addons.items.length > 0;
-
-      console.log(`Product ${item.name} checking for variants/addons:`, {
-        hasVariants,
-        hasAddons,
-        variants: item.variants,
-        addons: item.addons,
-      });
-
-      if ((hasVariants || hasAddons) && !variantModal) {
-        console.log('Opening variant modal for product:', item.name);
-
-        // Use the product data we already have directly
-        try {
-          console.log(
-            `Fetching detailed data for product ${item.name} (${item.id})`,
-          );
-
-          // Fetch the complete product data with variants and addons
-          const details = await fetchProductDetails(item.id);
-          console.log('Product details:', details);
-
-          // Create a complete product object with variants and addons
-          const productWithExtras = {
-            ...item,
-            variants: {items: details.variants},
-            addons: {items: details.addons},
-          };
-
-          console.log(
-            'Enhanced product data:',
-            JSON.stringify(productWithExtras),
-          );
-
-          if (details.variants.length === 0 && details.addons.length === 0) {
-            console.log(
-              'No variants or addons found for this product. Adding directly to cart.',
-            );
-            addToCart(item);
-            return;
-          }
-
-          // Now set the selected product and show the modal
-          const enhancedProduct = {
-            ...productWithExtras,
-            variants,
-            addons,
-          };
-
-          setSelectedVariantId(null); // Reset selected variant
-          setSelectedAddonId(null); // Reset selected addon
-          setSelectedProduct(enhancedProduct); // Set the selected product
-          setVariantModal(true); // Open the modal
-        } catch (err) {
-          console.error('Error fetching product details:', err);
-          // Fallback to using the basic product info
-          setSelectedVariantId(null);
-          setSelectedAddonId(null);
-          setSelectedProduct(item);
-          setVariantModal(true);
-        }
-        return;
-      }
-
-      // Get selected variant and addon objects (if any)
-      const selectedVariant =
-        selectedVariantId && selectedProduct?.variants?.items
-          ? selectedProduct.variants.items.find(v => v.id === selectedVariantId)
-          : null;
-
-      const selectedAddon =
-        selectedAddonId && selectedProduct?.addons?.items
-          ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
-          : null;
-
-      // Check if this exact product+variant+addon combination exists in cart
-      const cartItem = cart.find(
-        cartItem =>
-          cartItem.productId === item.id &&
-          // For variants: Check if IDs match or both are missing
-          ((selectedVariant &&
-            cartItem.variantData &&
-            JSON.parse(cartItem.variantData).id === selectedVariant.id) ||
-            (!selectedVariant && !cartItem.variantData)) &&
-          // For addons: Check if IDs match or both are missing
-          ((selectedAddon &&
-            cartItem.addonData &&
-            JSON.parse(cartItem.addonData).id === selectedAddon.id) ||
-            (!selectedAddon && !cartItem.addonData)),
-      );
-
-      // Check if enough stock
-      const currentQty = cartItem?.quantity || 0;
-      if (currentQty + 1 > item.stock) {
-        alert('Not enough stock available');
-        return;
-      }
-
-      // Calculate the final price using our utility function
-      // We need to create arrays for the selectedVariant and selectedAddon to match our utility function
-      const selectedVariantArray =
-        selectedVariantId && selectedProduct
-          ? [
-              selectedProduct.variants.items.find(
-                v => v.id === selectedVariantId,
-              ),
-            ].filter(Boolean)
-          : [];
-
-      const selectedAddonArray =
-        selectedAddonId && selectedProduct
-          ? [
-              selectedProduct.addons.items.find(a => a.id === selectedAddonId),
-            ].filter(Boolean)
-          : [];
-
-      // Now calculate the price with the correct variant and addon data
-      const totalPrice = calculateFinalPrice(
-        item,
-        selectedVariantArray,
-        selectedAddonArray,
-      );
-
-      console.log(
-        `Adding product ${item.name} to cart with price ${totalPrice}:`,
-        {
-          hasSelections: !!(item.selectedVariants || item.selectedAddons),
-          calculatedPrice: item.calculatedPrice,
-          finalPrice: totalPrice,
-        },
-      );
-
-      // Optimistically update the UI immediately
-      if (cartItem) {
-        // Update existing item in local state
-        const updatedCart = cart.map(item =>
-          item.id === cartItem.id
-            ? {...item, quantity: item.quantity + 1}
-            : item,
-        );
-        setCart(updatedCart);
-      } else {
-        // We already have selectedVariant and selectedAddon from above
-        // Create new item in local state with variant and addon details
-        const newCartItem = {
-          id: `temp-${Date.now()}`, // Temporary ID for optimistic update
-          name: item.name,
-          brand: item.brand,
-          oprice: item.oprice,
-          sprice: totalPrice,
-          productId: item.id,
-          cashierId: staffData.id,
-          category: item.category,
-          unit: item.unit || 'PCS',
-          storeId: item.storeId,
-          quantity: 1,
-
-          // Store variant and addon data directly in AWSJSON
-          variantData: selectedVariant ? JSON.stringify(selectedVariant) : null,
-          addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
-          // Add direct references for UI rendering (single objects, not arrays)
-          selectedVariant: selectedVariant,
-          selectedAddon: selectedAddon,
-          // Legacy field for backward compatibility
-          addon: selectedVariant
-            ? selectedVariant.name
-            : selectedAddon
-            ? selectedAddon.name
-            : null,
-
-          pending: true, // Flag to identify optimistic updates
-        };
-        setCart(prevCart => [...prevCart, newCartItem]);
-      }
-
-      // Now sync with the backend
+  const addToCart = useCallback(
+    async item => {
       try {
-        if (cartItem) {
-          // Update existing item in backend (same product + variant + addon combination)
-          await client.graphql({
-            query: updateCartItem,
-            variables: {
-              input: {
-                id: cartItem.id,
-                quantity: cartItem.quantity + 1,
-              },
-            },
-          });
-        } else {
-          // This is a new product
-          // Get selected variant and addon objects (if any)
-          const selectedVariant =
-            selectedVariantId && selectedProduct?.variants?.items
-              ? selectedProduct.variants.items.find(
+        if (!staffData || !staffData.id) {
+          console.error('No staff data available');
+          return;
+        }
+
+        // Check if product has variants or addons
+        const hasVariants =
+          Array.isArray(item.variants?.items) && item.variants.items.length > 0;
+        const hasAddons =
+          Array.isArray(item.addons?.items) && item.addons.items.length > 0;
+
+        console.log(`Product ${item.name} checking for variants/addons:`, {
+          hasVariants,
+          hasAddons,
+          variants: item.variants,
+          addons: item.addons,
+        });
+
+        if ((hasVariants || hasAddons) && !variantModal) {
+          console.log('Opening variant modal for product:', item.name);
+
+          // Use the product data we already have directly
+          try {
+            console.log(
+              `Fetching detailed data for product ${item.name} (${item.id})`,
+            );
+
+            // Fetch the complete product data with variants and addons
+            const details = await fetchProductDetails(item.id);
+            console.log('Product details:', details);
+
+            // Create a complete product object with variants and addons
+            const productWithExtras = {
+              ...item,
+              variants: {items: details.variants},
+              addons: {items: details.addons},
+            };
+
+            console.log(
+              'Enhanced product data:',
+              JSON.stringify(productWithExtras),
+            );
+
+            if (details.variants.length === 0 && details.addons.length === 0) {
+              console.log(
+                'No variants or addons found for this product. Adding directly to cart.',
+              );
+              addToCart(item);
+              return;
+            }
+
+            // Now set the selected product and show the modal
+            const enhancedProduct = {
+              ...productWithExtras,
+              variants: details.variants,
+              addons: details.addons,
+            };
+
+            setSelectedVariantId(null); // Reset selected variant
+            setSelectedAddonId(null); // Reset selected addon
+            setSelectedProduct(enhancedProduct); // Set the selected product
+            setVariantModal(true); // Open the modal
+          } catch (err) {
+            console.error('Error fetching product details:', err);
+            // Fallback to using the basic product info
+            setSelectedVariantId(null);
+            setSelectedAddonId(null);
+            setSelectedProduct(item);
+            setVariantModal(true);
+          }
+          return;
+        }
+
+        // Get selected variant and addon objects (if any)
+        const selectedVariant =
+          selectedVariantId && selectedProduct?.variants?.items
+            ? selectedProduct.variants.items.find(
+                v => v.id === selectedVariantId,
+              )
+            : null;
+
+        const selectedAddon =
+          selectedAddonId && selectedProduct?.addons?.items
+            ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
+            : null;
+
+        // Check if this exact product+variant+addon combination exists in cart
+        const cartItem = cart.find(
+          cartItem =>
+            cartItem.productId === item.id &&
+            // For variants: Check if IDs match or both are missing
+            ((selectedVariant &&
+              cartItem.variantData &&
+              JSON.parse(cartItem.variantData).id === selectedVariant.id) ||
+              (!selectedVariant && !cartItem.variantData)) &&
+            // For addons: Check if IDs match or both are missing
+            ((selectedAddon &&
+              cartItem.addonData &&
+              JSON.parse(cartItem.addonData).id === selectedAddon.id) ||
+              (!selectedAddon && !cartItem.addonData)),
+        );
+
+        // Check if enough stock
+        const currentQty = cartItem?.quantity || 0;
+        if (currentQty + 1 > item.stock) {
+          alert('Not enough stock available');
+          return;
+        }
+
+        // Calculate the final price using our utility function
+        // We need to create arrays for the selectedVariant and selectedAddon to match our utility function
+        const selectedVariantArray =
+          selectedVariantId && selectedProduct
+            ? [
+                selectedProduct.variants.items.find(
                   v => v.id === selectedVariantId,
-                )
-              : null;
+                ),
+              ].filter(Boolean)
+            : [];
 
-          const selectedAddon =
-            selectedAddonId && selectedProduct?.addons?.items
-              ? selectedProduct.addons.items.find(a => a.id === selectedAddonId)
-              : null;
+        const selectedAddonArray =
+          selectedAddonId && selectedProduct
+            ? [
+                selectedProduct.addons.items.find(
+                  a => a.id === selectedAddonId,
+                ),
+              ].filter(Boolean)
+            : [];
 
-          // Create new item in backend with variant and addon details
-          const newItem = {
+        // Now calculate the price with the correct variant and addon data
+        const totalPrice = calculateFinalPrice(
+          item,
+          selectedVariantArray,
+          selectedAddonArray,
+        );
+
+        console.log(
+          `Adding product ${item.name} to cart with price ${totalPrice}:`,
+          {
+            hasSelections: !!(item.selectedVariants || item.selectedAddons),
+            calculatedPrice: item.calculatedPrice,
+            finalPrice: totalPrice,
+          },
+        );
+
+        // Optimistically update the UI immediately
+        if (cartItem) {
+          // Update existing item in local state
+          const updatedCart = cart.map(item =>
+            item.id === cartItem.id
+              ? {...item, quantity: item.quantity + 1}
+              : item,
+          );
+          setCart(updatedCart);
+        } else {
+          // We already have selectedVariant and selectedAddon from above
+          // Create new item in local state with variant and addon details
+          const newCartItem = {
+            id: `temp-${Date.now()}`, // Temporary ID for optimistic update
             name: item.name,
             brand: item.brand,
             oprice: item.oprice,
@@ -485,117 +428,192 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
             storeId: item.storeId,
             quantity: 1,
 
-            // Store variant and addon data as serialized JSON strings for AWSJSON
-            // Note: Even though the field is AWSJSON type, we need to pass it as a string
+            // Store variant and addon data directly in AWSJSON
             variantData: selectedVariant
               ? JSON.stringify(selectedVariant)
               : null,
             addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+            // Add direct references for UI rendering (single objects, not arrays)
+            selectedVariant: selectedVariant,
+            selectedAddon: selectedAddon,
             // Legacy field for backward compatibility
             addon: selectedVariant
               ? selectedVariant.name
               : selectedAddon
               ? selectedAddon.name
               : null,
+
+            pending: true, // Flag to identify optimistic updates
           };
-
-          await client.graphql({
-            query: createCartItem,
-            variables: {
-              input: newItem,
-            },
-          });
+          setCart(prevCart => [...prevCart, newCartItem]);
         }
 
-        // Only fetch the full cart after a small delay to avoid unnecessary API calls
-        setTimeout(() => {
-          onCartUpdate();
-        }, 500);
+        // Now sync with the backend
+        try {
+          if (cartItem) {
+            // Update existing item in backend (same product + variant + addon combination)
+            await client.graphql({
+              query: updateCartItem,
+              variables: {
+                input: {
+                  id: cartItem.id,
+                  quantity: cartItem.quantity + 1,
+                },
+              },
+            });
+          } else {
+            // This is a new product
+            // Get selected variant and addon objects (if any)
+            const selectedVariant =
+              selectedVariantId && selectedProduct?.variants?.items
+                ? selectedProduct.variants.items.find(
+                    v => v.id === selectedVariantId,
+                  )
+                : null;
+
+            const selectedAddon =
+              selectedAddonId && selectedProduct?.addons?.items
+                ? selectedProduct.addons.items.find(
+                    a => a.id === selectedAddonId,
+                  )
+                : null;
+
+            // Create new item in backend with variant and addon details
+            const newItem = {
+              name: item.name,
+              brand: item.brand,
+              oprice: item.oprice,
+              sprice: totalPrice,
+              productId: item.id,
+              cashierId: staffData.id,
+              category: item.category,
+              unit: item.unit || 'PCS',
+              storeId: item.storeId,
+              quantity: 1,
+
+              // Store variant and addon data as serialized JSON strings for AWSJSON
+              // Note: Even though the field is AWSJSON type, we need to pass it as a string
+              variantData: selectedVariant
+                ? JSON.stringify(selectedVariant)
+                : null,
+              addonData: selectedAddon ? JSON.stringify(selectedAddon) : null,
+              // Legacy field for backward compatibility
+              addon: selectedVariant
+                ? selectedVariant.name
+                : selectedAddon
+                ? selectedAddon.name
+                : null,
+            };
+
+            await client.graphql({
+              query: createCartItem,
+              variables: {
+                input: newItem,
+              },
+            });
+          }
+
+          // Only fetch the full cart after a small delay to avoid unnecessary API calls
+          setTimeout(() => {
+            onCartUpdate();
+          }, 500);
+        } catch (err) {
+          console.log('Error syncing with backend:', err.message);
+          alert('Failed to add item to cart. Please try again.');
+
+          // Revert optimistic update on error
+          if (cartItem) {
+            // Revert to previous cart state
+            const originalCart = cart.map(item =>
+              item.id === cartItem.id
+                ? {...item, quantity: cartItem.quantity}
+                : item,
+            );
+            setCart(originalCart);
+          } else {
+            // Remove the optimistically added item
+            setCart(prevCart => prevCart.filter(item => !item.pending));
+          }
+        }
       } catch (err) {
-        console.log('Error syncing with backend:', err.message);
-        alert('Failed to add item to cart. Please try again.');
-
-        // Revert optimistic update on error
-        if (cartItem) {
-          // Revert to previous cart state
-          const originalCart = cart.map(item =>
-            item.id === cartItem.id
-              ? {...item, quantity: cartItem.quantity}
-              : item,
-          );
-          setCart(originalCart);
-        } else {
-          // Remove the optimistically added item
-          setCart(prevCart => prevCart.filter(item => !item.pending));
-        }
+        console.log('Error adding to cart:', err.message);
       }
-    } catch (err) {
-      console.log('Error adding to cart:', err.message);
-    }
-  };
+    },
+    [
+      cart,
+      fetchProductDetails,
+      onCartUpdate,
+      selectedAddonId,
+      selectedProduct,
+      selectedVariantId,
+      setCart,
+      staffData,
+      variantModal,
+    ],
+  );
 
-  const calculateTotal = () => {
-    let total = 0;
-    cart.forEach(list => {
-      total += list.quantity * list.sprice;
-    });
-    return total;
-  };
+  // const calculateTotal = () => {
+  //   let total = 0;
+  //   cart.forEach(list => {
+  //     total += list.quantity * list.sprice;
+  //   });
+  //   return total;
+  // };
 
-  const calculateQty = () => {
-    let total = 0;
-    cart.forEach(list => {
-      total += list.quantity;
-    });
-    return total;
-  };
+  // const calculateQty = () => {
+  //   let total = 0;
+  //   cart.forEach(list => {
+  //     total += list.quantity;
+  //   });
+  //   return total;
+  // };
 
-  const onTabChange = sterm => {
-    console.log('Changing category to:', sterm);
-    setSelectedCategory(sterm);
-  };
+  // const onTabChange = sterm => {
+  //   console.log('Changing category to:', sterm);
+  //   setSelectedCategory(sterm);
+  // };
 
-  const handleInput = () => {
-    if (
-      isNaN(quantity) ||
-      quantity === '.' ||
-      quantity === ',' ||
-      quantity === 0 ||
-      quantity < 0
-    ) {
-      alertVisible2(true);
-      return;
-    }
-  };
+  // const handleInput = () => {
+  //   if (
+  //     isNaN(quantity) ||
+  //     quantity === '.' ||
+  //     quantity === ',' ||
+  //     quantity === 0 ||
+  //     quantity < 0
+  //   ) {
+  //     alertVisible2(true);
+  //     return;
+  //   }
+  // };
 
-  const withAddtional = item => {
-    setWithAdditional(true);
-    setProductInfo(item);
-  };
+  // const withAddtional = item => {
+  //   setWithAdditional(true);
+  //   setProductInfo(item);
+  // };
 
-  const onselectVariant = item => {
-    if (item._id === selectedVariant._id) {
-      setSelectedVariant({name: '', price: 0, cost: 0});
-      return;
-    }
-    setSelectedVariant(item);
-  };
+  // const onselectVariant = item => {
+  //   if (item._id === selectedVariant._id) {
+  //     setSelectedVariant({name: '', price: 0, cost: 0});
+  //     return;
+  //   }
+  //   setSelectedVariant(item);
+  // };
 
-  const onselectAddon = item => {
-    if (item._id === selectedAddon._id) {
-      setSelectedAddon({name: '', price: 0, cost: 0});
-      return;
-    }
-    setSelectedAddon(item);
-  };
+  // const onselectAddon = item => {
+  //   if (item._id === selectedAddon._id) {
+  //     setSelectedAddon({name: '', price: 0, cost: 0});
+  //     return;
+  //   }
+  //   setSelectedAddon(item);
+  // };
 
-  const onselectOption = item => {
-    if (item._id === selectedOption._id) {
-      setSelectedOption({opton: ''});
-      return;
-    }
-    setSelectedOption(item);
-  };
+  // const onselectOption = item => {
+  //   if (item._id === selectedOption._id) {
+  //     setSelectedOption({opton: ''});
+  //     return;
+  //   }
+  //   setSelectedOption(item);
+  // };
   const _renderitem = ({item}) => {
     const cartItem = cart.find(cartItem => cartItem.productId === item.id);
     const remainingStock = item.stock - (cartItem?.quantity || 0);
@@ -627,12 +645,12 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
         <Image
           style={styles.itemImage}
           source={
-                  imageUrls[item.id]
-                    ? {uri: imageUrls[item.id]}
-                    : item.img
-                    ? {uri: 'https://via.placeholder.com/100x70?text=Loading...'}
-                    : require('../../assets/noproduct.png')
-                }
+            imageUrls[item.id]
+              ? {uri: imageUrls[item.id]}
+              : item.img
+              ? {uri: 'https://via.placeholder.com/100x70?text=Loading...'}
+              : require('../../assets/noproduct.png')
+          }
         />
 
         <View style={styles.itemContent}>
@@ -646,15 +664,15 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
           {/* Stock Status */}
           {isOutOfStock ? (
             <View style={[styles.statusBadge, styles.outOfStockBadge]}>
-              <Text style={[styles.statusText, styles.outOfStockText]}>Out of Stock</Text>
+              <Text style={[styles.statusText, styles.outOfStockText]}>
+                Out of Stock
+              </Text>
             </View>
           ) : hasLowStock ? (
             <View style={[styles.statusBadge, styles.lowStockBadge]}>
               <Text style={styles.statusText}>Low Stock: {item.stock}</Text>
             </View>
           ) : null}
-
-
 
           {/* Variant/Addon Indicator */}
           {hasExtras && (
@@ -976,7 +994,10 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.categoryContainer, { paddingHorizontal: 10 }]}
+          contentContainerStyle={[
+            styles.categoryContainer,
+            {paddingHorizontal: 10},
+          ]}
           centerContent={true}>
           <TouchableOpacity
             onPress={() => setSelectedCategory('All')}
@@ -1023,8 +1044,6 @@ export default function ProductsCashier({route, cart, setCart, onCartUpdate}) {
     </View>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   // Main container for each product item
@@ -1217,7 +1236,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
@@ -1233,7 +1252,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: '#3A6EA5',
-    transform: [{ scale: 1.05 }],
+    transform: [{scale: 1.05}],
   },
 
   // Text for category buttons
@@ -1419,11 +1438,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 10,
   },
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.89,
-    shadowRadius: 2,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-);
-
+  shadowOffset: {width: 0, height: 1},
+  shadowOpacity: 0.89,
+  shadowRadius: 2,
+  elevation: 2,
+  overflow: 'hidden',
+});

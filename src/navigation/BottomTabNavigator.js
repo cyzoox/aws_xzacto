@@ -35,7 +35,6 @@ import CreditTransactionsScreen from '../screens/store/CreditTransactionsScreen'
 import BillsAndReceiptReports from '../screens/store/BillsAndReceiptReports';
 import BillsAndReceiptItemsReport from '../screens/store/BillsAndReceiptItemsReport';
 
-
 const Tab = createBottomTabNavigator();
 const StoreStack = createStackNavigator();
 const HomeStack = createStackNavigator();

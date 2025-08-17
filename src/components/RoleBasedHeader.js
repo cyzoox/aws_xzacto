@@ -33,7 +33,7 @@ export function RoleBasedHeader({title, navigation, staffData}) {
       });
     } catch (error) {
       console.error('Error during logout:', error);
-      Alert.alert('Error', 'Failed to log out. Please try again.');
+      // Alert.alert('Error', 'Failed to log out. Please try again.');
     }
   };
 

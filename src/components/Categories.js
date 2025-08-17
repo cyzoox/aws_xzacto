@@ -100,7 +100,7 @@ const style = StyleSheet.create({
     paddingHorizontal: 12,
     borderBottomWidth: 2,
     borderBottomColor: colors.accent,
-    borderBottomColor: colors.accent,
+    // borderBottomColor: colors.accent,
   },
   categories: {
     flexWrap: 'wrap',

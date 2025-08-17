@@ -55,7 +55,7 @@ const Appbar = ({
       },
     ]);
   };
-  
+
   return (
     <>
       {/* Status bar uses translucent background to show gradient behind it */}
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'transparent', 
+    backgroundColor: 'transparent',
     height: 56,
     paddingHorizontal: 16,
   },
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 1,
   },

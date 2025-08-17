@@ -121,7 +121,7 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Home' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Home', 'Home', { staffData })}>
+              onPress={() => handleItemPress('Home', 'Home', {staffData})}>
               <Ionicons
                 name="home-outline"
                 size={22}
@@ -143,22 +143,29 @@ export function DrawerContent(props) {
               style={[
                 styles.menuItem,
                 activeItem === 'Customers' && styles.activeMenuItem,
-              ]} onPress={() => {
+              ]}
+              onPress={() => {
                 console.log('Customer navigation - staffData:', staffData);
                 if (staffData) {
-                  const storeParam = staffData.store_id 
-                    ? { store: { id: staffData.store_id } }
-                    : { store: { id: staffData?.stores?.items?.[0]?.storeId || 'default' } };
+                  const storeParam = staffData.store_id
+                    ? {store: {id: staffData.store_id}}
+                    : {
+                        store: {
+                          id:
+                            staffData?.stores?.items?.[0]?.storeId || 'default',
+                        },
+                      };
                   console.log('Store param for CustomerScreen:', storeParam);
                   handleItemPress('Customers', 'Customers', storeParam);
                 }
               }}>
-             
               <Ionicons
                 name="people-outline"
                 size={22}
                 color={
-                  activeItem === 'Customers' ? colors.primary : colors.charcoalGrey
+                  activeItem === 'Customers'
+                    ? colors.primary
+                    : colors.charcoalGrey
                 }
               />
               <Text
@@ -178,7 +185,9 @@ export function DrawerContent(props) {
                   activeItem === 'Staff Management' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Staff Management', 'StaffManagementScreen', { staffData })
+                  handleItemPress('Staff Management', 'StaffManagementScreen', {
+                    staffData,
+                  })
                 }>
                 <Ionicons
                   name="people-outline"
@@ -206,7 +215,9 @@ export function DrawerContent(props) {
                 activeItem === 'Printer Settings' && styles.activeMenuItem,
               ]}
               onPress={() =>
-                handleItemPress('Printer Settings', 'PrinterSettings', { staffData })
+                handleItemPress('Printer Settings', 'PrinterSettings', {
+                  staffData,
+                })
               }>
               <Ionicons
                 name="print-outline"
@@ -232,7 +243,9 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Expenses' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Expenses', 'Expenses', { staffData })}>
+              onPress={() =>
+                handleItemPress('Expenses', 'Expenses', {staffData})
+              }>
               <Ionicons
                 name="cash-outline"
                 size={22}
@@ -256,7 +269,9 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Transactions' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('Transactions', 'Transactions', { staffData })}>
+              onPress={() =>
+                handleItemPress('Transactions', 'Transactions', {staffData})
+              }>
               <Ionicons
                 name="swap-horizontal-outline"
                 size={22}
@@ -287,7 +302,9 @@ export function DrawerContent(props) {
                   activeItem === 'Products Dashboard' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Products Dashboard', 'ProductsDashboard', { staffData })
+                  handleItemPress('Products Dashboard', 'ProductsDashboard', {
+                    staffData,
+                  })
                 }>
                 <Ionicons
                   name="grid-outline"
@@ -314,7 +331,9 @@ export function DrawerContent(props) {
                   activeItem === 'Create Product' && styles.activeMenuItem,
                 ]}
                 onPress={() =>
-                  handleItemPress('Create Product', 'CreateProduct', { staffData })
+                  handleItemPress('Create Product', 'CreateProduct', {
+                    staffData,
+                  })
                 }>
                 <Ionicons
                   name="add-circle-outline"
@@ -346,7 +365,9 @@ export function DrawerContent(props) {
                 styles.menuItem,
                 activeItem === 'Staff Profile' && styles.activeMenuItem,
               ]}
-              onPress={() => handleItemPress('StaffProfile', 'StaffProfile', { staffData })}>
+              onPress={() =>
+                handleItemPress('StaffProfile', 'StaffProfile', {staffData})
+              }>
               <Ionicons
                 name="person-outline"
                 size={22}

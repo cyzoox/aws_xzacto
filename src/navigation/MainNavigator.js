@@ -9,7 +9,6 @@ import {useSelector} from 'react-redux';
 import SuperAdminNavigator from './SuperAdminNavigator';
 import StoreManagementScreen from '../screens/store/StoreManagementScreen';
 
-
 // Create navigators
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();

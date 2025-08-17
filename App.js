@@ -69,12 +69,12 @@ const App = () => {
     const initializeServices = async () => {
       try {
         console.log('Initializing app services...');
-        
+
         // Initialize services that don't require DataStore
         // We've removed DataStore for store settings due to initialization issues
-        
+
         // Initialize any other services needed here
-        
+
         // Preload any critical app data from AsyncStorage
         // This aligns with the optimization strategy to prefetch data at startup
         try {
@@ -83,7 +83,7 @@ const App = () => {
         } catch (storageError) {
           console.error('Error preloading data:', storageError);
         }
-        
+
         // Mark app as ready to render
         setDataStoreReady(true);
         console.log('App services initialized successfully');
@@ -93,15 +93,17 @@ const App = () => {
         setDataStoreReady(true);
       }
     };
-    
+
     initializeServices();
   }, []);
-  
+
   // Check if user has seen onboarding on app startup
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
-        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        const hasSeenOnboarding = await AsyncStorage.getItem(
+          'hasSeenOnboarding',
+        );
         if (hasSeenOnboarding === 'true') {
           setInitialRoute('RoleSelection');
         } else {
@@ -131,13 +133,13 @@ const App = () => {
         <PersistGate loading={<FallbackScreen />} persistor={persistor}>
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <NavigationContainer>
-            <Stack.Navigator 
+            <Stack.Navigator
               initialRouteName={initialRoute}
               screenOptions={{headerShown: false}}>
-              <Stack.Screen 
+              <Stack.Screen
                 name="Onboarding"
                 component={OnboardingScreen}
-                options={{ gestureEnabled: false }}
+                options={{gestureEnabled: false}}
               />
               <Stack.Screen
                 name="RoleSelection"

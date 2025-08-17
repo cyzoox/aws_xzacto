@@ -7,7 +7,12 @@ const SummaryCard = ({title, count, icon, color, onPress}) => {
     <TouchableOpacity onPress={onPress} style={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={styles.content}>
-          <Avatar.Icon icon={icon} size={40} style={{backgroundColor: color}} color="#fff" />
+          <Avatar.Icon
+            icon={icon}
+            size={40}
+            style={{backgroundColor: color}}
+            color="#fff"
+          />
           <Title style={styles.count}>{count}</Title>
           <Paragraph style={styles.title}>{title}</Paragraph>
         </Card.Content>

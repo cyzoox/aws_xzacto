@@ -1,13 +1,9 @@
-import { Card } from 'react-native-elements';
-import { StyleSheet, View } from 'react-native';
+import {Card} from 'react-native-elements';
+import {StyleSheet, View} from 'react-native';
 
 const Cards = ({children}) => {
-    return (
-            <Card containerStyle={styles.overviewCard}>
-                {children}
-            </Card>    
-    )
-}
+  return <Card containerStyle={styles.overviewCard}>{children}</Card>;
+};
 
 export default Cards;
 

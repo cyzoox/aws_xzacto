@@ -20,7 +20,10 @@ const DataTable = ({alignment, headerTitles, children, total, colStyle}) => {
           {headerTitles.map((rowData, index) => (
             <Col
               key={rowData}
-              style={[colStyle ? colStyle[index] : styles.ColStyle, {alignItems: alignment}]}>
+              style={[
+                colStyle ? colStyle[index] : styles.ColStyle,
+                {alignItems: alignment},
+              ]}>
               <Text style={styles.textColor}>{rowData}</Text>
             </Col>
           ))}

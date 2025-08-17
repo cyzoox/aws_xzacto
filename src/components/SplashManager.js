@@ -32,7 +32,7 @@ const SplashManager = ({
       // If not loading, show the app immediately
       setShowApp(true);
     }
-  }, []);
+  }, [initialLoading]);
 
   // When initialLoading changes to false, we can show the app
   useEffect(() => {
@@ -40,7 +40,7 @@ const SplashManager = ({
       console.log('Initial loading complete, showing app');
       setShowApp(true);
     }
-  }, [initialLoading]);
+  }, [initialLoading, showApp]);
 
   // Force show the app after a timeout to prevent getting stuck
   useEffect(() => {
@@ -52,7 +52,7 @@ const SplashManager = ({
     }, 3000);
 
     return () => clearTimeout(forceTimer);
-  }, []);
+  }, [showApp]);
 
   // Simple loading screen for when we're still loading
   if (!showApp) {

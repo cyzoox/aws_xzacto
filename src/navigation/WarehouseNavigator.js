@@ -39,49 +39,49 @@ const getTabScreenOptions = (iconName, label) => ({
 // Stack Navigators for each tab
 const HomeStack = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen 
-      name="WarehouseHome" 
-      component={WarehouseHomeScreen} 
-      // options={{ title: 'Warehouse Dashboard' }} 
+    <Stack.Screen
+      name="WarehouseHome"
+      component={WarehouseHomeScreen}
+      // options={{ title: 'Warehouse Dashboard' }}
     />
   </Stack.Navigator>
 );
 
 const InventoryStack = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen 
-      name="WarehouseInventory" 
-      component={WarehouseInventoryScreen} 
+    <Stack.Screen
+      name="WarehouseInventory"
+      component={WarehouseInventoryScreen}
       // options={{ title: 'Inventory' }}
     />
-    <Stack.Screen 
-      name="WarehouseProductAddScreen" 
-      component={WarehouseProductAddScreen} 
-      options={{ title: 'Add Product' }}
+    <Stack.Screen
+      name="WarehouseProductAddScreen"
+      component={WarehouseProductAddScreen}
+      options={{title: 'Add Product'}}
     />
-    <Stack.Screen 
-      name="BatchAdd" 
-      component={BatchAddScreen} 
+    <Stack.Screen
+      name="BatchAdd"
+      component={BatchAddScreen}
       // options={{ title: 'Add Batch' }}
     />
-    <Stack.Screen 
-      name="BatchEdit" 
-      component={BatchEditScreen} 
-      options={{ title: 'Edit Batch' }}
+    <Stack.Screen
+      name="BatchEdit"
+      component={BatchEditScreen}
+      options={{title: 'Edit Batch'}}
     />
   </Stack.Navigator>
 );
 
 const RequestsStack = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen 
-      name="RequestsMain" 
-      component={StoreRequestsScreen} 
-      options={{ title: 'Store Requests' }}
+    <Stack.Screen
+      name="RequestsMain"
+      component={StoreRequestsScreen}
+      options={{title: 'Store Requests'}}
     />
-    <Stack.Screen 
-      name="RequestDetails" 
-      component={RequestDetailsScreen} 
+    <Stack.Screen
+      name="RequestDetails"
+      component={RequestDetailsScreen}
       // options={{ title: 'Request Details' }}
     />
   </Stack.Navigator>
@@ -89,18 +89,18 @@ const RequestsStack = () => (
 
 const ReportsStack = () => (
   <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen 
-      name="WarehouseSummaryReport" 
-      component={WarehouseSummaryReportScreen} 
-      options={{ title: 'Inventory Reports' }}
+    <Stack.Screen
+      name="WarehouseSummaryReport"
+      component={WarehouseSummaryReportScreen}
+      options={{title: 'Inventory Reports'}}
     />
   </Stack.Navigator>
 );
 
 // Main Warehouse Navigator (Tab-based)
-const WarehouseNavigator = ({ route }) => {
+const WarehouseNavigator = ({route}) => {
   // staffData is passed via route.params from the parent navigator
-  const { staffData } = route.params;
+  const {staffData} = route.params;
 
   return (
     <Tab.Navigator
@@ -112,7 +112,7 @@ const WarehouseNavigator = ({ route }) => {
         name="Home"
         component={HomeStack}
         options={getTabScreenOptions('home', 'Home')}
-        initialParams={{ staffData }}
+        initialParams={{staffData}}
       />
       <Tab.Screen
         name="Inventory"

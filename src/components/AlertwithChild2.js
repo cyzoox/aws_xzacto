@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 5,
     paddingVertical: 5,
-    textAlign: 'center',
+    // textAlign: 'center',
   },
   closeBtn: {
     justifyContent: 'flex-end',

@@ -1,4 +1,5 @@
-import React, {useEffect, useState} from 'react';
+/* eslint-disable react-native/no-inline-styles */
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   ScrollView,
   TouchableOpacity,
@@ -65,7 +66,7 @@ export default function List({
   useEffect(() => {
     fetchList();
     loadPrinterSettings();
-  }, [staff]);
+  }, [staff, fetchList]);
 
   const loadPrinterSettings = async () => {
     try {
@@ -100,7 +101,7 @@ export default function List({
     }
   };
 
-  const fetchList = async () => {
+  const fetchList = useCallback(async () => {
     try {
       const result = await client.graphql({
         query: listCartItems,
@@ -172,7 +173,7 @@ export default function List({
     } catch (err) {
       console.log('Error fetching cart items:', err.message);
     }
-  };
+  }, [staff.id, staff.store_id]);
 
   const incrementQuantity = async item => {
     try {
@@ -235,31 +236,31 @@ export default function List({
     }
   };
 
-  const onPressSave = () => {
-    const foundObject = products.find(obj => obj._id === data._id);
+  // const onPressSave = () => {
+  //   const foundObject = products.find(obj => obj._id === data._id);
 
-    if (foundObject) {
-      if (foundObject.stock > newQty) {
-        editListQty(data, parseFloat(newQty));
-        setCustomQtyVisible(false);
-      } else {
-        alertVisible(true);
-        return;
-      }
-    }
-    // products.map((x) => {
+  // if (foundObject) {
+  //   if (foundObject.stock > newQty) {
+  //     editListQty(data, parseFloat(newQty));
+  //     setCustomQtyVisible(false);
+  //   } else {
+  //     alertVisible(true);
+  //     return;
+  //   }
+  // }
+  // products.map((x) => {
 
-    //   if (x.pr_id === data.uid){
-    //     if(newQty >= x.stock){
-    //       alertVisible(true);
-    //       return
-    //     }else{
-    //       editListQty(data, parseFloat(newQty))
-    //       setCustomQtyVisible(false)
-    //     }
-    //     }
-    // })
-  };
+  //   if (x.pr_id === data.uid){
+  //     if(newQty >= x.stock){
+  //       alertVisible(true);
+  //       return
+  //     }else{
+  //       editListQty(data, parseFloat(newQty))
+  //       setCustomQtyVisible(false)
+  //     }
+  //     }
+  // })
+  // };
 
   const onEditQty = item => {
     setData(item);
@@ -438,7 +439,7 @@ export default function List({
                   padding: 3,
                   borderRadius: 10,
                   marginLeft: 10,
-                  borderRadius: 10,
+                  // borderRadius: 10,
                   borderColor: colors.accent,
                   borderWidth: 1,
                 }}>
@@ -463,7 +464,7 @@ export default function List({
                   padding: 3,
                   borderRadius: 10,
                   marginLeft: 10,
-                  borderRadius: 10,
+                  // borderRadius: 10,
                   borderColor: colors.accent,
                   borderWidth: 1,
                 }}>
@@ -483,7 +484,7 @@ export default function List({
                   padding: 3,
                   borderRadius: 10,
                   marginLeft: 10,
-                  borderRadius: 10,
+                  // borderRadius: 10,
                   borderColor: colors.accent,
                   borderWidth: 1,
                 }}>
@@ -502,7 +503,7 @@ export default function List({
                   padding: 3,
                   borderRadius: 10,
                   marginLeft: 10,
-                  borderRadius: 10,
+                  // borderRadius: 10,
                   borderColor: colors.accent,
                   borderWidth: 1,
                 }}>
@@ -604,7 +605,7 @@ export default function List({
                 paddingHorizontal: 20,
               }}
               title="    Save    "
-              onPress={() => onPressSave()}
+              onPress={() => {}}
             />
           </View>
         </Overlay>
