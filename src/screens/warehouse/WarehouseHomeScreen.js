@@ -58,7 +58,7 @@ const WarehouseHomeScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   useFocusEffect(
     useCallback(() => {

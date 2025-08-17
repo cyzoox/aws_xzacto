@@ -89,7 +89,7 @@ const WarehouseProductAddScreen = ({navigation}) => {
       }
     };
     fetchCategories();
-  }, []);
+  }, [client]);
 
   const validateForm = () => {
     const newErrors = {};

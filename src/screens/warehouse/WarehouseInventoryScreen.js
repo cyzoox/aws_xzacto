@@ -35,6 +35,7 @@ const LOW_STOCK_THRESHOLD = 10;
 
 const WarehouseInventoryScreen = ({navigation, route}) => {
   // Extract filter parameters from route if they exist
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filterParams = route?.params || {};
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);

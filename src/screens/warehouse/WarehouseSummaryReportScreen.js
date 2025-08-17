@@ -60,7 +60,7 @@ const WarehouseSummaryReportScreen = () => {
 
   const client = generateClient();
 
-  const calculateDateRangeFilter = () => {
+  const calculateDateRangeFilter = useCallback(() => {
     const now = new Date();
     let startDate;
 
@@ -78,7 +78,7 @@ const WarehouseSummaryReportScreen = () => {
     }
 
     return startDate;
-  };
+  }, [dateRange]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

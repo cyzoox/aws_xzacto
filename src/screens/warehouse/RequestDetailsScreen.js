@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -42,7 +42,7 @@ const RequestDetailsScreen = ({navigation, route}) => {
   const [fulfilledQuantities, setFulfilledQuantities] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchRequestDetails = async () => {
+  const fetchRequestDetails = useCallback(async () => {
     if (!refreshing) {
       setLoading(true);
     }
@@ -113,11 +113,11 @@ const RequestDetailsScreen = ({navigation, route}) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [refreshing, requestId]);
 
   useEffect(() => {
     fetchRequestDetails();
-  }, [requestId]);
+  }, [requestId, refreshing, fetchRequestDetails]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -495,14 +495,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border, // Themed
   },
-  completeButton: {
-    backgroundColor: colors.primary, // Themed
-    height: 50,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-  },
+  // completeButton: {
+  //   backgroundColor: colors.primary, // Themed
+  //   height: 50,
+  //   borderRadius: 12,
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  //   elevation: 3,
+  // },
   disabledButton: {
     backgroundColor: colors.grey, // Themed
   },

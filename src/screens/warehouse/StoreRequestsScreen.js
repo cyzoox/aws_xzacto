@@ -33,7 +33,7 @@ const StoreRequestsScreen = () => {
 
   const client = generateClient();
 
-  const fetchInventoryRequests = async () => {
+  const fetchInventoryRequests = useCallback(async () => {
     setLoading(true);
     try {
       const requestsData = await client.graphql({query: listInventoryRequests});
@@ -74,12 +74,12 @@ const StoreRequestsScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [client]);
 
   useFocusEffect(
     useCallback(() => {
       fetchInventoryRequests();
-    }, []),
+    }, [fetchInventoryRequests]),
   );
 
   const filteredRequests = useMemo(() => {

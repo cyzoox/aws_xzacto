@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+/* eslint-disable prettier/prettier */
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {generateClient} from 'aws-amplify/api';
@@ -65,7 +67,7 @@ export const createProductWithDetails = createAsyncThunk(
         // Store in offline products
         const offlineProducts = await AsyncStorage.getItem('offline_products');
         const products = offlineProducts ? JSON.parse(offlineProducts) : [];
-        // eslint-disable-next-line prettier/prettier, no-undef
+
         products.push({
           ...productData.product,
           variants,
@@ -77,7 +79,6 @@ export const createProductWithDetails = createAsyncThunk(
           JSON.stringify(products),
         );
 
-        // eslint-disable-next-line no-undef
         return {...productData.product, variants, addons, _offline: true};
       }
 
