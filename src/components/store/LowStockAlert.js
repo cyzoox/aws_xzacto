@@ -1,53 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
-import { selectStoreSettings } from '../../redux/slices/storeSettingsSlice';
-import { DataStore } from '@aws-amplify/datastore';
-import { FontAwesome } from '@expo/vector-icons';
+import {useSelector, useDispatch} from 'react-redux';
+import {selectStoreSettings} from '../../redux/slices/storeSettingsSlice';
+import {DataStore} from '@aws-amplify/datastore';
+import {FontAwesome} from '@expo/vector-icons';
 
 /**
  * LowStockAlert - Component for displaying products with low stock
  * based on the store settings lowStockThreshold value
- * 
+ *
  * Demonstrates:
  * 1. Integration of store settings with product inventory
  * 2. Real-time threshold-based alerts
  * 3. Direct DataStore queries with Redux integration
  */
-const LowStockAlert = ({ storeId, onProductPress }) => {
+const LowStockAlert = ({storeId, onProductPress}) => {
   const dispatch = useDispatch();
   const storeSettings = useSelector(selectStoreSettings);
   const [loading, setLoading] = useState(true);
   const [lowStockProducts, setLowStockProducts] = useState([]);
-  
+
   // Get threshold from store settings, default to 10 if not set
   const threshold = storeSettings?.lowStockThreshold || 10;
 
   // Load low stock products when the component mounts or threshold changes
   useEffect(() => {
     const fetchLowStockProducts = async () => {
-      if (!storeId) return;
-      
+      if (!storeId) {
+        return;
+      }
+
       try {
         setLoading(true);
-        
+
         // Fetch all products for this store from DataStore
         // In a real app, you'd want to use a more efficient query that
         // directly filters for low stock items on the server side
-        const allProducts = await DataStore.query(Product, p => p.storeId.eq(storeId));
-        
-        // Filter products with quantity below threshold
-        const lowStock = allProducts.filter(product => 
-          product.quantity <= threshold && product.quantity > 0
+        const allProducts = await DataStore.query(Product, p =>
+          p.storeId.eq(storeId),
         );
-        
+
+        // Filter products with quantity below threshold
+        const lowStock = allProducts.filter(
+          product => product.quantity <= threshold && product.quantity > 0,
+        );
+
         setLowStockProducts(lowStock);
       } catch (error) {
         console.error('Error fetching low stock products:', error);
@@ -57,7 +61,7 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
     };
 
     fetchLowStockProducts();
-    
+
     // Set up a subscription for real-time updates
     const subscription = DataStore.observe(Product).subscribe(msg => {
       // When a product changes, check if it needs to be added/removed from low stock list
@@ -66,7 +70,7 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
         fetchLowStockProducts();
       }
     });
-    
+
     return () => {
       // Clean up subscription when component unmounts
       subscription.unsubscribe();
@@ -78,7 +82,9 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
     return (
       <View style={styles.emptyContainer}>
         <FontAwesome name="check-circle" size={22} color="#4caf50" />
-        <Text style={styles.emptyText}>All products are above the low stock threshold</Text>
+        <Text style={styles.emptyText}>
+          All products are above the low stock threshold
+        </Text>
       </View>
     );
   }
@@ -92,7 +98,7 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
           <Text style={styles.badgeText}>{lowStockProducts.length}</Text>
         </View>
       </View>
-      
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#2089dc" />
@@ -102,25 +108,25 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
         <FlatList
           data={lowStockProducts}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
+          renderItem={({item}) => (
+            <TouchableOpacity
               style={styles.productItem}
-              onPress={() => onProductPress && onProductPress(item)}
-            >
+              onPress={() => onProductPress && onProductPress(item)}>
               <View style={styles.productInfo}>
                 <Text style={styles.productName} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={styles.productSku}>
-                  {item.sku || 'No SKU'}
-                </Text>
+                <Text style={styles.productSku}>{item.sku || 'No SKU'}</Text>
               </View>
-              
+
               <View style={styles.stockInfo}>
-                <Text style={[
-                  styles.stockValue,
-                  item.quantity <= threshold / 2 ? styles.criticalStock : styles.warningStock
-                ]}>
+                <Text
+                  style={[
+                    styles.stockValue,
+                    item.quantity <= threshold / 2
+                      ? styles.criticalStock
+                      : styles.warningStock,
+                  ]}>
                   {item.quantity}
                 </Text>
                 <Text style={styles.stockUnit}>units</Text>
@@ -129,7 +135,9 @@ const LowStockAlert = ({ storeId, onProductPress }) => {
           )}
           ListFooterComponent={
             <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All Low Stock Products</Text>
+              <Text style={styles.viewAllText}>
+                View All Low Stock Products
+              </Text>
             </TouchableOpacity>
           }
         />

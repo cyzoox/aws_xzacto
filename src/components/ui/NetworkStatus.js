@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { useSelector } from 'react-redux';
-import { selectIsConnected, selectHasPendingChanges } from '../../redux/slices/storeSettingsSlice';
+import {useSelector} from 'react-redux';
+import {
+  selectIsConnected,
+  selectHasPendingChanges,
+} from '../../redux/slices/storeSettingsSlice';
 
 /**
  * NetworkStatus - A component to display network connectivity status
- * 
+ *
  * Shows the current network connectivity status and pending changes
  * to provide visual feedback for offline-first functionality
  * Uses Redux to retrieve status automatically without props
@@ -16,14 +19,18 @@ const NetworkStatus = () => {
   // Use try-catch to handle potential Redux store initialization issues
   let isConnected = true;
   let pendingChanges = false;
-  
+
   try {
     const storeIsConnected = useSelector(selectIsConnected);
     const storePendingChanges = useSelector(selectHasPendingChanges);
-    
+
     // Only update if the selector returns actual values
-    if (storeIsConnected !== undefined) isConnected = storeIsConnected;
-    if (storePendingChanges !== undefined) pendingChanges = storePendingChanges;
+    if (storeIsConnected !== undefined) {
+      isConnected = storeIsConnected;
+    }
+    if (storePendingChanges !== undefined) {
+      pendingChanges = storePendingChanges;
+    }
   } catch (error) {
     console.log('NetworkStatus: Redux store not ready yet', error);
     // Keep using defaults
@@ -34,14 +41,16 @@ const NetworkStatus = () => {
       return {
         icon: 'wifi',
         color: pendingChanges ? '#e6a23c' : '#67c23a',
-        message: pendingChanges ? 'Online - Syncing changes...' : 'Online - All changes synced',
+        message: pendingChanges
+          ? 'Online - Syncing changes...'
+          : 'Online - All changes synced',
       };
     } else {
       return {
         icon: 'wifi-off',
         color: '#f56c6c',
-        message: pendingChanges 
-          ? 'Offline - Changes will sync when connected' 
+        message: pendingChanges
+          ? 'Offline - Changes will sync when connected'
           : 'Offline - No pending changes',
       };
     }
@@ -52,7 +61,7 @@ const NetworkStatus = () => {
   return (
     <View style={styles.container}>
       <FontAwesome name={statusInfo.icon} size={16} color={statusInfo.color} />
-      <Text style={[styles.statusText, { color: statusInfo.color }]}>
+      <Text style={[styles.statusText, {color: statusInfo.color}]}>
         {statusInfo.message}
       </Text>
     </View>

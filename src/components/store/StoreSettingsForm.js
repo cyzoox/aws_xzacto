@@ -1,46 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  StyleSheet, 
-  ScrollView, 
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ScrollView,
   Switch,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { 
+import {useDispatch, useSelector} from 'react-redux';
+import {
   createStoreSettings,
   updateStoreSettings,
   selectStoreSettings,
   selectIsLoading,
   selectError,
   selectHasPendingChanges,
-  selectIsNetworkConnected
+  selectIsNetworkConnected,
 } from '../../redux/slices/storeSettingsSlice';
 import NetworkStatus from '../ui/NetworkStatus';
 
 /**
  * StoreSettingsForm - Editable form for store settings
- * 
+ *
  * This component demonstrates offline-first editing with:
  * 1. Immediate UI updates regardless of connectivity
  * 2. Network status indicator
  * 3. Visual feedback for pending changes
  * 4. Error handling and validation
  */
-const StoreSettingsForm = ({ storeId }) => {
+const StoreSettingsForm = ({storeId}) => {
   const dispatch = useDispatch();
   const settings = useSelector(selectStoreSettings);
   const isLoading = useSelector(selectIsLoading);
   const error = useSelector(selectError);
   const hasPendingChanges = useSelector(selectHasPendingChanges);
   const isNetworkConnected = useSelector(selectIsNetworkConnected);
-  
+
   // Local form state
   const [formValues, setFormValues] = useState({
     address: '',
@@ -64,8 +64,12 @@ const StoreSettingsForm = ({ storeId }) => {
         phone: settings.phone || '',
         email: settings.email || '',
         logoUrl: settings.logoUrl || '',
-        vatPercentage: settings.vatPercentage ? String(settings.vatPercentage) : '0',
-        lowStockThreshold: settings.lowStockThreshold ? String(settings.lowStockThreshold) : '10',
+        vatPercentage: settings.vatPercentage
+          ? String(settings.vatPercentage)
+          : '0',
+        lowStockThreshold: settings.lowStockThreshold
+          ? String(settings.lowStockThreshold)
+          : '10',
         allowCashierSalesView: settings.allowCashierSalesView || false,
         allowCreditSales: settings.allowCreditSales || false,
         currencySymbol: settings.currencySymbol || '$',
@@ -82,9 +86,9 @@ const StoreSettingsForm = ({ storeId }) => {
       [field]: value,
     });
   };
-  
+
   // Handle toggle switch changes
-  const handleToggle = (field) => {
+  const handleToggle = field => {
     setFormValues({
       ...formValues,
       [field]: !formValues[field],
@@ -95,34 +99,39 @@ const StoreSettingsForm = ({ storeId }) => {
   const validateForm = () => {
     // Email validation regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
+
     // Check if email is valid when provided
     if (formValues.email && !emailRegex.test(formValues.email)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return false;
     }
-    
+
     // Check if VAT percentage is valid
     const vatValue = parseFloat(formValues.vatPercentage);
     if (isNaN(vatValue) || vatValue < 0 || vatValue > 100) {
       Alert.alert('Invalid VAT', 'VAT percentage must be between 0 and 100.');
       return false;
     }
-    
+
     // Check if lowStockThreshold is valid
     const thresholdValue = parseInt(formValues.lowStockThreshold, 10);
     if (isNaN(thresholdValue) || thresholdValue < 0) {
-      Alert.alert('Invalid Threshold', 'Low stock threshold must be a positive number.');
+      Alert.alert(
+        'Invalid Threshold',
+        'Low stock threshold must be a positive number.',
+      );
       return false;
     }
-    
+
     return true;
   };
 
   // Handle form submission
   const handleSubmit = () => {
-    if (!validateForm()) return;
-    
+    if (!validateForm()) {
+      return;
+    }
+
     // Convert string values to appropriate types
     const settingsData = {
       ...formValues,
@@ -130,13 +139,15 @@ const StoreSettingsForm = ({ storeId }) => {
       lowStockThreshold: parseInt(formValues.lowStockThreshold, 10),
       storeId: storeId,
     };
-    
+
     // Create or update settings based on whether they already exist
     if (settings?.id) {
-      dispatch(updateStoreSettings({
-        ...settingsData,
-        id: settings.id,
-      }));
+      dispatch(
+        updateStoreSettings({
+          ...settingsData,
+          id: settings.id,
+        }),
+      );
     } else {
       dispatch(createStoreSettings(settingsData));
     }
@@ -150,12 +161,12 @@ const StoreSettingsForm = ({ storeId }) => {
       </View>
     );
   }
-  
+
   // Show a network status indicator if there are pending changes
   const renderNetworkStatus = () => {
     if (hasPendingChanges) {
       return (
-        <NetworkStatus 
+        <NetworkStatus
           isConnected={isNetworkConnected}
           pendingChanges={hasPendingChanges}
         />
@@ -165,158 +176,154 @@ const StoreSettingsForm = ({ storeId }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : null}
-      keyboardVerticalOffset={100}
-    >
+      keyboardVerticalOffset={100}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {renderNetworkStatus()}
-        
+
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Store Information</Text>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Address</Text>
             <TextInput
               style={styles.input}
               value={formValues.address}
-              onChangeText={(text) => handleChange('address', text)}
+              onChangeText={text => handleChange('address', text)}
               placeholder="Store Address"
               multiline
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone</Text>
             <TextInput
               style={styles.input}
               value={formValues.phone}
-              onChangeText={(text) => handleChange('phone', text)}
+              onChangeText={text => handleChange('phone', text)}
               placeholder="Phone Number"
               keyboardType="phone-pad"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
               value={formValues.email}
-              onChangeText={(text) => handleChange('email', text)}
+              onChangeText={text => handleChange('email', text)}
               placeholder="Email Address"
               keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Logo URL</Text>
             <TextInput
               style={styles.input}
               value={formValues.logoUrl}
-              onChangeText={(text) => handleChange('logoUrl', text)}
+              onChangeText={text => handleChange('logoUrl', text)}
               placeholder="Logo URL"
               autoCapitalize="none"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Business Hours</Text>
             <TextInput
               style={styles.input}
               value={formValues.businessHours}
-              onChangeText={(text) => handleChange('businessHours', text)}
+              onChangeText={text => handleChange('businessHours', text)}
               placeholder="e.g., Mon-Fri: 9AM-5PM"
             />
           </View>
         </View>
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sales Configuration</Text>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>VAT Percentage</Text>
             <TextInput
               style={[styles.input, styles.numberInput]}
               value={formValues.vatPercentage}
-              onChangeText={(text) => handleChange('vatPercentage', text)}
+              onChangeText={text => handleChange('vatPercentage', text)}
               placeholder="0"
               keyboardType="decimal-pad"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Low Stock Threshold</Text>
             <TextInput
               style={[styles.input, styles.numberInput]}
               value={formValues.lowStockThreshold}
-              onChangeText={(text) => handleChange('lowStockThreshold', text)}
+              onChangeText={text => handleChange('lowStockThreshold', text)}
               placeholder="10"
               keyboardType="number-pad"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Currency Symbol</Text>
             <TextInput
               style={[styles.input, styles.currencyInput]}
               value={formValues.currencySymbol}
-              onChangeText={(text) => handleChange('currencySymbol', text)}
+              onChangeText={text => handleChange('currencySymbol', text)}
               placeholder="$"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Receipt Footer Text</Text>
             <TextInput
               style={styles.input}
               value={formValues.receiptFooterText}
-              onChangeText={(text) => handleChange('receiptFooterText', text)}
+              onChangeText={text => handleChange('receiptFooterText', text)}
               placeholder="Thank you for your business!"
               multiline
             />
           </View>
         </View>
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Permissions</Text>
-          
+
           <View style={styles.switchGroup}>
             <Text style={styles.label}>Allow Cashier Sales View</Text>
             <Switch
               value={formValues.allowCashierSalesView}
               onValueChange={() => handleToggle('allowCashierSalesView')}
-              trackColor={{ false: '#767577', true: '#2089dc' }}
-              thumbColor={formValues.allowCashierSalesView ? '#f5f5f5' : '#f4f3f4'}
+              trackColor={{false: '#767577', true: '#2089dc'}}
+              thumbColor={
+                formValues.allowCashierSalesView ? '#f5f5f5' : '#f4f3f4'
+              }
             />
           </View>
-          
           <View style={styles.switchGroup}>
             <Text style={styles.label}>Allow Credit Sales</Text>
             <Switch
               value={formValues.allowCreditSales}
               onValueChange={() => handleToggle('allowCreditSales')}
-              trackColor={{ false: '#767577', true: '#2089dc' }}
+              trackColor={{false: '#767577', true: '#2089dc'}}
               thumbColor={formValues.allowCreditSales ? '#f5f5f5' : '#f4f3f4'}
             />
           </View>
         </View>
-        
-        <TouchableOpacity 
-          style={[
-            styles.saveButton, 
-            isLoading && styles.saveButtonDisabled
-          ]}
+
+        <TouchableOpacity
+          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleSubmit}
-          disabled={isLoading}
-        >
+          disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
