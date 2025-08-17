@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { hashPassword } from '../../utils/PasswordUtils';
+import React, {useState, useEffect} from 'react';
+import {hashPassword} from '../../utils/PasswordUtils';
 import {
   View,
   Text,
@@ -12,15 +12,15 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { generateClient } from 'aws-amplify/api';
-import { getStaff } from '../../graphql/queries';
-import { updateStaff } from '../../graphql/mutations';
+import {generateClient} from 'aws-amplify/api';
+import {getStaff} from '../../graphql/queries';
+import {updateStaff} from '../../graphql/mutations';
 import colors from '../../themes/colors';
 import Appbar from '../../components/Appbar';
 
-const StaffProfileScreen = ({ route, navigation }) => {
+const StaffProfileScreen = ({route, navigation}) => {
   const client = generateClient();
-  const { staffData } = route.params || {};
+  const {staffData} = route.params || {};
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [staff, setStaff] = useState(null);
@@ -37,7 +37,7 @@ const StaffProfileScreen = ({ route, navigation }) => {
         try {
           const staffResult = await client.graphql({
             query: getStaff,
-            variables: { id: staffData.id }
+            variables: {id: staffData.id},
           });
           const staffDetails = staffResult.data.getStaff;
           setStaff(staffDetails);
@@ -52,7 +52,7 @@ const StaffProfileScreen = ({ route, navigation }) => {
     };
 
     fetchStaffDetails();
-  }, [staffData]);
+  }, [staffData, client]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -79,20 +79,23 @@ const StaffProfileScreen = ({ route, navigation }) => {
         phoneNumber: phoneNumber || null,
         email: email || null,
       };
-      
+
       // Hash the PIN if it's being updated
       if (pin) {
         try {
           // Use our custom password hashing utility
           const hashedPin = hashPassword(pin);
           console.log('Created hashed PIN for staff profile update');
-          
+
           // Add the hashed password to the input
           input.password = hashedPin;
         } catch (hashError) {
           console.error('Error hashing PIN:', hashError);
           // If hashing fails, don't update the PIN to avoid security issues
-          Alert.alert('Error', 'There was a problem with PIN security. Please try again.');
+          Alert.alert(
+            'Error',
+            'There was a problem with PIN security. Please try again.',
+          );
           setSaving(false);
           return;
         }
@@ -100,9 +103,9 @@ const StaffProfileScreen = ({ route, navigation }) => {
 
       await client.graphql({
         query: updateStaff,
-        variables: { input }
+        variables: {input},
       });
-      setStaff({ ...staff, name, phoneNumber, email });
+      setStaff({...staff, name, phoneNumber, email});
       setEditing(false);
       setPin('');
       setConfirmPin('');
@@ -149,7 +152,9 @@ const StaffProfileScreen = ({ route, navigation }) => {
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
               <View style={styles.profileImage}>
-                <Text style={styles.profileInitial}>{name.charAt(0).toUpperCase()}</Text>
+                <Text style={styles.profileInitial}>
+                  {name.charAt(0).toUpperCase()}
+                </Text>
               </View>
             </View>
             <View style={styles.profileInfo}>

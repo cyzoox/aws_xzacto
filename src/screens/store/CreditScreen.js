@@ -1,9 +1,8 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
   ActivityIndicator,
   FlatList,
@@ -14,21 +13,13 @@ import {
   Title,
   Paragraph,
   Button,
-  FAB,
-  Divider,
-  Badge,
   Searchbar,
-  Menu,
-  useTheme as usePaperTheme,
-  List,
   Avatar,
-  DataTable,
   Chip,
 } from 'react-native-paper';
 import Appbar from '../../components/Appbar';
 import {colors} from '../../constants/theme';
 import {generateClient} from 'aws-amplify/api';
-import {getCurrentUser} from '@aws-amplify/auth';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {formatCurrency} from '../../utils/formatters';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,7 +29,7 @@ import {listCustomers} from '../../graphql/queries';
 
 const client = generateClient();
 
-const CreditScreen = ({ navigation, route }) => {
+const CreditScreen = ({navigation, route}) => {
   const store = route.params.store;
   // State variables
   const [loading, setLoading] = useState(true);
@@ -50,8 +41,6 @@ const CreditScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [staffData, setStaffData] = useState(null);
   const [sortOrder, setSortOrder] = useState('balanceDesc'); // 'balanceAsc', 'balanceDesc', 'nameAsc', 'nameDesc'
-
-
 
   // Load staff data from AsyncStorage
   useEffect(() => {
@@ -72,19 +61,19 @@ const CreditScreen = ({ navigation, route }) => {
   // Fetch customers with credit
   useEffect(() => {
     fetchCustomersWithCredit();
-  }, [store]);
+  }, [fetchCustomersWithCredit, store]);
 
   // No need to fetch transactions in this component anymore
 
   // Calculate totals whenever customers list changes
   useEffect(() => {
     calculateTotals();
-  }, [customers]);
+  }, [calculateTotals, customers]);
 
-  const fetchCustomersWithCredit = async () => {
+  const fetchCustomersWithCredit = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // First fetch all customers for the store
       const result = await client.graphql({
         query: listCustomers,
@@ -98,7 +87,7 @@ const CreditScreen = ({ navigation, route }) => {
       if (result.data.listCustomers.items) {
         // Sort customers by default (highest balance first)
         const sortedCustomers = [...result.data.listCustomers.items].sort(
-          (a, b) => (b.creditBalance || 0) - (a.creditBalance || 0)
+          (a, b) => (b.creditBalance || 0) - (a.creditBalance || 0),
         );
         setCustomers(sortedCustomers);
       }
@@ -108,11 +97,9 @@ const CreditScreen = ({ navigation, route }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [store.id]);
 
-
-
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     let creditTotal = 0;
     let balanceTotal = 0;
 
@@ -123,7 +110,7 @@ const CreditScreen = ({ navigation, route }) => {
 
     setTotalCredit(creditTotal);
     setTotalBalance(balanceTotal);
-  };
+  }, [customers]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -131,7 +118,7 @@ const CreditScreen = ({ navigation, route }) => {
     setRefreshing(false);
   };
 
-  const handleSelectCustomer = (customer) => {
+  const handleSelectCustomer = customer => {
     // Navigate to the CreditTransactionsScreen instead
     navigation.navigate('CreditTransactionsScreen', {
       customer,
@@ -139,7 +126,7 @@ const CreditScreen = ({ navigation, route }) => {
     });
   };
 
-  const handlePayment = (customer) => {
+  const handlePayment = customer => {
     // Navigate to payment screen
     navigation.navigate('CreditPaymentScreen', {
       customer,
@@ -147,20 +134,24 @@ const CreditScreen = ({ navigation, route }) => {
       onPaymentComplete: () => {
         // Refresh customer list after payment
         fetchCustomersWithCredit();
-      }
+      },
     });
   };
 
-  const handleSortCustomers = (order) => {
+  const handleSortCustomers = order => {
     setSortOrder(order);
     let sortedList = [...customers];
-    
+
     switch (order) {
       case 'balanceDesc':
-        sortedList.sort((a, b) => (b.creditBalance || 0) - (a.creditBalance || 0));
+        sortedList.sort(
+          (a, b) => (b.creditBalance || 0) - (a.creditBalance || 0),
+        );
         break;
       case 'balanceAsc':
-        sortedList.sort((a, b) => (a.creditBalance || 0) - (b.creditBalance || 0));
+        sortedList.sort(
+          (a, b) => (a.creditBalance || 0) - (b.creditBalance || 0),
+        );
         break;
       case 'nameAsc':
         sortedList.sort((a, b) => a.name.localeCompare(b.name));
@@ -171,18 +162,19 @@ const CreditScreen = ({ navigation, route }) => {
       default:
         break;
     }
-    
+
     setCustomers(sortedList);
   };
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCustomers = customers.filter(
+    customer =>
+      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Format date for display
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -192,18 +184,18 @@ const CreditScreen = ({ navigation, route }) => {
   };
 
   // Get transaction type display info (color and icon)
-  const getTransactionTypeInfo = (type) => {
+  const getTransactionTypeInfo = type => {
     switch (type) {
       case 'SALE':
-        return { color: colors.primary, icon: 'cart-outline' };
+        return {color: colors.primary, icon: 'cart-outline'};
       case 'PAYMENT':
-        return { color: 'green', icon: 'cash-multiple' };
+        return {color: 'green', icon: 'cash-multiple'};
       case 'REFUND':
-        return { color: 'orange', icon: 'cash-refund' };
+        return {color: 'orange', icon: 'cash-refund'};
       case 'VOID':
-        return { color: 'red', icon: 'cancel' };
+        return {color: 'red', icon: 'cancel'};
       default:
-        return { color: 'grey', icon: 'help-circle-outline' };
+        return {color: 'grey', icon: 'help-circle-outline'};
     }
   };
 
@@ -219,7 +211,9 @@ const CreditScreen = ({ navigation, route }) => {
           />
           <View style={styles.customerInfo}>
             <Title style={styles.customerName}>{item.name}</Title>
-            {item.phone && <Paragraph style={styles.customerDetail}>{item.phone}</Paragraph>}
+            {item.phone && (
+              <Paragraph style={styles.customerDetail}>{item.phone}</Paragraph>
+            )}
           </View>
           <View style={styles.creditBadge}>
             <Text style={styles.creditAmount}>
@@ -251,8 +245,8 @@ const CreditScreen = ({ navigation, route }) => {
     <View style={styles.emptyContainer}>
       <MaterialCommunityIcons name="account-cash" size={60} color="#ccc" />
       <Text style={styles.emptyText}>No customers with credit found</Text>
-      <Button 
-        mode="contained" 
+      <Button
+        mode="contained"
         onPress={handleRefresh}
         style={styles.retryButton}>
         Refresh
@@ -265,7 +259,9 @@ const CreditScreen = ({ navigation, route }) => {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading customer credit data...</Text>
+          <Text style={styles.loadingText}>
+            Loading customer credit data...
+          </Text>
         </View>
       );
     }
@@ -277,56 +273,73 @@ const CreditScreen = ({ navigation, route }) => {
     return (
       <>
         <View style={styles.summaryContainer}>
-          <Card style={[styles.summaryBox, {backgroundColor: colors.secondary}]}>
+          <Card
+            style={[styles.summaryBox, {backgroundColor: colors.secondary}]}>
             <Card.Content style={styles.summaryBoxContent}>
-              <MaterialCommunityIcons name="credit-card-outline" size={28} color="white" />
+              <MaterialCommunityIcons
+                name="credit-card-outline"
+                size={28}
+                color="white"
+              />
               <Text style={styles.summaryBoxLabel}>Total Credit</Text>
-              <Title style={styles.summaryBoxValue}>{formatCurrency(totalCredit)}</Title>
+              <Title style={styles.summaryBoxValue}>
+                {formatCurrency(totalCredit)}
+              </Title>
             </Card.Content>
           </Card>
 
-          <Card style={[styles.summaryBox, {backgroundColor: colors.secondary}]}>
+          <Card
+            style={[styles.summaryBox, {backgroundColor: colors.secondary}]}>
             <Card.Content style={styles.summaryBoxContent}>
-              <MaterialCommunityIcons name="cash-remove" size={28} color="white" />
+              <MaterialCommunityIcons
+                name="cash-remove"
+                size={28}
+                color="white"
+              />
               <Text style={styles.summaryBoxLabel}>Outstanding</Text>
-              <Title style={styles.summaryBoxValue}>{formatCurrency(totalBalance)}</Title>
+              <Title style={styles.summaryBoxValue}>
+                {formatCurrency(totalBalance)}
+              </Title>
             </Card.Content>
           </Card>
         </View>
-        
+
         <View style={styles.sortContainer}>
           <Text style={styles.sortLabel}>Sort by:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortScroll}>
-            <Chip 
-              selected={sortOrder === 'balanceDesc'} 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.sortScroll}>
+            <Chip
+              selected={sortOrder === 'balanceDesc'}
               onPress={() => handleSortCustomers('balanceDesc')}
               style={styles.sortChip}>
               Highest Balance
             </Chip>
-            <Chip 
-              selected={sortOrder === 'balanceAsc'} 
+            <Chip
+              selected={sortOrder === 'balanceAsc'}
               onPress={() => handleSortCustomers('balanceAsc')}
               style={styles.sortChip}>
               Lowest Balance
             </Chip>
-            <Chip 
-              selected={sortOrder === 'nameAsc'} 
+            <Chip
+              selected={sortOrder === 'nameAsc'}
               onPress={() => handleSortCustomers('nameAsc')}
               style={styles.sortChip}>
               Name (A-Z)
             </Chip>
-            <Chip 
-              selected={sortOrder === 'nameDesc'} 
+            <Chip
+              selected={sortOrder === 'nameDesc'}
               onPress={() => handleSortCustomers('nameDesc')}
               style={styles.sortChip}>
               Name (Z-A)
             </Chip>
           </ScrollView>
         </View>
-        
+
         <FlatList
           data={filteredCustomers}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={renderCustomerItem}
           ListEmptyComponent={renderEmptyList}
           contentContainerStyle={styles.content}
@@ -337,17 +350,14 @@ const CreditScreen = ({ navigation, route }) => {
     );
   };
 
-
   return (
     <View style={styles.container}>
-      <Appbar 
-        title="Customer Credits" 
+      <Appbar
+        title="Customer Credits"
         subtitle={store.name}
         onBack={() => navigation.goBack()}
       />
-      
 
-      
       <Searchbar
         placeholder="Search customers..."
         onChangeText={setSearchQuery}
@@ -369,7 +379,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    marginBottom: 80
+    marginBottom: 80,
   },
   tabBar: {
     flexDirection: 'row',
@@ -397,7 +407,7 @@ const styles = StyleSheet.create({
   searchBar: {
     marginHorizontal: 16,
     marginTop: 8,
-    marginBottom: 8
+    marginBottom: 8,
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -471,7 +481,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
 
-   
   paymentButtonFull: {
     marginTop: 16,
   },

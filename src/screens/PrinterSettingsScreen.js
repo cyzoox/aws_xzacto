@@ -34,7 +34,7 @@ const PrinterSettingsScreen = ({route, navigation}) => {
     address: 'Store Address',
     phone: 'Phone Number',
   });
-  
+
   // Direct text input for store information editing
 
   // Setup header components for back navigation
@@ -51,18 +51,22 @@ const PrinterSettingsScreen = ({route, navigation}) => {
 
   // Initialize BLEPrinter and get device list
   useEffect(() => {
-    const { BLEPrinter } = require('react-native-thermal-receipt-printer');
-    BLEPrinter.init().then(() => {
-      console.log('BLEPrinter initialized');
-      BLEPrinter.getDeviceList().then(deviceList => {
-        console.log('BLEPrinter device list:', deviceList);
-        setPrinters(deviceList);
-      }).catch(error => {
-        console.error('Error getting BLEPrinter device list:', error);
+    const {BLEPrinter} = require('react-native-thermal-receipt-printer');
+    BLEPrinter.init()
+      .then(() => {
+        console.log('BLEPrinter initialized');
+        BLEPrinter.getDeviceList()
+          .then(deviceList => {
+            console.log('BLEPrinter device list:', deviceList);
+            setPrinters(deviceList);
+          })
+          .catch(error => {
+            console.error('Error getting BLEPrinter device list:', error);
+          });
+      })
+      .catch(error => {
+        console.error('Error initializing BLEPrinter:', error);
       });
-    }).catch(error => {
-      console.error('Error initializing BLEPrinter:', error);
-    });
   }, []);
 
   const loadSettings = async () => {
@@ -140,17 +144,19 @@ const PrinterSettingsScreen = ({route, navigation}) => {
   };
 
   // To prevent multiple scan presses
-const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
-const startScan = async () => {
+  const startScan = async () => {
     // Prevent multiple rapid scan attempts
-    if (isButtonDisabled) return;
-    
+    if (isButtonDisabled) {
+      return;
+    }
+
     try {
       setIsButtonDisabled(true);
       // Request permissions and keep requesting if denied
       let permissionGranted = await PrinterService.requestBluetoothPermission();
-      
+
       if (!permissionGranted) {
         // Show alert with option to request again
         Alert.alert(
@@ -165,7 +171,8 @@ const startScan = async () => {
               text: 'Request Permission',
               onPress: async () => {
                 // Try requesting permission again
-                permissionGranted = await PrinterService.requestBluetoothPermission();
+                permissionGranted =
+                  await PrinterService.requestBluetoothPermission();
                 if (permissionGranted) {
                   // If granted on second attempt, start scan
                   startScan();
@@ -175,27 +182,32 @@ const startScan = async () => {
                     'Permission Denied',
                     'Please enable Bluetooth permissions in your device settings to use this feature.',
                     [
-                      { text: 'OK' },
-                      { text: 'Go to Settings', onPress: () => {
-                        // On Android this would open app settings
-                        if (Platform.OS === 'android') {
-                          Linking.openSettings();
-                        }
-                      }}
-                    ]
+                      {text: 'OK'},
+                      {
+                        text: 'Go to Settings',
+                        onPress: () => {
+                          // On Android this would open app settings
+                          if (Platform.OS === 'android') {
+                            Linking.openSettings();
+                          }
+                        },
+                      },
+                    ],
                   );
                 }
               },
             },
           ],
-          { cancelable: false },
+          {cancelable: false},
         );
         return;
       }
 
       setIsScanning(true);
       // Use longer scan time (10 seconds)
-      const foundDevices = await PrinterService.scanBluetoothDevices({ scanTime: 10000 });
+      const foundDevices = await PrinterService.scanBluetoothDevices({
+        scanTime: 10000,
+      });
       setDevices(foundDevices);
     } catch (error) {
       Alert.alert('Error', 'Error scanning for devices: ' + error.message);
@@ -210,10 +222,10 @@ const startScan = async () => {
     try {
       setIsConnecting(true);
       console.log('Connecting to device:', device);
-      
+
       // Connect using BLEPrinter first to ensure it's properly initialized
       try {
-        const { BLEPrinter } = require('react-native-thermal-receipt-printer');
+        const {BLEPrinter} = require('react-native-thermal-receipt-printer');
         await BLEPrinter.init();
         await BLEPrinter.connectPrinter(device.address || device.id);
         console.log('Successfully connected BLEPrinter directly');
@@ -221,13 +233,13 @@ const startScan = async () => {
       } catch (bleError) {
         console.log('Direct BLEPrinter connection failed:', bleError);
       }
-      
+
       // Then use the service to complete the connection process
       await PrinterService.connectBluetoothDevice(device);
-      
+
       setConnectedDevice({
         ...device,
-        blePrinterAvailable: true
+        blePrinterAvailable: true,
       });
       Alert.alert('Success', `Connected to ${device.name}`);
 
@@ -528,7 +540,7 @@ const startScan = async () => {
         screen="Cashier"
       />
       {/* No modal needed */}
-      
+
       <ScrollView style={styles.scrollContainer}>
         <Card style={styles.section}>
           <Card.Title title="Store Information" />
@@ -538,7 +550,7 @@ const startScan = async () => {
               <TextInput
                 style={styles.textInput}
                 value={storeInfo.name}
-                onChangeText={(text) => setStoreInfo({...storeInfo, name: text})}
+                onChangeText={text => setStoreInfo({...storeInfo, name: text})}
               />
               <Ionicons
                 name="create-outline"
@@ -552,7 +564,9 @@ const startScan = async () => {
               <TextInput
                 style={styles.textInput}
                 value={storeInfo.address}
-                onChangeText={(text) => setStoreInfo({...storeInfo, address: text})}
+                onChangeText={text =>
+                  setStoreInfo({...storeInfo, address: text})
+                }
               />
               <Ionicons
                 name="create-outline"
@@ -566,7 +580,7 @@ const startScan = async () => {
               <TextInput
                 style={styles.textInput}
                 value={storeInfo.phone}
-                onChangeText={(text) => setStoreInfo({...storeInfo, phone: text})}
+                onChangeText={text => setStoreInfo({...storeInfo, phone: text})}
                 keyboardType="phone-pad"
               />
               <Ionicons
@@ -600,10 +614,14 @@ const startScan = async () => {
               <View style={styles.connectedDevice}>
                 <View>
                   <Text style={styles.connectedDeviceName}>
-                    {connectedDevice.name ? String(connectedDevice.name) : 'Unknown Device'}
+                    {connectedDevice.name
+                      ? String(connectedDevice.name)
+                      : 'Unknown Device'}
                   </Text>
                   <Text style={styles.connectedDeviceAddress}>
-                    {connectedDevice.address ? String(connectedDevice.address) : 'No Address'}
+                    {connectedDevice.address
+                      ? String(connectedDevice.address)
+                      : 'No Address'}
                   </Text>
                 </View>
                 <Ionicons

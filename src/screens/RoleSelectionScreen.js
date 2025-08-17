@@ -27,7 +27,7 @@ const migrateToHashedPassword = async (staffId, plainTextPin) => {
   try {
     // Use our custom password hashing utility
     const hashedPin = hashPassword(plainTextPin);
-    
+
     // Update the staff record with the hashed password
     const client = generateClient();
     await client.graphql({
@@ -39,7 +39,7 @@ const migrateToHashedPassword = async (staffId, plainTextPin) => {
         },
       },
     });
-    
+
     console.log('Successfully migrated password to hashed version');
   } catch (error) {
     // Don't block the login process if migration fails
@@ -51,7 +51,9 @@ const migrateToHashedPassword = async (staffId, plainTextPin) => {
 // This provides backward compatibility for existing users while new pins are hashed
 const verifyStaffPin = (storedPassword, enteredPin) => {
   // Nothing to verify against
-  if (!storedPassword) return false;
+  if (!storedPassword) {
+    return false;
+  }
 
   try {
     // Use our custom verification that handles both formats
@@ -276,11 +278,14 @@ const RoleSelectionScreen = ({navigation}) => {
       } catch (hashError) {
         console.error('Error hashing SuperAdmin PIN:', hashError);
         // Error handling - don't fall back to plain text
-        Alert.alert('Error', 'There was a problem with security. Please try again.');
+        Alert.alert(
+          'Error',
+          'There was a problem with security. Please try again.',
+        );
         setLoading(false);
         return;
       }
-      
+
       // Create SuperAdmin staff with custom name and hashed PIN
       const staffResponse = await client.graphql({
         query: createStaff,
@@ -374,15 +379,15 @@ const RoleSelectionScreen = ({navigation}) => {
 
       // Verify PIN - handle both bcrypt hashed and plain text passwords
       const isValidPin = verifyStaffPin(staff.password, pin);
-      
+
       if (!isValidPin) {
         console.log('PIN verification failed');
         Alert.alert('Error', 'Invalid username or PIN');
         return;
       }
-      
+
       console.log('PIN verification successful');
-      
+
       // If login was successful with a plain text password, upgrade it to a hashed version
       // This ensures smooth migration of existing accounts
       if (isValidPin && staff.password === pin) {

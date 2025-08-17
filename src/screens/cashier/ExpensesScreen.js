@@ -43,7 +43,6 @@ const ExpensesScreen = ({navigation, route}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-
   const descriptions = [
     'Rental Expense',
     'Fuel Expense',
@@ -56,9 +55,9 @@ const ExpensesScreen = ({navigation, route}) => {
 
   useEffect(() => {
     fetchExpenses();
-  }, [filter, staffFilter]);
+  }, [fetchExpenses, filter, staffFilter]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     setIsLoading(true);
     try {
       // Get current date in ISO format for filtering
@@ -111,9 +110,9 @@ const ExpensesScreen = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter, staffFilter, staffData.store_id]);
 
-  const saveExpense = async () => {
+  const saveExpense = useCallback(async () => {
     // Validation checks
     if (!description || description === 'Description') {
       Alert.alert('Error', 'Please select a description');
@@ -169,7 +168,7 @@ const ExpensesScreen = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [description, amount, other, staffData, fetchExpenses]);
 
   const calculateTotal = () => {
     let total = 0;
@@ -237,7 +236,7 @@ const ExpensesScreen = ({navigation, route}) => {
           </View>
         )}
       </DataTable>
-   
+
       <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -284,7 +283,7 @@ const ExpensesScreen = ({navigation, route}) => {
       </ModalInputFormRevamp>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {

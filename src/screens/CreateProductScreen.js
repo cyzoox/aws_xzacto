@@ -259,12 +259,12 @@ const CreateProductScreen = ({navigation, route}) => {
         JSON.stringify(productData, null, 2),
       );
       await dispatch(createProductWithDetails(productData));
-      
+
       // Skip the alert and navigate back immediately to avoid header flashing
       navigation.navigate('ProductDashboard', {
         store: currentStore,
         refresh: true, // Add this flag to trigger refresh
-        timestamp: new Date().getTime() // Add timestamp to force refresh
+        timestamp: new Date().getTime(), // Add timestamp to force refresh
       });
     } catch (error) {
       console.error('Error creating product:', error);
@@ -817,29 +817,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  tabContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: '#4a90e2',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  activeTabText: {
-    color: '#fff',
-  },
+
   sectionContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -857,36 +835,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  inputError: {
-    borderColor: '#FF6B6B',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 12,
-    marginTop: 4,
-  },
+
   textArea: {
     height: 100,
     textAlignVertical: 'top',
@@ -932,11 +881,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
+
   imagePlaceholder: {
     width: '100%',
     height: '100%',
@@ -949,9 +894,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  addButton: {
-    backgroundColor: '#4a90e2',
-  },
+
   formCard: {
     marginBottom: 16,
   },

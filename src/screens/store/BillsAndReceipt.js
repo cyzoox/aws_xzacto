@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import Appbar from '../../components/Appbar';
-import {
-  TextInput,
-  Button,
-  Modal,
-  Portal,
-  Provider,
-  SegmentedControl,
-} from 'react-native-paper';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {Button, Modal, Portal, Provider} from 'react-native-paper';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
@@ -66,14 +57,21 @@ const BillsAndReceipt = ({navigation, route}) => {
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
   useEffect(() => {
     filterTransactionsByDate();
-  }, [filterPeriod, startDate, endDate, transactions, viewMode]);
+  }, [
+    filterPeriod,
+    startDate,
+    endDate,
+    transactions,
+    viewMode,
+    filterTransactionsByDate,
+  ]);
 
   // Fetch all transactions for the store
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await client.graphql({
@@ -98,7 +96,7 @@ const BillsAndReceipt = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [store]);
 
   // Generate reports from transaction data
   const generateReports = transactionData => {
@@ -154,7 +152,7 @@ const BillsAndReceipt = ({navigation, route}) => {
   };
 
   // Filter transactions based on date range
-  const filterTransactionsByDate = () => {
+  const filterTransactionsByDate = useCallback(() => {
     let start, end;
 
     switch (filterPeriod) {
@@ -189,7 +187,7 @@ const BillsAndReceipt = ({navigation, route}) => {
     });
 
     setFilteredTransactions(filtered);
-  };
+  }, [filterPeriod, startDate, endDate, transactions]);
 
   // Handle date picker changes
   const onDateChange = (event, selectedDate) => {
@@ -951,7 +949,6 @@ const BillsAndReceipt = ({navigation, route}) => {
           title="Bills & Receipts"
           subtitle={store.name}
           onBack={() => navigation.goBack()}
-          
         />
 
         {renderSummary()}
@@ -987,7 +984,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   contentContainer: {
-    marginTop:10,
+    marginTop: 10,
     flex: 1,
     paddingHorizontal: 10,
   },
@@ -1052,7 +1049,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 10,
     backgroundColor: colors.white,
-  
   },
   summaryCard: {
     flex: 1,
@@ -1259,46 +1255,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   // Filter card styles
-    filterCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    filterTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: colors.textDark,
-      marginBottom: 12,
-    },
-    periodFilter: {
-      flexDirection: 'row',
-      backgroundColor: '#F5F5F5',
-      borderRadius: 20,
-      padding: 2,
-      justifyContent: 'center',
-    },
-    periodButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 18,
-    },
-    activePeriod: {
-      backgroundColor: colors.primary,
-    },
-    periodText: {
-      color: colors.textDark,
-      fontSize: 14,
-    },
-    activePeriodText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-    },
+  filterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textDark,
+    marginBottom: 12,
+  },
+  periodFilter: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  periodButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+  },
+  activePeriod: {
+    backgroundColor: colors.primary,
+  },
+  periodText: {
+    color: colors.textDark,
+    fontSize: 14,
+  },
+  activePeriodText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 export default BillsAndReceipt;

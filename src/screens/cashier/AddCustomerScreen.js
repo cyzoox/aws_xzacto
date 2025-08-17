@@ -27,29 +27,31 @@ const AddCustomerScreen = ({navigation, route}) => {
   const [address, setAddress] = useState('');
   const [creditLimit, setCreditLimit] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const validateForm = () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Customer name is required');
       return false;
     }
-    
+
     if (phone && !/^[0-9+\-\s]{6,15}$/.test(phone)) {
       Alert.alert('Error', 'Please enter a valid phone number');
       return false;
     }
-    
+
     if (email && !/\S+@\S+\.\S+/.test(email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return false;
     }
-    
+
     return true;
   };
-  
+
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-    
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const customerInput = {
@@ -60,19 +62,19 @@ const AddCustomerScreen = ({navigation, route}) => {
         creditLimit: parseFloat(creditLimit) || 0,
         points: 0, // New customers start with 0 points
       };
-      
+
       const result = await client.graphql({
         query: createCustomer,
         variables: {input: customerInput},
       });
-      
+
       console.log('Customer created:', result.data.createCustomer);
-      
+
       // Call the callback function to refresh customer list
       if (onAddCustomer && typeof onAddCustomer === 'function') {
         onAddCustomer();
       }
-      
+
       Alert.alert('Success', 'Customer added successfully', [
         {
           text: 'OK',
@@ -95,11 +97,13 @@ const AddCustomerScreen = ({navigation, route}) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add New Customer</Text>
       </View>
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{flex: 1}}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}>
           <View style={styles.formContainer}>
             {/* Customer Name - Required */}
             <View style={styles.inputGroup}>
@@ -107,7 +111,10 @@ const AddCustomerScreen = ({navigation, route}) => {
               <TextInput
                 mode="outlined"
                 theme={{
-                  colors: {primary: colors.accent, underlineColor: 'transparent'},
+                  colors: {
+                    primary: colors.accent,
+                    underlineColor: 'transparent',
+                  },
                 }}
                 value={name}
                 onChangeText={setName}
@@ -116,14 +123,17 @@ const AddCustomerScreen = ({navigation, route}) => {
                 autoCapitalize="words"
               />
             </View>
-            
+
             {/* Phone Number */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Phone Number</Text>
               <TextInput
                 mode="outlined"
                 theme={{
-                  colors: {primary: colors.accent, underlineColor: 'transparent'},
+                  colors: {
+                    primary: colors.accent,
+                    underlineColor: 'transparent',
+                  },
                 }}
                 value={phone}
                 onChangeText={setPhone}
@@ -132,14 +142,17 @@ const AddCustomerScreen = ({navigation, route}) => {
                 keyboardType="phone-pad"
               />
             </View>
-            
+
             {/* Email */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
                 mode="outlined"
                 theme={{
-                  colors: {primary: colors.accent, underlineColor: 'transparent'},
+                  colors: {
+                    primary: colors.accent,
+                    underlineColor: 'transparent',
+                  },
                 }}
                 value={email}
                 onChangeText={setEmail}
@@ -149,14 +162,17 @@ const AddCustomerScreen = ({navigation, route}) => {
                 autoCapitalize="none"
               />
             </View>
-            
+
             {/* Address */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Address</Text>
               <TextInput
                 mode="outlined"
                 theme={{
-                  colors: {primary: colors.accent, underlineColor: 'transparent'},
+                  colors: {
+                    primary: colors.accent,
+                    underlineColor: 'transparent',
+                  },
                 }}
                 value={address}
                 onChangeText={setAddress}
@@ -166,14 +182,17 @@ const AddCustomerScreen = ({navigation, route}) => {
                 numberOfLines={3}
               />
             </View>
-            
+
             {/* Credit Limit */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Credit Limit</Text>
               <TextInput
                 mode="outlined"
                 theme={{
-                  colors: {primary: colors.accent, underlineColor: 'transparent'},
+                  colors: {
+                    primary: colors.accent,
+                    underlineColor: 'transparent',
+                  },
                 }}
                 value={creditLimit}
                 onChangeText={setCreditLimit}
@@ -184,10 +203,10 @@ const AddCustomerScreen = ({navigation, route}) => {
               />
             </View>
           </View>
-          
+
           {/* Submit Button */}
-          <TouchableOpacity 
-            style={styles.submitButton} 
+          <TouchableOpacity
+            style={styles.submitButton}
             onPress={handleSubmit}
             disabled={isSubmitting}>
             <Text style={styles.submitButtonText}>

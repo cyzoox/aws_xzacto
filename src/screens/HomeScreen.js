@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -28,21 +28,21 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
   const [cashiers, setCashiers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [storeTotalSales, setStoreTotalSales] = useState(store.todaySales || 0);
-  
+
   // Calculate profit as 25% of sales
   const profit = storeTotalSales * 0.25;
-  
+
   useEffect(() => {
     // Fetch cashier data for this store
     const fetchCashierData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Get date range (today)
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0); // Start of today
         const endDate = new Date(); // Current time (end of range)
-        
+
         // Get staff assigned to this store
         const staffStoreResult = await client.graphql({
           query: queries.listStaffStores,
@@ -52,12 +52,12 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
             },
           },
         });
-        
+
         // Extract staff IDs related to this store
         const staffIds = staffStoreResult.data.listStaffStores.items.map(
-          item => item.staffId
+          item => item.staffId,
         );
-        
+
         // Fetch actual staff data
         const staffResult = await client.graphql({
           query: queries.listStaff,
@@ -67,15 +67,15 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
             },
           },
         });
-        
+
         // Filter only cashiers assigned to this store
         let cashierStaff = [];
         if (staffResult.data.listStaff.items) {
           cashierStaff = staffResult.data.listStaff.items.filter(staff =>
-            staffIds.includes(staff.id)
+            staffIds.includes(staff.id),
           );
         }
-        
+
         // Fetch all sales transactions for this store during today
         const salesResult = await client.graphql({
           query: queries.listSaleTransactions,
@@ -88,55 +88,68 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
             },
           },
         });
-        
+
         const salesItems = salesResult.data.listSaleTransactions.items;
-        
+
         // For each cashier, calculate their sales from the transactions
-        const cashiersWithSales = await Promise.all(cashierStaff.map(async (cashier) => {
-          // Use the cashier's name or PIN for display
-          const cashierName = cashier.name || cashier.pin || 'Unknown Cashier';
-          
-          try {
-            // Filter transactions for this specific cashier
-            const cashierTransactions = salesItems.filter(tx => tx.staffID === cashier.id);
-            
-            // Calculate total sales amount for this cashier
-            const totalSales = cashierTransactions.reduce((sum, transaction) => {
-              return sum + (parseFloat(transaction.total) || 0);
-            }, 0);
-            
-            return {
-              id: cashier.id,
-              name: cashierName,
-              sales: totalSales,
-              transactionCount: cashierTransactions.length
-            };
-          } catch (error) {
-            console.warn(`Error processing cashier ${cashier.id}:`, error);
-            // Generate a consistent pseudo-random number based on cashier ID
-            const numFromId = cashier.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-            const consistentSales = (numFromId % 5000) + 500; // Range from 500 to 5500
-            
-            return {
-              id: cashier.id,
-              name: cashierName,
-              sales: consistentSales,
-              transactionCount: 0
-            };
-          }
-        }));
-        
+        const cashiersWithSales = await Promise.all(
+          cashierStaff.map(async cashier => {
+            // Use the cashier's name or PIN for display
+            const cashierName =
+              cashier.name || cashier.pin || 'Unknown Cashier';
+
+            try {
+              // Filter transactions for this specific cashier
+              const cashierTransactions = salesItems.filter(
+                tx => tx.staffID === cashier.id,
+              );
+
+              // Calculate total sales amount for this cashier
+              const totalSales = cashierTransactions.reduce(
+                (sum, transaction) => {
+                  return sum + (parseFloat(transaction.total) || 0);
+                },
+                0,
+              );
+
+              return {
+                id: cashier.id,
+                name: cashierName,
+                sales: totalSales,
+                transactionCount: cashierTransactions.length,
+              };
+            } catch (error) {
+              console.warn(`Error processing cashier ${cashier.id}:`, error);
+              // Generate a consistent pseudo-random number based on cashier ID
+              const numFromId = cashier.id
+                .split('')
+                .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+              const consistentSales = (numFromId % 5000) + 500; // Range from 500 to 5500
+
+              return {
+                id: cashier.id,
+                name: cashierName,
+                sales: consistentSales,
+                transactionCount: 0,
+              };
+            }
+          }),
+        );
+
         // Calculate total sales from all cashiers
-        const totalCashierSales = cashiersWithSales.reduce((sum, cashier) => sum + cashier.sales, 0);
-        
+        const totalCashierSales = cashiersWithSales.reduce(
+          (sum, cashier) => sum + cashier.sales,
+          0,
+        );
+
         // Update store's total sales to match cashier sum
         setStoreTotalSales(totalCashierSales);
-        
+
         // If updateStoreSales callback provided, update parent component
         if (updateStoreSales) {
           updateStoreSales(store.id, totalCashierSales);
         }
-        
+
         setCashiers(cashiersWithSales);
         setIsLoading(false);
       } catch (error) {
@@ -145,10 +158,10 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
         setIsLoading(false);
       }
     };
-    
+
     fetchCashierData();
-  }, [store.id]);
-  
+  }, [store.id, updateStoreSales]);
+
   return (
     <TouchableOpacity style={styles.storeCard} onPress={onPress}>
       {/* Store Header with modern curved design */}
@@ -159,7 +172,7 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
           <Text style={styles.storeCardBadgeText}>Active</Text>
         </View>
       </View>
-      
+
       {/* Location Pill - Moved to top for better visibility */}
       <View style={styles.locationPill}>
         <Ionicons name="location-outline" size={14} color="#666" />
@@ -167,32 +180,42 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
           {store.location || 'No location set'}
         </Text>
       </View>
-      
+
       {/* Store Metrics Header */}
       <View style={styles.metricsHeader}>
         <Text style={styles.metricsHeaderText}>Sales</Text>
         <Text style={styles.metricsHeaderText}>Profit</Text>
       </View>
-      
+
       {/* Store Total Metrics */}
       <View style={styles.storeMetricsRow}>
-        <Text style={styles.storeMetricsValue}>₱{storeTotalSales.toLocaleString()}</Text>
+        <Text style={styles.storeMetricsValue}>
+          ₱{storeTotalSales.toLocaleString()}
+        </Text>
         <Text style={styles.storeMetricsValue}>₱{profit.toLocaleString()}</Text>
       </View>
-      
+
       {/* Cashiers Section */}
       <View style={styles.cashiersSection}>
         <Text style={styles.cashiersSectionTitle}>Cashier Performance</Text>
-        
+
         {isLoading ? (
-          <ActivityIndicator size="small" color="#3A6EA5" style={{marginVertical: 10}} />
+          <ActivityIndicator
+            size="small"
+            color="#3A6EA5"
+            style={{marginVertical: 10}}
+          />
         ) : cashiers.length > 0 ? (
           cashiers.map(cashier => (
             <View key={cashier.id} style={styles.cashierRow}>
               <Text style={styles.cashierName}>{cashier.name}</Text>
               <View style={styles.cashierMetrics}>
-                <Text style={styles.cashierMetricsValue}>₱{cashier.sales.toLocaleString()}</Text>
-                <Text style={styles.cashierMetricsValue}>₱{(cashier.sales * 0.25).toLocaleString()}</Text>
+                <Text style={styles.cashierMetricsValue}>
+                  ₱{cashier.sales.toLocaleString()}
+                </Text>
+                <Text style={styles.cashierMetricsValue}>
+                  ₱{(cashier.sales * 0.25).toLocaleString()}
+                </Text>
               </View>
             </View>
           ))
@@ -204,12 +227,11 @@ const StoreSummaryCard = ({store, onPress, updateStoreSales}) => {
   );
 };
 
-
 // Main HomeScreen component
 const HomeScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const { user } = useAuthenticator();
+  const {user} = useAuthenticator();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState([]);
@@ -220,23 +242,24 @@ const HomeScreen = () => {
   const [averageDailySales, setAverageDailySales] = useState(0);
   const [periodSales, setPeriodSales] = useState(0);
   const [periodProfit, setPeriodProfit] = useState(0);
-  
+
   // UI state
-  const [expenseCategoriesExpanded, setExpenseCategoriesExpanded] = useState(false);
-  
+  const [expenseCategoriesExpanded, setExpenseCategoriesExpanded] =
+    useState(false);
+
   // Expenses data
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [expensePercentage, setExpensePercentage] = useState(0);
-  
+
   // Branch performance data
   const [branchPerformance, setBranchPerformance] = useState([]);
 
   // Get date range based on selected period
-  const getDateRange = () => {
+  const getDateRange = useCallback(() => {
     const endDate = new Date(); // Current time
     let startDate = new Date();
-    
+
     switch (selectedPeriod) {
       case 'today':
         startDate.setHours(0, 0, 0, 0); // Start of today
@@ -250,35 +273,152 @@ const HomeScreen = () => {
       default:
         startDate.setHours(0, 0, 0, 0); // Default to today
     }
-    
-    return { startDate, endDate };
-  };
+
+    return {startDate, endDate};
+  }, [selectedPeriod]);
 
   // Fetch stores with sales data
-  const fetchStoresWithTodaySales = async () => {
+  const fetchStoresWithTodaySales = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Get date range based on selected period
-      const { startDate, endDate } = getDateRange();
-      const periodLengthDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-      
+      const {startDate, endDate} = getDateRange();
+      const periodLengthDays = Math.ceil(
+        (endDate - startDate) / (1000 * 60 * 60 * 24),
+      );
+
       // Fetch stores owned by current user
       const storesResult = await client.graphql({
         query: queries.listStores,
         variables: {
-          filter: { ownerId: { eq: user?.userId } }
-        }
+          filter: {ownerId: {eq: user?.userId}},
+        },
       });
-      
+
       // Filter out deleted stores
-      const storesList = storesResult.data.listStores.items.filter(s => !s._deleted);
-      
+      const storesList = storesResult.data.listStores.items.filter(
+        s => !s._deleted,
+      );
+
       // For each store, fetch sales data and staff
-      const storesWithSales = await Promise.all(storesList.map(async (store) => {
-        try {
-          // Fetch sales data for this store
-          const salesResult = await client.graphql({
+      const storesWithSales = await Promise.all(
+        storesList.map(async store => {
+          try {
+            // Fetch sales data for this store
+            const salesResult = await client.graphql({
+              query: queries.listSaleTransactions,
+              variables: {
+                filter: {
+                  storeID: {eq: store.id},
+                  createdAt: {
+                    between: [startDate.toISOString(), endDate.toISOString()],
+                  },
+                },
+              },
+            });
+
+            const salesItems = salesResult.data.listSaleTransactions.items;
+
+            // Calculate total sales from transactions
+            const todaySales = salesItems.reduce(
+              (sum, item) => sum + (parseFloat(item.total) || 0),
+              0,
+            );
+
+            return {
+              ...store,
+              todaySales,
+              transactionCount: salesItems.length,
+            };
+          } catch (err) {
+            console.error(`Error processing store ${store.id}:`, err);
+            // Use consistent placeholder data if there's an error
+            const numFromId = store.id
+              .split('')
+              .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+            const consistentSales = (numFromId % 10000) + 500; // Range from 500 to 10500
+            return {...store, todaySales: consistentSales, transactionCount: 0};
+          }
+        }),
+      );
+
+      // Calculate total sales across all stores
+      const total = storesWithSales.reduce(
+        (sum, store) => sum + (store.todaySales || 0),
+        0,
+      );
+      // Calculate total profit (assumed 25% for demo purposes)
+      const profit = total * 0.25;
+
+      // Calculate period metrics
+      setPeriodSales(total);
+      setPeriodProfit(profit);
+
+      // Calculate average daily sales based on period length
+      // For today, this equals total sales
+      const averageSales =
+        selectedPeriod === 'today' ? total : total / (periodLengthDays || 1);
+      setAverageDailySales(averageSales);
+
+      // Process real expense data for the period
+      try {
+        // Fetch actual expenses for the selected period using the listExpenses query
+        const expenseResult = await client.graphql({
+          query: queries.listExpenses,
+          variables: {
+            filter: {
+              ownerId: {eq: user?.userId},
+              createdAt: {
+                between: [startDate.toISOString(), endDate.toISOString()],
+              },
+            },
+          },
+        });
+
+        // Get expense items from the query result
+        const expenseItems = expenseResult.data.listExpenses.items || [];
+
+        // Group expenses by category and calculate totals
+        const expenseByCategory = {};
+        let totalExpensesValue = 0;
+
+        expenseItems.forEach(expense => {
+          const category = expense.category || 'Uncategorized';
+          const amount = parseFloat(expense.amount) || 0;
+
+          if (!expenseByCategory[category]) {
+            expenseByCategory[category] = {
+              name: category,
+              amount: 0,
+            };
+          }
+
+          expenseByCategory[category].amount += amount;
+          totalExpensesValue += amount;
+        });
+
+        // Convert to array and get top expense categories
+        const expenseCategoriesToDisplay = Object.values(expenseByCategory);
+        const topCategories = [...expenseCategoriesToDisplay]
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 3);
+
+        setExpenseCategories(topCategories);
+        setTotalExpenses(totalExpensesValue);
+
+        // Calculate percentage of sales spent on expenses
+        setExpensePercentage(
+          total > 0 ? (totalExpensesValue / total) * 100 : 0,
+        );
+
+        // Process branch/store performance data using real transaction data
+        const branchData = [];
+
+        // Calculate sales and expenses for each store based on transactions in the selected period
+        for (const store of stores) {
+          // Get all sales transactions for this store in the selected period
+          const storeTransactions = await client.graphql({
             query: queries.listSaleTransactions,
             variables: {
               filter: {
@@ -289,143 +429,46 @@ const HomeScreen = () => {
               },
             },
           });
-          
-          const salesItems = salesResult.data.listSaleTransactions.items;
-          
-          // Calculate total sales from transactions
-          const todaySales = salesItems.reduce(
-            (sum, item) => sum + (parseFloat(item.total) || 0),
-            0
-          );
-          
-          return {
-            ...store,
-            todaySales,
-            transactionCount: salesItems.length
-          };
-        } catch (err) {
-          console.error(`Error processing store ${store.id}:`, err);
-          // Use consistent placeholder data if there's an error
-          const numFromId = store.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-          const consistentSales = (numFromId % 10000) + 500; // Range from 500 to 10500
-          return { ...store, todaySales: consistentSales, transactionCount: 0 };
-        }
-      }));
-      
-      // Calculate total sales across all stores
-      const total = storesWithSales.reduce((sum, store) => sum + (store.todaySales || 0), 0);
-      // Calculate total profit (assumed 25% for demo purposes)
-      const profit = total * 0.25;
-      
-      // Calculate period metrics
-      setPeriodSales(total);
-      setPeriodProfit(profit);
-      
-      // Calculate average daily sales based on period length
-      // For today, this equals total sales
-      const averageSales = selectedPeriod === 'today' ? total : total / (periodLengthDays || 1);
-      setAverageDailySales(averageSales);
-      
-      // Process real expense data for the period
-      try {
-        // Fetch actual expenses for the selected period using the listExpenses query
-        const expenseResult = await client.graphql({
-          query: queries.listExpenses,
-          variables: {
-            filter: {
-              ownerId: { eq: user?.userId },
-              createdAt: {
-                between: [startDate.toISOString(), endDate.toISOString()],
-              },
-            },
-          },
-        });
-        
-        // Get expense items from the query result
-        const expenseItems = expenseResult.data.listExpenses.items || [];
-        
-        // Group expenses by category and calculate totals
-        const expenseByCategory = {};
-        let totalExpensesValue = 0;
-        
-        expenseItems.forEach(expense => {
-          const category = expense.category || 'Uncategorized';
-          const amount = parseFloat(expense.amount) || 0;
-          
-          if (!expenseByCategory[category]) {
-            expenseByCategory[category] = {
-              name: category,
-              amount: 0
-            };
-          }
-          
-          expenseByCategory[category].amount += amount;
-          totalExpensesValue += amount;
-        });
-        
-        // Convert to array and get top expense categories
-        const expenseCategoriesToDisplay = Object.values(expenseByCategory);
-        const topCategories = [...expenseCategoriesToDisplay]
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 3);
-          
-        setExpenseCategories(topCategories);
-        setTotalExpenses(totalExpensesValue);
-        
-        // Calculate percentage of sales spent on expenses
-        setExpensePercentage(total > 0 ? (totalExpensesValue / total * 100) : 0);
-        
-        // Process branch/store performance data using real transaction data
-        const branchData = [];
-        
-        // Calculate sales and expenses for each store based on transactions in the selected period
-        for (const store of stores) {
-          // Get all sales transactions for this store in the selected period
-          const storeTransactions = await client.graphql({
-            query: queries.listSaleTransactions,
-            variables: {
-              filter: {
-                storeID: { eq: store.id },
-                createdAt: {
-                  between: [startDate.toISOString(), endDate.toISOString()],
-                },
-              },
-            },
-          });
-          
+
           // Get all expense transactions for this store in the selected period
           const storeExpensesResult = await client.graphql({
             query: queries.listExpenses,
             variables: {
               filter: {
-                storeId: { eq: store.id },
+                storeId: {eq: store.id},
                 createdAt: {
                   between: [startDate.toISOString(), endDate.toISOString()],
                 },
               },
             },
           });
-          
+
           // Calculate total sales for this store in the selected period
-          const salesTransactions = storeTransactions.data.listSaleTransactions.items || [];
+          const salesTransactions =
+            storeTransactions.data.listSaleTransactions.items || [];
           const storeSales = salesTransactions.reduce(
-            (sum, tx) => sum + (parseFloat(tx.total) || 0), 0
+            (sum, tx) => sum + (parseFloat(tx.total) || 0),
+            0,
           );
-          
+
           // Calculate actual expenses from expense records
-          const expenseItems = storeExpensesResult.data.listExpenses.items || [];
+          const expenseItems =
+            storeExpensesResult.data.listExpenses.items || [];
           const storeExpenses = expenseItems.reduce(
-            (sum, expense) => sum + (parseFloat(expense.amount) || 0), 0
+            (sum, expense) => sum + (parseFloat(expense.amount) || 0),
+            0,
           );
-          
+
           // Calculate actual profit (sales - expenses)
           const storeProfit = storeSales - storeExpenses;
-          
+
           // Get approximate low stock items count
           // In a future update, this would connect to inventory system
-          const storeIdSum = store.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+          const storeIdSum = store.id
+            .split('')
+            .reduce((sum, char) => sum + char.charCodeAt(0), 0);
           const lowStockItems = storeIdSum % 10; // 0-9 items based on store ID
-          
+
           // Only add stores with sales to the branch data
           if (storeSales > 0) {
             branchData.push({
@@ -434,11 +477,11 @@ const HomeScreen = () => {
               sales: storeSales,
               expenses: storeExpenses,
               profit: storeProfit,
-              lowStockItems
+              lowStockItems,
             });
           }
         } // End of store processing loop
-        
+
         // Sort branches by sales (highest first)
         setBranchPerformance(branchData.sort((a, b) => b.sales - a.sales));
       } catch (err) {
@@ -448,9 +491,9 @@ const HomeScreen = () => {
         setExpensePercentage(0);
         setBranchPerformance([]);
       }
-      
+
       // No need to fetch staff data as requested
-      
+
       setStores(storesWithSales);
       setTotalTodaySales(total);
       setTotalProfit(profit);
@@ -461,16 +504,16 @@ const HomeScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [getDateRange, user?.userId, selectedPeriod, stores]);
 
   // Function to update a store's sales based on its cashiers' data
   const updateStoreSales = (storeId, newSalesTotal) => {
     setStoreUpdates(prev => ({
       ...prev,
-      [storeId]: newSalesTotal
+      [storeId]: newSalesTotal,
     }));
   };
-  
+
   // Recalculate dashboard totals whenever store updates change
   useEffect(() => {
     if (Object.keys(storeUpdates).length > 0) {
@@ -479,64 +522,93 @@ const HomeScreen = () => {
         if (storeUpdates[store.id] !== undefined) {
           return {
             ...store,
-            todaySales: storeUpdates[store.id]
+            todaySales: storeUpdates[store.id],
           };
         }
         return store;
       });
-      
+
       // Calculate new totals
-      const newTotalSales = updatedStores.reduce((sum, store) => sum + (store.todaySales || 0), 0);
+      const newTotalSales = updatedStores.reduce(
+        (sum, store) => sum + (store.todaySales || 0),
+        0,
+      );
       const newTotalProfit = newTotalSales * 0.25;
-      
+
       // Update state
       setStores(updatedStores);
       setTotalTodaySales(newTotalSales);
       setTotalProfit(newTotalProfit);
     }
-  }, [storeUpdates]);
-  
+  }, [storeUpdates, stores]);
+
   useEffect(() => {
     fetchStoresWithTodaySales();
-  }, [user, selectedPeriod]);
+  }, [user, selectedPeriod, fetchStoresWithTodaySales]);
 
   const handleRefresh = () => {
     setRefreshing(true);
     fetchStoresWithTodaySales();
   };
 
-  const handleStorePress = (store) => {
-    navigation.navigate('StoreDashboard', { storeId: store.id });
+  const handleStorePress = store => {
+    navigation.navigate('StoreDashboard', {storeId: store.id});
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Appbar title="Home" hasMenu={false} hasBack={false} hideMenuButton />
-      
+
       <ScrollView
         contentContainerStyle={styles.scrollViewContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }>
-        
         {/* Time Period Filter Card */}
         <View style={styles.filterCard}>
           <Text style={styles.filterTitle}>Time Period</Text>
           <View style={styles.periodFilter}>
-            <TouchableOpacity 
-              style={[styles.periodButton, selectedPeriod === 'today' && styles.activePeriod]}
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                selectedPeriod === 'today' && styles.activePeriod,
+              ]}
               onPress={() => setSelectedPeriod('today')}>
-              <Text style={[styles.periodText, selectedPeriod === 'today' && styles.activePeriodText]}>Today</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.periodButton, selectedPeriod === 'weekly' && styles.activePeriod]}
-              onPress={() => setSelectedPeriod('weekly')}>
-              <Text style={[styles.periodText, selectedPeriod === 'weekly' && styles.activePeriodText]}>Weekly</Text>
+              <Text
+                style={[
+                  styles.periodText,
+                  selectedPeriod === 'today' && styles.activePeriodText,
+                ]}>
+                Today
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.periodButton, selectedPeriod === 'monthly' && styles.activePeriod]}
+              style={[
+                styles.periodButton,
+                selectedPeriod === 'weekly' && styles.activePeriod,
+              ]}
+              onPress={() => setSelectedPeriod('weekly')}>
+              <Text
+                style={[
+                  styles.periodText,
+                  selectedPeriod === 'weekly' && styles.activePeriodText,
+                ]}>
+                Weekly
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                selectedPeriod === 'monthly' && styles.activePeriod,
+              ]}
               onPress={() => setSelectedPeriod('monthly')}>
-              <Text style={[styles.periodText, selectedPeriod === 'monthly' && styles.activePeriodText]}>Monthly</Text>
+              <Text
+                style={[
+                  styles.periodText,
+                  selectedPeriod === 'monthly' && styles.activePeriodText,
+                ]}>
+                Monthly
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -546,118 +618,195 @@ const HomeScreen = () => {
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Sales Overview</Text>
           </View>
-          
+
           <View style={styles.overviewGrid}>
             <View style={styles.overviewItem}>
               <Text style={styles.overviewLabel}>Total Sales</Text>
-              <Text style={styles.overviewValue}>₱{periodSales.toLocaleString()}</Text>
-            </View>
-            
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Average Daily</Text>
-              <Text style={styles.overviewValue}>₱{averageDailySales.toLocaleString()}</Text>
-            </View>
-            
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Gross Profit</Text>
-              <Text style={styles.overviewValue}>₱{periodProfit.toLocaleString()}</Text>
-            </View>
-          </View>
-        </View>
-        
-        {/* Card 2 - Expenses Overview */}
-        <View style={styles.businessCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Expenses Overview</Text>
-          </View>
-          
-          <View style={styles.overviewGrid}>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Total Expenses</Text>
-              <Text style={styles.overviewValue}>₱{totalExpenses.toLocaleString()}</Text>
-            </View>
-            
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>% of Sales</Text>
-              <Text style={styles.overviewValue}>{expensePercentage.toFixed(1)}%</Text>
-            </View>
-            
-            
-            
-          <View style={[styles.overviewItem, {'width': '100%'}]}>
-              <TouchableOpacity 
-                style={styles.categoriesToggle}
-                onPress={() => setExpenseCategoriesExpanded(!expenseCategoriesExpanded)}
-              >
-                <Text style={styles.overviewLabel}>Top Categories</Text>
-                <Ionicons 
-                  name={expenseCategoriesExpanded ? "chevron-up-outline" : "chevron-down-outline"} 
-                  size={18} 
-                  color={colors.text} 
-                />
-              </TouchableOpacity>
-              
-              {expenseCategoriesExpanded && (
-                <View style={styles.categoriesList}>
-                  {expenseCategories.map((category, index) => (
-                    <View key={index} style={styles.categoryItem}>
-                      <Text style={styles.categoryName}>{category.name}</Text>
-                      <Text style={styles.categoryValue}>₱{category.amount.toLocaleString()}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-        
-        {/* Card 3 - Branch Performance */}
-        <View style={styles.businessCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Branch Performance</Text>
-          </View>
-          
-          {branchPerformance.length > 0 ? (
-            <View style={styles.branchTable}>
-              <View style={styles.branchTableHeader}>
-                <Text style={[styles.branchTableHeaderCell]}>Branch</Text>
-                <Text style={styles.branchTableHeaderCell}>Sales</Text>
-                <Text style={styles.branchTableHeaderCell}>Expenses</Text>
-                <Text style={styles.branchTableHeaderCell}>Profit</Text>
-                <Text style={styles.branchTableHeaderCell}>Low Stock</Text>
-              </View>
-              
-              {branchPerformance.map((branch, index) => (
-                <View 
-                  key={branch.id} 
-                  style={[styles.branchTableRow, index % 2 === 0 ? styles.branchTableRowEven : styles.branchTableRowOdd]}
-                >
-                  <Text style={[styles.branchTableCell]} numberOfLines={1}>{branch.name}</Text>
-                  <Text style={styles.branchTableCell}>₱{branch.sales.toLocaleString()}</Text>
-                  <Text style={styles.branchTableCell}>₱{branch.expenses.toLocaleString()}</Text>
-                  <Text style={styles.branchTableCell}>₱{branch.profit.toLocaleString()}</Text>
-                  <Text style={styles.branchTableCell}>{branch.lowStockItems}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.noDataText}>No branch data available for this period.</Text>
-          )}
-        </View>
+              <Text style={styles.overviewValue}>
+                ₱{periodSales.toLocaleString()}
+              </Text>
 
+              <View style={styles.overviewItem}>
+                <Text style={styles.overviewLabel}>Average Daily</Text>
+                <Text style={styles.overviewValue}>
+                  ₱{averageDailySales.toLocaleString()}
+                </Text>
+              </View>
+
+              <View style={styles.overviewItem}>
+                <Text style={styles.overviewLabel}>Gross Profit</Text>
+                <Text style={styles.overviewValue}>
+                  ₱{periodProfit.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Card 2 - Expenses Overview */}
+          <View style={styles.businessCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Expenses Overview</Text>
+            </View>
+
+            <View style={styles.overviewGrid}>
+              <View style={styles.overviewItem}>
+                <Text style={styles.overviewLabel}>Total Expenses</Text>
+                <Text style={styles.overviewValue}>
+                  ₱{totalExpenses.toLocaleString()}
+                </Text>
+              </View>
+
+              <View style={styles.overviewItem}>
+                <Text style={styles.overviewLabel}>% of Sales</Text>
+                <Text style={styles.overviewValue}>
+                  {expensePercentage.toFixed(1)}%
+                </Text>
+              </View>
+
+              <View style={[styles.overviewItem, {width: '100%'}]}>
+                <TouchableOpacity
+                  style={styles.categoriesToggle}
+                  onPress={() =>
+                    setExpenseCategoriesExpanded(!expenseCategoriesExpanded)
+                  }>
+                  <Text style={styles.overviewLabel}>Top Categories</Text>
+                  <Ionicons
+                    name={
+                      expenseCategoriesExpanded
+                        ? 'chevron-up-outline'
+                        : 'chevron-down-outline'
+                    }
+                    size={18}
+                    color={colors.text}
+                  />
+                </TouchableOpacity>
+
+                {expenseCategoriesExpanded && (
+                  <View style={styles.categoriesList}>
+                    {expenseCategories.map((category, index) => (
+                      <View key={index} style={styles.categoryItem}>
+                        <Text style={styles.categoryName}>{category.name}</Text>
+                        <Text style={styles.categoryValue}>
+                          ₱{category.amount.toLocaleString()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Card 3 - Branch Performance */}
+          <View style={styles.businessCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Branch Performance</Text>
+            </View>
+
+            {branchPerformance.length > 0 ? (
+              <View style={styles.branchTable}>
+                <View style={styles.branchTableHeader}>
+                  <Text style={[styles.branchTableHeaderCell]}>Branch</Text>
+                  <Text style={styles.branchTableHeaderCell}>Sales</Text>
+                  <Text style={styles.branchTableHeaderCell}>Expenses</Text>
+                  <Text style={styles.branchTableHeaderCell}>Profit</Text>
+                  <Text style={styles.branchTableHeaderCell}>Low Stock</Text>
+                </View>
+
+                {branchPerformance.map((branch, index) => (
+                  <View
+                    key={branch.id}
+                    style={[
+                      styles.branchTableRow,
+                      index % 2 === 0
+                        ? styles.branchTableRowEven
+                        : styles.branchTableRowOdd,
+                    ]}>
+                    <Text style={[styles.branchTableCell]} numberOfLines={1}>
+                      {branch.name}
+                    </Text>
+                    <Text style={styles.branchTableCell}>
+                      ₱{branch.sales.toLocaleString()}
+                    </Text>
+                    <Text style={styles.branchTableCell}>
+                      ₱{branch.expenses.toLocaleString()}
+                    </Text>
+                    <Text style={styles.branchTableCell}>
+                      ₱{branch.profit.toLocaleString()}
+                    </Text>
+                    <Text style={styles.branchTableCell}>
+                      {branch.lowStockItems}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noDataText}>
+                No branch data available for this period.
+              </Text>
+            )}
+          </View>
+          {/* Card 4 - Staff Performance */}
+          {/* <View style={styles.businessCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Staff Performance</Text>
+            </View>
+
+            {staffPerformance.length > 0 ? (
+              <View style={styles.staffTable}>
+                <View style={styles.staffTableHeader}>
+                  <Text style={[styles.staffTableHeaderCell]}>Staff</Text>
+                  <Text style={styles.staffTableHeaderCell}>Sales</Text>
+                  <Text style={styles.staffTableHeaderCell}>Expenses</Text>
+                  <Text style={styles.staffTableHeaderCell}>Profit</Text>
+                  <Text style={styles.staffTableHeaderCell}>Low Stock</Text>
+                </View>
+
+                {staffPerformance.map((staff, index) => (
+                  <View
+                    key={staff.id}
+                    style={[
+                      styles.staffTableRow,
+                      index % 2 === 0
+                        ? styles.staffTableRowEven
+                        : styles.staffTableRowOdd,
+                    ]}>
+                    <Text style={[styles.staffTableCell]} numberOfLines={1}>
+                      {staff.name}
+                    </Text>
+                    <Text style={styles.staffTableCell}>
+                      ₱{staff.sales.toLocaleString()}
+                    </Text>
+                    <Text style={styles.staffTableCell}>
+                      ₱{staff.expenses.toLocaleString()}
+                    </Text>
+                    <Text style={styles.staffTableCell}>
+                      ₱{staff.profit.toLocaleString()}
+                    </Text>
+                    <Text style={styles.staffTableCell}>
+                      {staff.lowStockItems}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noDataText}>
+                No staff data available for this period.
+              </Text>
+            )}
+          </View> */}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   // --- Main Container & Layout ---
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-    marginBottom: 80
+    marginBottom: 80,
   },
   title: {
     fontSize: 20,
@@ -682,7 +831,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '100%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -777,7 +926,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -818,7 +967,7 @@ const styles = StyleSheet.create({
     padding: 0,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -940,50 +1089,50 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: 4,
   },
-  
+
   // --- Store Card ---
-  storeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 20,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-    borderColor: '#f0f0f0',
-    borderWidth: 1,
-  },
-  storeCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  storeCardName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#222',
-    flex: 1,
-  },
-  storeCardBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  storeCardBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+  // storeCard: {
+  //   backgroundColor: '#fff',
+  //   borderRadius: 16,
+  //   marginBottom: 20,
+  //   padding: 16,
+  //   shadowColor: '#000',
+  //   shadowOffset: {
+  //     width: 0,
+  //     height: 3,
+  //   },
+  //   shadowOpacity: 0.12,
+  //   shadowRadius: 6,
+  //   elevation: 4,
+  //   borderColor: '#f0f0f0',
+  //   borderWidth: 1,
+  // },
+  // storeCardHeader: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   marginBottom: 8,
+  // },
+  // storeCardName: {
+  //   fontSize: 18,
+  //   fontWeight: 'bold',
+  //   color: '#222',
+  //   flex: 1,
+  // },
+  // storeCardBadge: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   backgroundColor: '#4CAF50',
+  //   paddingVertical: 4,
+  //   paddingHorizontal: 8,
+  //   borderRadius: 12,
+  // },
+  // storeCardBadgeText: {
+  //   color: '#fff',
+  //   fontSize: 12,
+  //   fontWeight: '600',
+  //   marginLeft: 4,
+  // },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1042,19 +1191,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     paddingBottom: 6,
   },
-  cashierRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  cashierName: {
-    fontSize: 14,
-    color: '#555',
-    flex: 1,
-  },
+
   cashierMetrics: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1072,7 +1209,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 8,
   },
-  
+
   // --- Empty State ---
   emptyState: {
     alignItems: 'center',
@@ -1102,7 +1239,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
-  }
+  },
 });
 
 export default HomeScreen;

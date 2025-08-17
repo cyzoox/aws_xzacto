@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -43,9 +43,9 @@ const CreditTransactionsScreen = ({route, navigation}) => {
     if (customer && customer.id) {
       fetchInitialData();
     }
-  }, [customer]);
+  }, [customer, fetchInitialData]);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     setLoading(true);
     try {
       const {userId} = await getCurrentUser();
@@ -57,9 +57,9 @@ const CreditTransactionsScreen = ({route, navigation}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchCustomerTransactions]);
 
-  const fetchCustomerTransactions = async () => {
+  const fetchCustomerTransactions = useCallback(async () => {
     if (!customer || !customer.id) {
       Alert.alert('Error', 'Invalid customer data');
       return;
@@ -81,7 +81,6 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
       // Also update customer balance from the latest customer data if needed
       // For now, we assume the passed customer object is up-to-date after a payment.
-
     } catch (error) {
       console.error('Error fetching customer transactions:', error);
       Alert.alert('Error', 'Failed to load transaction history');
@@ -89,20 +88,40 @@ const CreditTransactionsScreen = ({route, navigation}) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [customer]);
 
   const getTransactionTypeInfo = type => {
     switch (type) {
       case 'PAYMENT':
-        return { icon: 'arrow-down', color: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)' };
+        return {
+          icon: 'arrow-down',
+          color: '#10B981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        };
       case 'SALE':
-        return { icon: 'arrow-up', color: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' };
+        return {
+          icon: 'arrow-up',
+          color: '#EF4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        };
       case 'VOID':
-        return { icon: 'x', color: '#6B7280', backgroundColor: 'rgba(107, 114, 128, 0.1)' };
+        return {
+          icon: 'x',
+          color: '#6B7280',
+          backgroundColor: 'rgba(107, 114, 128, 0.1)',
+        };
       case 'REFUND':
-        return { icon: 'corner-up-left', color: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.1)' };
+        return {
+          icon: 'corner-up-left',
+          color: '#F59E0B',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        };
       default:
-        return { icon: 'info', color: '#3B82F6', backgroundColor: 'rgba(59, 130, 246, 0.1)' };
+        return {
+          icon: 'info',
+          color: '#3B82F6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        };
     }
   };
 
@@ -136,7 +155,7 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
     try {
       const newBalance = currentCustomer.creditBalance - paymentAmount;
-      
+
       // Update customer balance
       await client.graphql({
         query: mutations.updateCustomer,
@@ -160,11 +179,10 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
       // Update local state to reflect changes immediately
       setCurrentCustomer({...currentCustomer, creditBalance: newBalance});
-      
+
       Alert.alert('Success', 'Payment recorded successfully!');
       hideModal();
       fetchCustomerTransactions(); // Refresh the list
-
     } catch (err) {
       console.error('Error recording payment:', err);
       Alert.alert('Error', 'Failed to record payment.');
@@ -173,56 +191,64 @@ const CreditTransactionsScreen = ({route, navigation}) => {
     }
   };
 
-    // Filter transactions based on selected month
+  // Filter transactions based on selected month
   useEffect(() => {
-    if (transactions.length === 0) return;
-    
+    if (transactions.length === 0) {
+      return;
+    }
+
     if (selectedMonth === 'all') {
       setFilteredTransactions(transactions);
       return;
     }
-    
+
     const filtered = transactions.filter(item => {
       const date = new Date(item.createdAt);
       return date.getMonth() === parseInt(selectedMonth);
     });
-    
+
     setFilteredTransactions(filtered);
   }, [selectedMonth, transactions]);
 
   const toggleFilter = () => setFilterVisible(!filterVisible);
 
   const monthOptions = [
-    { label: 'All Transactions', value: 'all' },
-    { label: 'January', value: '0' },
-    { label: 'February', value: '1' },
-    { label: 'March', value: '2' },
-    { label: 'April', value: '3' },
-    { label: 'May', value: '4' },
-    { label: 'June', value: '5' },
-    { label: 'July', value: '6' },
-    { label: 'August', value: '7' },
-    { label: 'September', value: '8' },
-    { label: 'October', value: '9' },
-    { label: 'November', value: '10' },
-    { label: 'December', value: '11' },
+    {label: 'All Transactions', value: 'all'},
+    {label: 'January', value: '0'},
+    {label: 'February', value: '1'},
+    {label: 'March', value: '2'},
+    {label: 'April', value: '3'},
+    {label: 'May', value: '4'},
+    {label: 'June', value: '5'},
+    {label: 'July', value: '6'},
+    {label: 'August', value: '7'},
+    {label: 'September', value: '8'},
+    {label: 'October', value: '9'},
+    {label: 'November', value: '10'},
+    {label: 'December', value: '11'},
   ];
 
   const renderMonthItem = ({item}) => (
     <TouchableOpacity
-      style={[styles.monthOption, selectedMonth === item.value && styles.selectedMonthOption]}
+      style={[
+        styles.monthOption,
+        selectedMonth === item.value && styles.selectedMonthOption,
+      ]}
       onPress={() => {
         setSelectedMonth(item.value);
         setFilterVisible(false);
-      }}
-    >
-      <Text style={[styles.monthOptionText, selectedMonth === item.value && styles.selectedMonthText]}>
+      }}>
+      <Text
+        style={[
+          styles.monthOptionText,
+          selectedMonth === item.value && styles.selectedMonthText,
+        ]}>
         {item.label}
       </Text>
     </TouchableOpacity>
   );
 
-  const renderTableRow = (item) => {
+  const renderTableRow = item => {
     const {color, icon, backgroundColor} = getTransactionTypeInfo(item.type);
     const isPayment = item.type === 'PAYMENT';
 
@@ -230,16 +256,18 @@ const CreditTransactionsScreen = ({route, navigation}) => {
       <Paper.DataTable.Row key={item.id}>
         <Paper.DataTable.Cell>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            
             <Text style={styles.transactionType}>{item.type}</Text>
           </View>
         </Paper.DataTable.Cell>
         <Paper.DataTable.Cell>
-          <Text style={styles.transactionDate}>{formatters.formatDate(item.createdAt)}</Text>
+          <Text style={styles.transactionDate}>
+            {formatters.formatDate(item.createdAt)}
+          </Text>
         </Paper.DataTable.Cell>
         <Paper.DataTable.Cell numeric>
           <Text style={[styles.transactionAmount, {color}]}>
-            {isPayment ? '+' : '−'}{formatters.formatCurrency(item.amount)}
+            {isPayment ? '+' : '−'}
+            {formatters.formatCurrency(item.amount)}
           </Text>
         </Paper.DataTable.Cell>
       </Paper.DataTable.Row>
@@ -302,7 +330,9 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
   if (loading && !refreshing) {
     return (
-      <LinearGradient colors={['#F3F4F6', '#E5E7EB']} style={styles.loaderContainer}>
+      <LinearGradient
+        colors={['#F3F4F6', '#E5E7EB']}
+        style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
       </LinearGradient>
     );
@@ -310,24 +340,29 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
   return (
     <LinearGradient colors={['#F3F4F6', '#E5E7EB']} style={styles.container}>
-      <Appbar 
-        title="Credit History" 
+      <Appbar
+        title="Credit History"
         subtitle={customer.name}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4F46E5" />
-        }
-      >
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#4F46E5"
+          />
+        }>
         <TableHeader />
-        
+
         <Paper.Surface style={styles.tableContainer}>
           <Paper.DataTable>
             <Paper.DataTable.Header style={styles.dataTableHeader}>
-              <Paper.DataTable.Title style={{flex: 1.5}}>TYPE</Paper.DataTable.Title>
+              <Paper.DataTable.Title style={{flex: 1.5}}>
+                TYPE
+              </Paper.DataTable.Title>
               <Paper.DataTable.Title>DATE</Paper.DataTable.Title>
               <Paper.DataTable.Title numeric>AMOUNT</Paper.DataTable.Title>
             </Paper.DataTable.Header>
@@ -337,7 +372,9 @@ const CreditTransactionsScreen = ({route, navigation}) => {
             ) : (
               <View style={styles.emptyContainer}>
                 <Icon name="archive" size={40} color="#9CA3AF" />
-                <Text style={styles.emptyText}>No transactions recorded yet.</Text>
+                <Text style={styles.emptyText}>
+                  No transactions recorded yet.
+                </Text>
               </View>
             )}
           </Paper.DataTable>
@@ -348,21 +385,20 @@ const CreditTransactionsScreen = ({route, navigation}) => {
         <Paper.Modal
           visible={isModalVisible}
           onDismiss={hideModal}
-          contentContainerStyle={styles.modalContainer}
-        >
+          contentContainerStyle={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Record Payment</Text>
             <TouchableOpacity onPress={hideModal} style={styles.closeButton}>
               <Icon name="x" size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.modalBody}>
             <Text style={styles.modalLabel}>Amount</Text>
             <Paper.TextInput
               placeholder="Enter payment amount"
               value={amount}
-              onChangeText={(text) => {
+              onChangeText={text => {
                 setAmount(text.replace(/[^0-9]/g, ''));
                 setModalError('');
               }}
@@ -373,7 +409,7 @@ const CreditTransactionsScreen = ({route, navigation}) => {
               activeOutlineColor="#4F46E5"
               left={<Paper.TextInput.Icon icon="cash" color="#4F46E5" />}
             />
-            
+
             <Text style={styles.modalLabel}>Notes (optional)</Text>
             <Paper.TextInput
               placeholder="Add details about this payment"
@@ -390,22 +426,25 @@ const CreditTransactionsScreen = ({route, navigation}) => {
 
             {modalError ? (
               <View style={styles.errorContainer}>
-                <Icon name="alert-circle" size={16} color="#EF4444" style={{marginRight: 8}} />
+                <Icon
+                  name="alert-circle"
+                  size={16}
+                  color="#EF4444"
+                  style={{marginRight: 8}}
+                />
                 <Text style={styles.errorText}>{modalError}</Text>
               </View>
             ) : null}
 
-            <LinearGradient 
-              colors={['#4F46E5', '#3730A3']} 
-              start={{x: 0, y: 0}} 
-              end={{x: 1, y: 0}} 
-              style={styles.confirmButtonGradient}
-            >
+            <LinearGradient
+              colors={['#4F46E5', '#3730A3']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.confirmButtonGradient}>
               <TouchableOpacity
                 onPress={handleRecordPayment}
                 style={styles.confirmButton}
-                disabled={modalLoading}
-              >
+                disabled={modalLoading}>
                 {modalLoading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
@@ -413,7 +452,7 @@ const CreditTransactionsScreen = ({route, navigation}) => {
                 )}
               </TouchableOpacity>
             </LinearGradient>
-            
+
             <TouchableOpacity onPress={hideModal} style={styles.cancelButton}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>

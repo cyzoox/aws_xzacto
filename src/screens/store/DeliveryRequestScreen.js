@@ -6,16 +6,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  SafeAreaView,
   Text,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
   Title,
   Card,
-  Paragraph,
   Button,
-  FAB,
   Portal,
   Modal,
   TextInput,
@@ -38,7 +35,7 @@ import colors from '../../themes/colors';
 const client = generateClient();
 
 const DeliveryRequestScreen = ({navigation, route}) => {
- const STORE = route.params.store;
+  const STORE = route.params.store;
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [requestItems, setRequestItems] = useState([]);
@@ -243,72 +240,96 @@ const DeliveryRequestScreen = ({navigation, route}) => {
         subtitle={STORE.name}
         onBack={() => navigation.goBack()}
       />
-      
+
       {/* Cute Top Navigation Buttons */}
       <View style={styles.topNavContainer}>
         {/* Request Summary with Icon */}
         <View style={styles.requestSummary}>
-          <IconButton 
-            icon="package-variant" 
-            size={16} 
-            color={colors.secondary} 
-            style={styles.summaryIcon} 
+          <IconButton
+            icon="package-variant"
+            size={16}
+            color={colors.secondary}
+            style={styles.summaryIcon}
           />
           <Text style={styles.requestSummaryText}>
-            Items in request: <Text style={styles.requestSummaryCount}>{requestItems.length}</Text>
+            Items in request:{' '}
+            <Text style={styles.requestSummaryCount}>
+              {requestItems.length}
+            </Text>
           </Text>
         </View>
 
         {/* Button Container */}
         <View style={styles.topButtonsRow}>
           {/* Cart Button with Badge */}
-          <TouchableOpacity 
-            style={[styles.topNavButton, requestItems.length > 0 ? styles.activeButton : styles.disabledButton]}
+          <TouchableOpacity
+            style={[
+              styles.topNavButton,
+              requestItems.length > 0
+                ? styles.activeButton
+                : styles.disabledButton,
+            ]}
             onPress={() => setRequestModalVisible(true)}
             disabled={requestItems.length === 0}
             activeOpacity={0.7}>
-            <LinearGradient 
-              colors={requestItems.length > 0 ? [colors.secondary,colors.secondary] : ['#f0f0f0', '#e5e5e5']} 
+            <LinearGradient
+              colors={
+                requestItems.length > 0
+                  ? [colors.secondary, colors.secondary]
+                  : ['#f0f0f0', '#e5e5e5']
+              }
               style={styles.gradientButton}>
               <View style={styles.topNavButtonContent}>
-                <IconButton 
-                  icon="cart-outline" 
-                  size={19} 
-                  color={requestItems.length === 0 ? colors.white : 'white'} 
-                  style={styles.topNavIcon} 
+                <IconButton
+                  icon="cart-outline"
+                  size={19}
+                  color={requestItems.length === 0 ? colors.white : 'white'}
+                  style={styles.topNavIcon}
                 />
-                <Text style={[styles.topNavText, requestItems.length === 0 ? styles.disabledText : styles.activeText]}>View List</Text>
+                <Text
+                  style={[
+                    styles.topNavText,
+                    requestItems.length === 0
+                      ? styles.disabledText
+                      : styles.activeText,
+                  ]}>
+                  View List
+                </Text>
                 {requestItems.length > 0 && (
                   <View style={styles.topBadge}>
-                    <Text style={styles.topBadgeText}>{requestItems.length}</Text>
+                    <Text style={styles.topBadgeText}>
+                      {requestItems.length}
+                    </Text>
                   </View>
                 )}
               </View>
             </LinearGradient>
           </TouchableOpacity>
-          
+
           {/* View All Requests Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.topNavButton]}
             onPress={() => {
-              console.log('Navigating to StoreRequests with:', { STORE });
-            
-              navigation.navigate('StoreRequests', { 
-                store: { STORE }
+              console.log('Navigating to StoreRequests with:', {STORE});
+
+              navigation.navigate('StoreRequests', {
+                store: {STORE},
               });
             }}
             activeOpacity={0.7}>
-            <LinearGradient 
-              colors={[colors.secondary, colors.secondary]} 
+            <LinearGradient
+              colors={[colors.secondary, colors.secondary]}
               style={styles.gradientButton}>
               <View style={styles.topNavButtonContent}>
-                <IconButton 
-                  icon="clipboard-text-outline" 
-                  size={19} 
-                  color="white" 
-                  style={styles.topNavIcon} 
+                <IconButton
+                  icon="clipboard-text-outline"
+                  size={19}
+                  color="white"
+                  style={styles.topNavIcon}
                 />
-                <Text style={[styles.topNavText, styles.activeText]}>View Requests</Text>
+                <Text style={[styles.topNavText, styles.activeText]}>
+                  View Requests
+                </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -359,7 +380,9 @@ const DeliveryRequestScreen = ({navigation, route}) => {
                     filteredProducts.map(product => (
                       <DataTable.Row key={product.id}>
                         <DataTable.Cell>{product.name}</DataTable.Cell>
-                        <DataTable.Cell numeric>{product.availableStock || 0}</DataTable.Cell>
+                        <DataTable.Cell numeric>
+                          {product.availableStock || 0}
+                        </DataTable.Cell>
                         <DataTable.Cell numeric style={styles.actionCell}>
                           <Button
                             mode="contained"
@@ -382,213 +405,9 @@ const DeliveryRequestScreen = ({navigation, route}) => {
               )}
             </Card.Content>
           </Card>
-
-         
-
         </ScrollView>
       </View>
-      
-      {/* Request Form Modal */}
-      <Portal>
-        <Modal
-          visible={requestModalVisible}
-          onDismiss={() => setRequestModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}>
-                <ScrollView>
-                  <Title>Your Request</Title>
 
-                  {requestItems.length > 0 ? (
-                    <>
-                      <DataTable>
-                        <DataTable.Header>
-                          <DataTable.Title>Product</DataTable.Title>
-                          <DataTable.Title numeric>Quantity</DataTable.Title>
-                          <DataTable.Title>Actions</DataTable.Title>
-                        </DataTable.Header>
-
-                        {requestItems.map(item => (
-                          <DataTable.Row key={item.productId}>
-                            <DataTable.Cell>{item.name}</DataTable.Cell>
-                            <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
-                            <DataTable.Cell style={styles.quantityActionCell}>
-                              <IconButton
-                                icon="minus"
-                                size={20}
-                                onPress={() =>
-                                  updateQuantity(item.productId, item.quantity - 1)
-                                }
-                              />
-                              <IconButton
-                                icon="plus"
-                                size={20}
-                                onPress={() =>
-                                  updateQuantity(item.productId, item.quantity + 1)
-                                }
-                              />
-                              <Button
-                                mode="outlined"
-                                onPress={() => removeFromRequest(item.productId)}
-                                style={{marginHorizontal: 4}}>
-                                <Text>Remove</Text>
-                              </Button>
-                            </DataTable.Cell>
-                          </DataTable.Row>
-                        ))}
-                      </DataTable>
-
-                      <View style={styles.summaryContainer}>
-                        <Text style={styles.summaryText}>
-                          Total Items: {totalItems}
-                        </Text>
-                      </View>
-
-                      <TextInput
-                        label="Notes (optional)"
-                        value={notes}
-                        onChangeText={setNotes}
-                        multiline
-                        numberOfLines={3}
-                        style={styles.notesInput}
-                        placeholder="Add any special instructions or notes"
-                      />
-
-                      <View style={styles.priorityContainer}>
-                        <Text style={styles.priorityLabel}>Priority:</Text>
-                        <View style={styles.chipsContainer}>
-                          <Chip
-                            selected={priority === 'LOW'}
-                            onPress={() => setPriority('LOW')}
-                            style={[
-                              styles.chip,
-                              priority === 'LOW' && styles.selectedChip,
-                            ]}>
-                            <Text
-                              style={{
-                                color: priority === 'LOW' ? 'white' : 'black',
-                              }}>
-                              Low
-                            </Text>
-                          </Chip>
-                          <Chip
-                            selected={priority === 'NORMAL'}
-                            onPress={() => setPriority('NORMAL')}
-                            style={[
-                              styles.chip,
-                              priority === 'NORMAL' && styles.selectedChip,
-                            ]}>
-                            <Text
-                              style={{
-                                color: priority === 'NORMAL' ? 'white' : 'black',
-                              }}>
-                              Normal
-                            </Text>
-                          </Chip>
-                          <Chip
-                            selected={priority === 'HIGH'}
-                            onPress={() => setPriority('HIGH')}
-                            style={[
-                              styles.chip,
-                              priority === 'HIGH' && styles.selectedChip,
-                            ]}>
-                            <Text
-                              style={{
-                                color: priority === 'HIGH' ? 'white' : 'black',
-                              }}>
-                              High
-                            </Text>
-                          </Chip>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.buttonContainer}>
-                        <Button
-                          mode="contained"
-                          onPress={() => {
-                            submitRequest();
-                            setRequestModalVisible(false);
-                          }}
-                          style={styles.submitButton}
-                          disabled={requestItems.length === 0 || submitting}>
-                          {submitting ? (
-                            <ActivityIndicator color="white" size="small" />
-                          ) : (
-                            <Text style={{color: 'white'}}>Submit Request</Text>
-                          )}
-                        </Button>
-                        <Button
-                          mode="outlined"
-                          onPress={() => {
-                            setRequestModalVisible(false);
-                            setModalVisible(true);
-                          }}
-                          style={styles.viewButton}
-                          disabled={requestItems.length === 0}>
-                          <Text>View Summary</Text>
-                        </Button>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.emptyText}>
-                      No items added yet. Search and add products from above.
-                    </Text>
-                  )}
-                </ScrollView>
-        </Modal>
-      </Portal>
-      
-      {/* Request Details Modal */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}>
-          <ScrollView>
-            <Title>Request Details</Title>
-            
-            <View style={styles.modalSection}>
-              <Text style={styles.sectionTitle}>Store</Text>
-              <Text style={styles.sectionContent}>{STORE.name || 'Unknown Store'}</Text>
-            </View>
-            
-            <View style={styles.modalSection}>
-              <Text style={styles.sectionTitle}>Priority</Text>
-              <Chip style={[styles.priorityChip, {backgroundColor: getPriorityColor(priority)}]}>
-                <Text style={styles.chipText}>{priority}</Text>
-              </Chip>
-            </View>
-            
-            <View style={styles.modalSection}>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <Text style={styles.sectionContent}>{notes || '-'}</Text>
-            </View>
-            
-            <View style={styles.modalSection}>
-              <Text style={styles.sectionTitle}>Items ({requestItems.length})</Text>
-              <DataTable>
-                <DataTable.Header>
-                  <DataTable.Title>Product</DataTable.Title>
-                  <DataTable.Title numeric>Quantity</DataTable.Title>
-                </DataTable.Header>
-                
-                {requestItems.map(item => (
-                  <DataTable.Row key={item.productId}>
-                    <DataTable.Cell>{item.name}</DataTable.Cell>
-                    <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
-                  </DataTable.Row>
-                ))}
-              </DataTable>
-            </View>
-            
-            <Button
-              mode="outlined"
-              onPress={() => setModalVisible(false)}
-              style={styles.closeModalButton}>
-              <Text>Close</Text>
-            </Button>
-          </ScrollView>
-        </Modal>
-      </Portal>
-      
       {/* Request Form Modal */}
       <Portal>
         <Modal
@@ -700,7 +519,216 @@ const DeliveryRequestScreen = ({navigation, route}) => {
                     </Chip>
                   </View>
                 </View>
-                
+
+                <View style={styles.buttonContainer}>
+                  <Button
+                    mode="contained"
+                    onPress={() => {
+                      submitRequest();
+                      setRequestModalVisible(false);
+                    }}
+                    style={styles.submitButton}
+                    disabled={requestItems.length === 0 || submitting}>
+                    {submitting ? (
+                      <ActivityIndicator color="white" size="small" />
+                    ) : (
+                      <Text style={{color: 'white'}}>Submit Request</Text>
+                    )}
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setRequestModalVisible(false);
+                      setModalVisible(true);
+                    }}
+                    style={styles.viewButton}
+                    disabled={requestItems.length === 0}>
+                    <Text>View Summary</Text>
+                  </Button>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.emptyText}>
+                No items added yet. Search and add products from above.
+              </Text>
+            )}
+          </ScrollView>
+        </Modal>
+      </Portal>
+
+      {/* Request Details Modal */}
+      <Portal>
+        <Modal
+          visible={modalVisible}
+          onDismiss={() => setModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}>
+          <ScrollView>
+            <Title>Request Details</Title>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>Store</Text>
+              <Text style={styles.sectionContent}>
+                {STORE.name || 'Unknown Store'}
+              </Text>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>Priority</Text>
+              <Chip
+                style={[
+                  styles.priorityChip,
+                  {backgroundColor: getPriorityColor(priority)},
+                ]}>
+                <Text style={styles.chipText}>{priority}</Text>
+              </Chip>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <Text style={styles.sectionContent}>{notes || '-'}</Text>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>
+                Items ({requestItems.length})
+              </Text>
+              <DataTable>
+                <DataTable.Header>
+                  <DataTable.Title>Product</DataTable.Title>
+                  <DataTable.Title numeric>Quantity</DataTable.Title>
+                </DataTable.Header>
+
+                {requestItems.map(item => (
+                  <DataTable.Row key={item.productId}>
+                    <DataTable.Cell>{item.name}</DataTable.Cell>
+                    <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
+                  </DataTable.Row>
+                ))}
+              </DataTable>
+            </View>
+
+            <Button
+              mode="outlined"
+              onPress={() => setModalVisible(false)}
+              style={styles.closeModalButton}>
+              <Text>Close</Text>
+            </Button>
+          </ScrollView>
+        </Modal>
+      </Portal>
+
+      {/* Request Form Modal */}
+      <Portal>
+        <Modal
+          visible={requestModalVisible}
+          onDismiss={() => setRequestModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}>
+          <ScrollView>
+            <Title>Your Request</Title>
+
+            {requestItems.length > 0 ? (
+              <>
+                <DataTable>
+                  <DataTable.Header>
+                    <DataTable.Title>Product</DataTable.Title>
+                    <DataTable.Title numeric>Quantity</DataTable.Title>
+                    <DataTable.Title>Actions</DataTable.Title>
+                  </DataTable.Header>
+
+                  {requestItems.map(item => (
+                    <DataTable.Row key={item.productId}>
+                      <DataTable.Cell>{item.name}</DataTable.Cell>
+                      <DataTable.Cell numeric>{item.quantity}</DataTable.Cell>
+                      <DataTable.Cell style={styles.quantityActionCell}>
+                        <IconButton
+                          icon="minus"
+                          size={20}
+                          onPress={() =>
+                            updateQuantity(item.productId, item.quantity - 1)
+                          }
+                        />
+                        <IconButton
+                          icon="plus"
+                          size={20}
+                          onPress={() =>
+                            updateQuantity(item.productId, item.quantity + 1)
+                          }
+                        />
+                        <Button
+                          mode="outlined"
+                          onPress={() => removeFromRequest(item.productId)}
+                          style={{marginHorizontal: 4}}>
+                          <Text>Remove</Text>
+                        </Button>
+                      </DataTable.Cell>
+                    </DataTable.Row>
+                  ))}
+                </DataTable>
+
+                <View style={styles.summaryContainer}>
+                  <Text style={styles.summaryText}>
+                    Total Items: {totalItems}
+                  </Text>
+                </View>
+
+                <TextInput
+                  label="Notes (optional)"
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  numberOfLines={3}
+                  style={styles.notesInput}
+                  placeholder="Add any special instructions or notes"
+                />
+
+                <View style={styles.priorityContainer}>
+                  <Text style={styles.priorityLabel}>Priority:</Text>
+                  <View style={styles.chipsContainer}>
+                    <Chip
+                      selected={priority === 'LOW'}
+                      onPress={() => setPriority('LOW')}
+                      style={[
+                        styles.chip,
+                        priority === 'LOW' && styles.selectedChip,
+                      ]}>
+                      <Text
+                        style={{
+                          color: priority === 'LOW' ? 'white' : 'black',
+                        }}>
+                        Low
+                      </Text>
+                    </Chip>
+                    <Chip
+                      selected={priority === 'NORMAL'}
+                      onPress={() => setPriority('NORMAL')}
+                      style={[
+                        styles.chip,
+                        priority === 'NORMAL' && styles.selectedChip,
+                      ]}>
+                      <Text
+                        style={{
+                          color: priority === 'NORMAL' ? 'white' : 'black',
+                        }}>
+                        Normal
+                      </Text>
+                    </Chip>
+                    <Chip
+                      selected={priority === 'HIGH'}
+                      onPress={() => setPriority('HIGH')}
+                      style={[
+                        styles.chip,
+                        priority === 'HIGH' && styles.selectedChip,
+                      ]}>
+                      <Text
+                        style={{
+                          color: priority === 'HIGH' ? 'white' : 'black',
+                        }}>
+                        High
+                      </Text>
+                    </Chip>
+                  </View>
+                </View>
+
                 <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
@@ -741,7 +769,7 @@ const DeliveryRequestScreen = ({navigation, route}) => {
 };
 
 // Helper function to get color based on priority
-const getPriorityColor = (priority) => {
+const getPriorityColor = priority => {
   switch (priority) {
     case 'HIGH':
       return colors.red;
@@ -768,7 +796,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: 'white',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
@@ -824,7 +852,7 @@ const styles = StyleSheet.create({
   activeButton: {
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
     shadowRadius: 1.5,
   },
@@ -939,7 +967,7 @@ const styles = StyleSheet.create({
   viewButton: {
     flex: 1,
     marginLeft: 10,
-    
+
     width: '80%',
     marginBottom: 10,
   },
@@ -984,11 +1012,6 @@ const styles = StyleSheet.create({
   closeModalButton: {
     marginTop: 16,
   },
-  emptyText: {
-    textAlign: 'center',
-    marginVertical: 24,
-    color: '#757575',
-  },
   loadingContainer: {
     padding: 20,
     alignItems: 'center',
@@ -1009,7 +1032,6 @@ const styles = StyleSheet.create({
   errorButton: {
     backgroundColor: colors.primary,
   },
-
 });
 
 export default DeliveryRequestScreen;

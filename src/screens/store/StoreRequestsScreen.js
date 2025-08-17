@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -34,8 +34,8 @@ import {
   getWarehouseProduct,
 } from '../../graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { updateInventoryRequest } from '../../graphql/mutations';
+import {getCurrentUser} from 'aws-amplify/auth';
+import {updateInventoryRequest} from '../../graphql/mutations';
 import Cards from '../../components/Cards';
 
 // Initialize API client
@@ -55,27 +55,19 @@ const StoreRequestsScreen = ({navigation, route}) => {
 
   // Load requests when component mounts
   useEffect(() => {
-    
-  
-      fetchRequests();
-    
-    
-    return () => {
-     
-    };
-  }, []);
+    fetchRequests();
+
+    return () => {};
+  }, [fetchRequests]);
 
   // Fetch requests from the API
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-     
-      
-      const { userId: ownerId } = await getCurrentUser();
+      const {userId: ownerId} = await getCurrentUser();
       console.log('Using owner ID for fetching requests:', ownerId);
       console.log('Current store ID:', STORE.id);
- 
 
       // Fetch inventory requests for this store
       const response = await client.graphql({
@@ -83,9 +75,9 @@ const StoreRequestsScreen = ({navigation, route}) => {
         variables: {
           filter: {
             and: [
-              { storeId: { eq: STORE.id } },
+              {storeId: {eq: STORE.id}},
               // { ownerId: { eq: ownerId } }
-            ]
+            ],
           },
         },
       });
@@ -103,7 +95,7 @@ const StoreRequestsScreen = ({navigation, route}) => {
           // Continue execution even if item fetching fails
         }
       }
-      
+
       setError(null);
     } catch (err) {
       console.error('Error fetching requests:', err);
@@ -112,10 +104,10 @@ const StoreRequestsScreen = ({navigation, route}) => {
       setRefreshing(false);
       setLoading(false);
     }
-  };
+  }, [STORE.id]);
 
   // Fetch request items for inventory requests
-  const fetchRequestItems = async (requestIds) => {
+  const fetchRequestItems = async requestIds => {
     if (!requestIds || requestIds.length === 0) {
       return;
     }
@@ -282,7 +274,7 @@ const StoreRequestsScreen = ({navigation, route}) => {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchRequests]);
 
   const showModal = request => {
     setSelectedRequest(request);
@@ -293,80 +285,79 @@ const StoreRequestsScreen = ({navigation, route}) => {
     setModalVisible(false);
     setSelectedRequest(null);
   };
-  
+
   // Mark a fulfilled request as received
-  const markAsReceived = async (request) => {
+  const markAsReceived = async request => {
     if (request.status !== 'FULFILLED') {
-      Alert.alert('Error', 'Only fulfilled requests can be marked as received.');
+      Alert.alert(
+        'Error',
+        'Only fulfilled requests can be marked as received.',
+      );
       return;
     }
-    
+
     try {
       const input = {
         id: request.id,
         status: 'FULFILLED', // Status remains FULFILLED
-        isReceived: true // Mark as received/verified by store
+        isReceived: true, // Mark as received/verified by store
       };
-      
+
       await client.graphql({
         query: updateInventoryRequest,
-        variables: { input }
+        variables: {input},
       });
-      
+
       // Update local state
-      setRequests(requests.map(req => 
-        req.id === request.id 
-          ? { ...req, isReceived: true } 
-          : req
-      ));
-      
+      setRequests(
+        requests.map(req =>
+          req.id === request.id ? {...req, isReceived: true} : req,
+        ),
+      );
+
       Alert.alert('Success', 'Delivery has been marked as received.');
     } catch (error) {
       console.error('Error marking request as received:', error);
-      Alert.alert('Error', 'Failed to mark request as received. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to mark request as received. Please try again.',
+      );
     }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <Appbar
-        title="Inventory Requests" 
-        subtitle={STORE?.name || ''} 
+        title="Inventory Requests"
+        subtitle={STORE?.name || ''}
         onBack={() => navigation.goBack()}
       />
-      
-     
+
       <View style={styles.content}>
-      
         <Cards>
           <Text style={styles.filterLabel}>Filter</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filterScroll}>
-            {[
-              'ALL',
-              'PENDING',
-              'PARTIAL',
-              'FULFILLED',
-              'REJECTED',
-            ].map(filter => (
-              <Chip
-                key={filter}
-             
-                selected={selectedFilter === filter}
-                style={[
-                  styles.filterChip,
-                  selectedFilter === filter && styles.selectedChip,
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-                mode="flat">
-                <Text style={styles.filterText}>{filter}</Text>
-              </Chip>
-            ))}
+            {['ALL', 'PENDING', 'PARTIAL', 'FULFILLED', 'REJECTED'].map(
+              filter => (
+                <Chip
+                  key={filter}
+                  selected={selectedFilter === filter}
+                  style={[
+                    styles.filterChip,
+                    selectedFilter === filter && styles.selectedChip,
+                  ]}
+                  onPress={() => setSelectedFilter(filter)}
+                  mode="flat">
+                  <Text style={styles.filterText}>{filter}</Text>
+                </Chip>
+              ),
+            )}
           </ScrollView>
         </Cards>
-        
+
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -406,7 +397,11 @@ const StoreRequestsScreen = ({navigation, route}) => {
                         <Text>{request.status}</Text>
                       </Chip>
                       {request.isReceived && (
-                        <Chip style={[styles.statusChip, {backgroundColor: '#4CAF50', marginLeft: 5}]}>
+                        <Chip
+                          style={[
+                            styles.statusChip,
+                            {backgroundColor: '#4CAF50', marginLeft: 5},
+                          ]}>
                           <Text>RECEIVED</Text>
                         </Chip>
                       )}
@@ -432,11 +427,10 @@ const StoreRequestsScreen = ({navigation, route}) => {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No requests found</Text>
-              
             </View>
           )}
         </ScrollView>
-        
+
         {/* Using FAB component instead of Button */}
         {/* <FAB
           icon="plus"
@@ -461,7 +455,10 @@ const StoreRequestsScreen = ({navigation, route}) => {
             <ScrollView>
               <Title>Order #{selectedRequest.id.slice(-6)}</Title>
               <Paragraph>
-                Requested on {formatDate(selectedRequest.requestDate || selectedRequest.createdAt)}
+                Requested on{' '}
+                {formatDate(
+                  selectedRequest.requestDate || selectedRequest.createdAt,
+                )}
               </Paragraph>
               <View style={styles.chipRow}>
                 <Chip
@@ -471,7 +468,7 @@ const StoreRequestsScreen = ({navigation, route}) => {
                   ]}>
                   <Text style={styles.chipText}>{selectedRequest.status}</Text>
                 </Chip>
-                
+
                 {selectedRequest.isReceived && (
                   <Chip
                     style={[styles.statusChip, {backgroundColor: '#4CAF50'}]}>
@@ -479,9 +476,9 @@ const StoreRequestsScreen = ({navigation, route}) => {
                   </Chip>
                 )}
               </View>
-              
+
               <Divider style={styles.divider} />
-              
+
               <Text style={styles.itemsTitle}>Requested Items:</Text>
               {requestItems[selectedRequest.id] &&
               requestItems[selectedRequest.id].length > 0 ? (
@@ -511,21 +508,27 @@ const StoreRequestsScreen = ({navigation, route}) => {
               ) : (
                 <Text>No items found for this request.</Text>
               )}
-              
+
               <View style={styles.buttonContainer}>
-                {selectedRequest.status === 'FULFILLED' && !selectedRequest.isReceived && (
-                  <Button 
-                    mode="contained" 
-                    onPress={() => {
-                      markAsReceived(selectedRequest);
-                      hideModal();
-                    }}
-                    style={{marginRight: 10, backgroundColor: colors.success}}
-                  >
-                    Mark as Received
-                  </Button>
-                )}
-                <Button mode="outlined" onPress={hideModal} style={{marginTop: 20}}>
+                {selectedRequest.status === 'FULFILLED' &&
+                  !selectedRequest.isReceived && (
+                    <Button
+                      mode="contained"
+                      onPress={() => {
+                        markAsReceived(selectedRequest);
+                        hideModal();
+                      }}
+                      style={{
+                        marginRight: 10,
+                        backgroundColor: colors.success,
+                      }}>
+                      Mark as Received
+                    </Button>
+                  )}
+                <Button
+                  mode="outlined"
+                  onPress={hideModal}
+                  style={{marginTop: 20}}>
                   Close
                 </Button>
               </View>
@@ -580,7 +583,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    marginBottom: 80
+    marginBottom: 80,
   },
   filterContainer: {
     marginBottom: 16,

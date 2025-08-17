@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   ScrollView,
@@ -91,9 +91,9 @@ const BatchEditScreen = ({navigation, route}) => {
       setError('No store selected. Please select a store first.');
       setLoading(false);
     }
-  }, [currentStore?.id]);
+  }, [currentStore?.id, fetchCategories, fetchProducts]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (!currentStore?.id) {
       setError('No store selected. Please select a store first.');
       return;
@@ -209,7 +209,7 @@ const BatchEditScreen = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentStore.id]);
 
   const fetchProductDetails = async productId => {
     if (!productId) {
@@ -265,7 +265,7 @@ const BatchEditScreen = ({navigation, route}) => {
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     if (!currentStore?.id) {
       return;
     }
@@ -288,7 +288,7 @@ const BatchEditScreen = ({navigation, route}) => {
       console.error('Error fetching categories:', error);
       Alert.alert('Error', 'Failed to fetch categories');
     }
-  };
+  }, [currentStore.id]);
 
   const handleInputChange = (productId, field, value) => {
     setEditedProducts(prev => ({
@@ -841,10 +841,7 @@ const BatchEditScreen = ({navigation, route}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar
-        title="Batch Edit Products"
-        onBack={() => navigation.goBack()}
-      />
+      <Appbar title="Batch Edit Products" onBack={() => navigation.goBack()} />
       <View style={[styles.content, {paddingBottom: 120}]}>
         {renderVariantsModal()}
         {renderAddonsModal()}
@@ -873,8 +870,7 @@ const BatchEditScreen = ({navigation, route}) => {
                             <TextInput
                               style={styles.cellInput}
                               value={
-                                editedProducts[product.id]?.name ??
-                                product.name
+                                editedProducts[product.id]?.name ?? product.name
                               }
                               onChangeText={text =>
                                 handleInputChange(product.id, 'name', text)
@@ -907,8 +903,7 @@ const BatchEditScreen = ({navigation, route}) => {
                             <TextInput
                               style={styles.cellInput}
                               value={
-                                editedProducts[product.id]?.sku ??
-                                product.sku
+                                editedProducts[product.id]?.sku ?? product.sku
                               }
                               onChangeText={text =>
                                 handleInputChange(product.id, 'sku', text)
@@ -1073,13 +1068,16 @@ const BatchEditScreen = ({navigation, route}) => {
       </View>
 
       {/* FAB style save button with increased z-index and elevation */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.fabContainer}
         onPress={saveChanges}
         disabled={saving || Object.keys(editedProducts).length === 0}>
-        <View style={[styles.fab, 
-          (saving || Object.keys(editedProducts).length === 0) && styles.fabDisabled
-        ]}>
+        <View
+          style={[
+            styles.fab,
+            (saving || Object.keys(editedProducts).length === 0) &&
+              styles.fabDisabled,
+          ]}>
           {saving ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
@@ -1288,160 +1286,13 @@ const styles = StyleSheet.create({
     marginVertical: 16,
     color: '#888',
   },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    marginTop: 16,
-  },
-  modal: {
-    backgroundColor: 'white',
-    margin: 20,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  modalContent: {
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
 
-  modalScroll: {
-    flex: 1,
-  },
-
-  section: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 12,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  itemName: {
-    flex: 2,
-    fontSize: 16,
-  },
-  itemPrice: {
-    flex: 1,
-    fontSize: 16,
-    textAlign: 'right',
-    marginRight: 16,
-  },
-  addButton: {
-    backgroundColor: '#4CAF50',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  removeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#ff5252',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  modal: {
-    backgroundColor: '#f5f5f5',
-    margin: 20,
-    borderRadius: 10,
-    maxHeight: '80%',
-  },
-  modalContent: {
-    padding: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    paddingBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    marginVertical: 20,
-    fontStyle: 'italic',
-  },
   emptyState: {
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: {
-    textAlign: 'center',
-    marginVertical: 20,
-    color: '#666',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modal: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 8,
-    maxHeight: '80%',
-  },
-  modalContent: {
-    flex: 1,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
+
   modalInput: {
     marginBottom: 8,
   },
@@ -1451,38 +1302,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  dropdownButton: {
-    marginHorizontal: 4,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cell: {
-    minWidth: 120,
-    justifyContent: 'center',
-  },
-  input: {
-    height: 35,
-    backgroundColor: 'transparent',
-    fontSize: 14,
-  },
-  footer: {
-    padding: 20,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: 8,
-  },
+
   saveButton: {
     marginTop: 12,
     paddingVertical: 6,

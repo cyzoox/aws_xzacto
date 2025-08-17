@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   StyleSheet,
   View,
@@ -7,21 +7,21 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { Button, Card, Title, Searchbar, Chip } from 'react-native-paper';
-import { generateClient } from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { listProducts } from '../../graphql/queries';
+import {Card, Title, Searchbar} from 'react-native-paper';
+import {generateClient} from 'aws-amplify/api';
+import {getCurrentUser} from 'aws-amplify/auth';
+import {listProducts} from '../../graphql/queries';
 import Appbar from '../../components/Appbar';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import colors from '../../themes/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DataTable from '../../components/DataTable';
-import { Col, Row } from 'react-native-easy-grid';
+import {Col, Row} from 'react-native-easy-grid';
 
 const client = generateClient();
 
-const RemainingStockScreen = ({ navigation, route }) => {
-  const { store } = route.params;
+const RemainingStockScreen = ({navigation, route}) => {
+  const {store} = route.params;
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -35,24 +35,25 @@ const RemainingStockScreen = ({ navigation, route }) => {
   const stockThresholds = {
     low: 10,
     medium: 30,
-    high: 50
+    high: 50,
   };
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
-  const fetchProducts = async () => {
-    if (!store?.id) return;
+  const fetchProducts = useCallback(async () => {
+    if (!store?.id) {
+      return;
+    }
 
     setLoading(true);
     try {
-      const { userId: ownerId } = await getCurrentUser();
       const response = await client.graphql({
         query: listProducts,
         variables: {
           filter: {
-            storeId: { eq: store.id }
+            storeId: {eq: store.id},
             // Note: We're not filtering by ownerId as it might not be part of the Product model
           },
           limit: 1000,
@@ -60,12 +61,17 @@ const RemainingStockScreen = ({ navigation, route }) => {
       });
 
       const fetchedProducts = response.data.listProducts.items || [];
-      
+
       // Extract unique categories
-      const uniqueCategories = [...new Set(fetchedProducts.map(product => 
-        product.category?.name || product.subcategory || 'Uncategorized'
-      ))].filter(Boolean);
-      
+      const uniqueCategories = [
+        ...new Set(
+          fetchedProducts.map(
+            product =>
+              product.category?.name || product.subcategory || 'Uncategorized',
+          ),
+        ),
+      ].filter(Boolean);
+
       setProducts(fetchedProducts);
       setFilteredProducts(fetchedProducts);
       setCategories(uniqueCategories);
@@ -74,16 +80,16 @@ const RemainingStockScreen = ({ navigation, route }) => {
       console.error('Error fetching products:', error);
       setLoading(false);
     }
-  };
+  }, [store?.id]);
 
   // Search products
-  const onChangeSearch = (query) => {
+  const onChangeSearch = query => {
     setSearchQuery(query);
     filterProducts(query, selectedCategory);
   };
 
   // Filter products by category
-  const selectCategory = (category) => {
+  const selectCategory = category => {
     const newCategory = category === selectedCategory ? null : category;
     setSelectedCategory(newCategory);
     filterProducts(searchQuery, newCategory);
@@ -92,35 +98,43 @@ const RemainingStockScreen = ({ navigation, route }) => {
   // Apply all filters
   const filterProducts = (query, category) => {
     let filtered = [...products];
-    
+
     // Apply search filter
     if (query) {
       const lowerCaseQuery = query.toLowerCase();
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(lowerCaseQuery) || 
-        product.brand?.toLowerCase().includes(lowerCaseQuery) || 
-        product.sku?.toLowerCase().includes(lowerCaseQuery)
+      filtered = filtered.filter(
+        product =>
+          product.name.toLowerCase().includes(lowerCaseQuery) ||
+          product.brand?.toLowerCase().includes(lowerCaseQuery) ||
+          product.sku?.toLowerCase().includes(lowerCaseQuery),
       );
     }
-    
+
     // Apply category filter
     if (category) {
-      filtered = filtered.filter(product => 
-        (product.category?.name === category) || 
-        (product.subcategory === category) || 
-        (category === 'Uncategorized' && (!product.category && !product.subcategory))
+      filtered = filtered.filter(
+        product =>
+          product.category?.name === category ||
+          product.subcategory === category ||
+          (category === 'Uncategorized' &&
+            !product.category &&
+            !product.subcategory),
       );
     }
-    
+
     // Apply current sort
     sortProducts(filtered, sortBy, sortOrder);
   };
 
   // Sort products
-  const sortProducts = (productsToSort = filteredProducts, sortField = sortBy, order = sortOrder) => {
+  const sortProducts = (
+    productsToSort = filteredProducts,
+    sortField = sortBy,
+    order = sortOrder,
+  ) => {
     const sorted = [...productsToSort].sort((a, b) => {
       if (sortField === 'name') {
-        return order === 'asc' 
+        return order === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
       } else if (sortField === 'stock') {
@@ -134,12 +148,12 @@ const RemainingStockScreen = ({ navigation, route }) => {
       }
       return 0;
     });
-    
+
     setFilteredProducts(sorted);
   };
 
   // Toggle sort order and field
-  const toggleSort = (field) => {
+  const toggleSort = field => {
     const newOrder = field === sortBy && sortOrder === 'asc' ? 'desc' : 'asc';
     setSortBy(field);
     setSortOrder(newOrder);
@@ -147,28 +161,40 @@ const RemainingStockScreen = ({ navigation, route }) => {
   };
 
   // Get stock level category (low, medium, high)
-  const getStockLevel = (stock) => {
-    if (stock === undefined || stock === null) return 'unknown';
-    if (stock <= stockThresholds.low) return 'low';
-    if (stock <= stockThresholds.medium) return 'medium';
+  const getStockLevel = stock => {
+    if (stock === undefined || stock === null) {
+      return 'unknown';
+    }
+    if (stock <= stockThresholds.low) {
+      return 'low';
+    }
+    if (stock <= stockThresholds.medium) {
+      return 'medium';
+    }
     return 'high';
   };
 
   // Render stock indicator with appropriate color
-  const renderStockIndicator = (stock) => {
+  const renderStockIndicator = stock => {
     const level = getStockLevel(stock);
-    
+
     const colors = {
       low: '#FF5252',
       medium: '#FFC107',
       high: '#4CAF50',
-      unknown: '#9E9E9E'
+      unknown: '#9E9E9E',
     };
-    
+
     return (
-      <View style={[styles.stockIndicator, { backgroundColor: colors[level] }]}>
+      <View style={[styles.stockIndicator, {backgroundColor: colors[level]}]}>
         <Text style={styles.stockIndicatorText}>
-          {level === 'low' ? 'Low' : level === 'medium' ? 'Med' : level === 'high' ? 'High' : 'N/A'}
+          {level === 'low'
+            ? 'Low'
+            : level === 'medium'
+            ? 'Med'
+            : level === 'high'
+            ? 'High'
+            : 'N/A'}
         </Text>
       </View>
     );
@@ -181,21 +207,21 @@ const RemainingStockScreen = ({ navigation, route }) => {
       medium: 0,
       high: 0,
       unknown: 0,
-      total: filteredProducts.length
+      total: filteredProducts.length,
     };
-    
+
     filteredProducts.forEach(product => {
       const level = getStockLevel(product.stock);
       summary[level]++;
     });
-    
+
     return summary;
   };
 
   const stockSummary = getStockSummary();
 
   // Render each product row
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <Row style={styles.tableRow}>
       <Col style={styles.nameCol}>
         <Text style={styles.productName}>{item.name}</Text>
@@ -222,37 +248,40 @@ const RemainingStockScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <Appbar title="Remaining Stock Report" onBack={() => navigation.goBack()} />
-      
+      <Appbar
+        title="Remaining Stock Report"
+        onBack={() => navigation.goBack()}
+      />
+
       <View style={styles.contentContainer}>
         <Card style={styles.summaryCard}>
           <Card.Content>
             <Title style={styles.summaryTitle}>Stock Summary</Title>
-            
+
             <View style={styles.summaryRow}>
-              <View style={[styles.summaryItem, { backgroundColor: '#E3F2FD' }]}>
+              <View style={[styles.summaryItem, {backgroundColor: '#E3F2FD'}]}>
                 <Text style={styles.summaryValue}>{stockSummary.total}</Text>
                 <Text style={styles.summaryLabel}>Total Products</Text>
               </View>
-              
-              <View style={[styles.summaryItem, { backgroundColor: '#E8F5E9' }]}>
+
+              <View style={[styles.summaryItem, {backgroundColor: '#E8F5E9'}]}>
                 <Text style={styles.summaryValue}>{stockSummary.high}</Text>
                 <Text style={styles.summaryLabel}>High Stock</Text>
               </View>
-              
-              <View style={[styles.summaryItem, { backgroundColor: '#FFF8E1' }]}>
+
+              <View style={[styles.summaryItem, {backgroundColor: '#FFF8E1'}]}>
                 <Text style={styles.summaryValue}>{stockSummary.medium}</Text>
                 <Text style={styles.summaryLabel}>Medium Stock</Text>
               </View>
-              
-              <View style={[styles.summaryItem, { backgroundColor: '#FFEBEE' }]}>
+
+              <View style={[styles.summaryItem, {backgroundColor: '#FFEBEE'}]}>
                 <Text style={styles.summaryValue}>{stockSummary.low}</Text>
                 <Text style={styles.summaryLabel}>Low Stock</Text>
               </View>
             </View>
           </Card.Content>
         </Card>
-        
+
         <View style={styles.filtersContainer}>
           <Searchbar
             placeholder="Search products..."
@@ -260,9 +289,9 @@ const RemainingStockScreen = ({ navigation, route }) => {
             value={searchQuery}
             style={styles.searchBar}
           />
-          
-          {/* <ScrollView 
-            horizontal 
+
+          {/* <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesContainer}
           >
@@ -278,77 +307,86 @@ const RemainingStockScreen = ({ navigation, route }) => {
               </Chip>
             ))}
           </ScrollView> */}
-          
+
           <View style={styles.sortButtonsContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.sortButton}
-              onPress={() => toggleSort('name')}
-            >
-              <Text style={[
-                styles.sortButtonText,
-                sortBy === 'name' && styles.activeSortText
-              ]}>
+              onPress={() => toggleSort('name')}>
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  sortBy === 'name' && styles.activeSortText,
+                ]}>
                 Name
               </Text>
               {sortBy === 'name' && (
-                <Ionicons 
-                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                  size={16} 
+                <Ionicons
+                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
+                  size={16}
                   color={colors.primary}
                 />
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.sortButton}
-              onPress={() => toggleSort('stock')}
-            >
-              <Text style={[
-                styles.sortButtonText,
-                sortBy === 'stock' && styles.activeSortText
-              ]}>
+              onPress={() => toggleSort('stock')}>
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  sortBy === 'stock' && styles.activeSortText,
+                ]}>
                 Stock
               </Text>
               {sortBy === 'stock' && (
-                <Ionicons 
-                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                  size={16} 
+                <Ionicons
+                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
+                  size={16}
                   color={colors.primary}
                 />
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.sortButton}
-              onPress={() => toggleSort('price')}
-            >
-              <Text style={[
-                styles.sortButtonText,
-                sortBy === 'price' && styles.activeSortText
-              ]}>
+              onPress={() => toggleSort('price')}>
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  sortBy === 'price' && styles.activeSortText,
+                ]}>
                 Price
               </Text>
               {sortBy === 'price' && (
-                <Ionicons 
-                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                  size={16} 
+                <Ionicons
+                  name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
+                  size={16}
                   color={colors.primary}
                 />
               )}
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {loading ? (
-          <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
+          <ActivityIndicator
+            style={styles.loader}
+            size="large"
+            color={colors.primary}
+          />
         ) : filteredProducts.length > 0 ? (
           <View style={styles.tableContainer}>
             <DataTable
               headerTitles={['Product', 'Category', 'Stock', 'Price']}
-              colStyle={[styles.nameCol, styles.categoryCol, styles.stockCol, styles.priceCol]}
+              colStyle={[
+                styles.nameCol,
+                styles.categoryCol,
+                styles.stockCol,
+                styles.priceCol,
+              ]}
               alignment="flex-start">
               <ScrollView>
-                {filteredProducts.map((item) => renderItem({ item }))}
+                {filteredProducts.map(item => renderItem({item}))}
               </ScrollView>
             </DataTable>
           </View>
@@ -515,7 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9E9E9E',
     marginTop: 4,
-  }
+  },
 });
 
 export default RemainingStockScreen;

@@ -1,23 +1,20 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   Text,
   StyleSheet,
   View,
   TouchableOpacity,
   FlatList,
-  TouchableHighlight,
   ActivityIndicator,
   Alert,
   TextInput,
 } from 'react-native';
 import colors from '../../themes/colors';
-import {ListItem, Card, Overlay} from 'react-native-elements';
+import {ListItem, Overlay} from 'react-native-elements';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import moment from 'moment';
-import {useFocusEffect} from '@react-navigation/native';
 import Appbar from '../../components/Appbar';
 import AlertwithChild from '../../components/AlertwithChild';
-import SearchInput, {createFilter} from 'react-native-search-filter';
 import {getSaleTransaction, getProduct, listSales} from '../../graphql/queries';
 import {
   updateSaleTransaction,
@@ -42,9 +39,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
 
   useEffect(() => {
     fetchTransactionDetails();
-  }, []);
+  }, [fetchTransactionDetails, transactions]);
 
-  const fetchTransactionDetails = async () => {
+  const fetchTransactionDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch the full transaction details
@@ -78,9 +75,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchProductDetails, fetchSaleItems, transactions.id]);
 
-  const fetchSaleItems = async transactionId => {
+  const fetchSaleItems = useCallback(async transactionId => {
     try {
       // Query sales records associated with this transaction
       const result = await client.graphql({
@@ -131,9 +128,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       Alert.alert('Error', 'Failed to load sale items');
       return [];
     }
-  };
+  }, []);
 
-  const fetchProductDetails = async productIds => {
+  const fetchProductDetails = useCallback(async productIds => {
     try {
       const productDetails = [];
 
@@ -168,7 +165,7 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       Alert.alert('Error', 'Failed to load product details');
       return [];
     }
-  };
+  }, []);
 
   const onCancelAlert = () => {
     alertVisible(false);
@@ -619,7 +616,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
       onBackdropPress={() => setPinVisible(false)}
       overlayStyle={styles.overlay}>
       <View style={styles.pinContainer}>
-        <Text style={styles.pinTitle}>{isVoidingTransaction ? 'Void Transaction' : 'Enter PIN'}</Text>
+        <Text style={styles.pinTitle}>
+          {isVoidingTransaction ? 'Void Transaction' : 'Enter PIN'}
+        </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <TextInput
           placeholder="Enter PIN"
@@ -650,7 +649,9 @@ const TransactionDetailsScreen = ({navigation, route}) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={isVoidingTransaction ? handleVoidTransaction : handleVoidItem}>
+            onPress={
+              isVoidingTransaction ? handleVoidTransaction : handleVoidItem
+            }>
             <Text style={styles.confirmButtonText}>Confirm</Text>
           </TouchableOpacity>
         </View>

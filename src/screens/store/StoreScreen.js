@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
 import {
   deleteStore,
@@ -41,38 +41,37 @@ const StoreSummaryCard = ({store, isDefault, onPress}) => {
       </View>
 
       <ListItem.Content>
-        
-          <View style={styles.storeHeader}>
-            <Text style={styles.storeName}>{store.name}</Text>
+        <View style={styles.storeHeader}>
+          <Text style={styles.storeName}>{store.name}</Text>
 
-            <View style={styles.badgeContainer}>
-              {isDefault && (
-                <Badge
-                  value="Default"
-                  badgeStyle={{backgroundColor: colors.primary}}
-                  textStyle={styles.badgeText}
-                  containerStyle={styles.defaultBadge}
-                />
-              )}
-            </View>
+          <View style={styles.badgeContainer}>
+            {isDefault && (
+              <Badge
+                value="Default"
+                badgeStyle={{backgroundColor: colors.primary}}
+                textStyle={styles.badgeText}
+                containerStyle={styles.defaultBadge}
+              />
+            )}
           </View>
+        </View>
 
-          <View style={styles.locationContainer}>
-            <Icon
-              name="map-pin"
-              size={14}
-              color="#6c757d"
-              style={{marginRight: 5}}
-            />
-            <Text style={styles.locationText}>
-              {store.location || 'No location set'}
-            </Text>
-          </View>
-        
+        <View style={styles.locationContainer}>
+          <Icon
+            name="map-pin"
+            size={14}
+            color="#6c757d"
+            style={{marginRight: 5}}
+          />
+          <Text style={styles.locationText}>
+            {store.location || 'No location set'}
+          </Text>
+        </View>
+
         <View style={styles.storeFooter}>
           <Text style={styles.tapToSelect}>Tap to select this store</Text>
         </View>
-    </ListItem.Content>
+      </ListItem.Content>
     </ListItem>
   );
 };
@@ -154,7 +153,7 @@ const StoreScreen = ({navigation}) => {
     };
 
     initializeData();
-  }, []);
+  }, [dispatch]);
 
   // Set the current store in AsyncStorage and Redux
   const setCurrentStoreHandler = async store => {
@@ -273,7 +272,11 @@ const StoreScreen = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <Appbar hideMenuButton title="Your Stores" subtitle={`${currentUserRole || 'User'}`} />
+      <Appbar
+        hideMenuButton
+        title="Your Stores"
+        subtitle={`${currentUserRole || 'User'}`}
+      />
 
       {loading || storeLoading ? (
         <View style={styles.centered}>

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   Text,
   View,
@@ -25,7 +25,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   updateStaff,
   createStoreSettings as createStoreSettingsMutation,
-  updateStoreSettings as updateStoreSettingsMutation
+  updateStoreSettings as updateStoreSettingsMutation,
 } from '../../graphql/mutations';
 import {listStaff, listStoreSettings} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
@@ -89,78 +89,95 @@ const StoreSettings = ({route, navigation}) => {
   useEffect(() => {
     if (STORE.id) {
       console.log('Fetching store settings for ID:', STORE.id);
-      
+
       // Directly fetch store settings from AWS
       fetchStoreSettingsFromAPI(STORE.id);
-      
+
       // Also fetch legacy settings
       fetchLegacySettings();
-      
+
       // Load security settings
       loadSecuritySettings();
     }
-  }, [STORE.id]);
-  
+  }, [
+    STORE.id,
+    fetchLegacySettings,
+    fetchStoreSettingsFromAPI,
+    loadSecuritySettings,
+  ]);
+
   // Function to fetch store settings directly from GraphQL API
-  const fetchStoreSettingsFromAPI = async (storeId) => {
-    try {
-      setLoading(true);
-      const client = generateClient();
-      
-      console.log('Fetching store settings from API for store ID:', storeId);
-      
-      // Query for store settings with the matching storeId
-      const response = await client.graphql({
-        query: listStoreSettings,
-        variables: {
-          filter: {
-            storeId: { eq: storeId }
-          }
+  const fetchStoreSettingsFromAPI = useCallback(
+    async storeId => {
+      try {
+        setLoading(true);
+        const client = generateClient();
+
+        console.log('Fetching store settings from API for store ID:', storeId);
+
+        // Query for store settings with the matching storeId
+        const response = await client.graphql({
+          query: listStoreSettings,
+          variables: {
+            filter: {
+              storeId: {eq: storeId},
+            },
+          },
+        });
+
+        const settingsList = response?.data?.listStoreSettings?.items || [];
+        console.log(
+          'Fetched settings:',
+          settingsList.length > 0 ? 'Found' : 'None found',
+        );
+
+        if (settingsList.length > 0) {
+          // Use the first matching settings
+          const settings = settingsList[0];
+
+          // Save settings ID for later use in updates
+          setStoreSettingsId(settings.id);
+          console.log('Set settings ID:', settings.id);
+
+          // Update local state from fetched settings
+          setStoreName(STORE.name || '');
+          setStoreAddress(settings.address || '');
+          setStorePhone(settings.phone || '');
+          setStoreEmail(settings.email || '');
+          setStoreLogoUrl(settings.logoUrl || '');
+          setVat(
+            settings.vatPercentage ? settings.vatPercentage.toString() : '0',
+          );
+          setLowStock(
+            settings.lowStockThreshold
+              ? settings.lowStockThreshold.toString()
+              : '0',
+          );
+          setCashierView(settings.allowCashierSalesView || false);
+          setAllowCredit(settings.allowCreditSales || false);
+        } else {
+          console.log('No store settings found, using defaults');
+          // Set defaults
+          setStoreName(STORE.name || '');
+          setStoreAddress('');
+          setStorePhone('');
+          setStoreEmail('');
+          setStoreLogoUrl('');
+          setVat('0');
+          setLowStock('5');
+          setCashierView(true);
+          setAllowCredit(true);
         }
-      });
-      
-      const settingsList = response?.data?.listStoreSettings?.items || [];
-      console.log('Fetched settings:', settingsList.length > 0 ? 'Found' : 'None found');
-      
-      if (settingsList.length > 0) {
-        // Use the first matching settings
-        const settings = settingsList[0];
-        
-        // Save settings ID for later use in updates
-        setStoreSettingsId(settings.id);
-        console.log('Set settings ID:', settings.id);
-        
-        // Update local state from fetched settings
-        setStoreName(STORE.name || '');
-        setStoreAddress(settings.address || '');
-        setStorePhone(settings.phone || '');
-        setStoreEmail(settings.email || '');
-        setStoreLogoUrl(settings.logoUrl || '');
-        setVat(settings.vatPercentage ? settings.vatPercentage.toString() : '0');
-        setLowStock(settings.lowStockThreshold ? settings.lowStockThreshold.toString() : '0');
-        setCashierView(settings.allowCashierSalesView || false);
-        setAllowCredit(settings.allowCreditSales || false);
-      } else {
-        console.log('No store settings found, using defaults');
-        // Set defaults
-        setStoreName(STORE.name || '');
-        setStoreAddress('');
-        setStorePhone('');
-        setStoreEmail('');
-        setStoreLogoUrl('');
-        setVat('0');
-        setLowStock('5');
-        setCashierView(true);
-        setAllowCredit(true);
+      } catch (error) {
+        console.error('Error fetching store settings from API:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching store settings from API:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const fetchLegacySettings = async () => {
+    },
+    [STORE.name],
+  );
+
+  const fetchLegacySettings = useCallback(async () => {
     try {
       setLoading(true);
       // Load security settings from staff record since they're not part of StoreSettings model
@@ -170,7 +187,7 @@ const StoreSettings = ({route, navigation}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadSecuritySettings]);
 
   const loadLocalSettings = async () => {
     try {
@@ -212,18 +229,18 @@ const StoreSettings = ({route, navigation}) => {
     }
   };
 
-  const loadSecuritySettings = async () => {
+  const loadSecuritySettings = useCallback(async () => {
     try {
       // Always use STORE.id directly to ensure consistency with saving
       const storeId = STORE.id;
-      
+
       if (!storeId) {
         console.log('Store ID not found, skipping security settings load');
         return; // Exit if no storeId is available
       }
-      
+
       console.log('Loading security settings for store ID:', storeId);
-      
+
       // First check if we have a logged in user
       try {
         // Get current user to find staff record
@@ -233,12 +250,12 @@ const StoreSettings = ({route, navigation}) => {
           return;
         }
         const userId = userInfo.userId;
-        
+
         // Create a GraphQL client instance
         const client = generateClient();
 
         console.log('Fetching staff records for store:', storeId);
-        
+
         // Find staff record by ownerId (user ID) instead of storeId
         // storeId isn't a direct field in Staff model according to schema
         const staffResult = await client.graphql({
@@ -246,8 +263,11 @@ const StoreSettings = ({route, navigation}) => {
           variables: {filter: {ownerId: {eq: userId}}},
         });
 
-        console.log('Staff query result:', JSON.stringify(staffResult?.data?.listStaff || {}));
-        
+        console.log(
+          'Staff query result:',
+          JSON.stringify(staffResult?.data?.listStaff || {}),
+        );
+
         const staffList = staffResult?.data?.listStaff?.items || [];
         const currentStaff = staffList.find(staff => staff.ownerId === userId);
 
@@ -265,7 +285,7 @@ const StoreSettings = ({route, navigation}) => {
       // Main try/catch to ensure component doesn't crash
       console.error('Error in loadSecuritySettings:', error);
     }
-  };
+  }, [STORE.id]);
 
   // Validate settings before saving
   const validateSettings = () => {
@@ -308,19 +328,19 @@ const StoreSettings = ({route, navigation}) => {
 
     try {
       setLoading(true);
-      
+
       // Set a timeout to prevent infinite loading
       const saveTimeout = setTimeout(() => {
         setLoading(false);
         Alert.alert(
           'Operation Timeout',
-          'The save operation took too long. Please check network connectivity and try again.'
+          'The save operation took too long. Please check network connectivity and try again.',
         );
       }, 10000); // 10 second timeout
-      
+
       // Generate a hardcoded storeId if one isn't available
       const defaultStoreId = 'store-' + Date.now().toString();
-      
+
       // Create StoreSettings object
       const storeSettingsData = {
         // Always use STORE.id for consistency with loading
@@ -338,17 +358,17 @@ const StoreSettings = ({route, navigation}) => {
         receiptFooterText: '', // TODO: Add to UI
         businessHours: '', // TODO: Add to UI
       };
-      
+
       console.log('Saving store settings:', storeSettingsData);
 
       // Save directly to AWS using GraphQL
       try {
         console.log('Saving store settings directly to AWS...');
         const client = generateClient();
-        
+
         if (storeSettingsId) {
           console.log('Updating existing settings with ID:', storeSettingsId);
-          
+
           // Update existing settings in AWS
           await client.graphql({
             query: updateStoreSettingsMutation,
@@ -366,22 +386,22 @@ const StoreSettings = ({route, navigation}) => {
                 allowCreditSales: storeSettingsData.allowCreditSales,
                 currencySymbol: storeSettingsData.currencySymbol,
                 receiptFooterText: storeSettingsData.receiptFooterText,
-                businessHours: storeSettingsData.businessHours
-              }
-            }
+                businessHours: storeSettingsData.businessHours,
+              },
+            },
           });
-          
+
           // Also update Redux state for immediate UI updates
           dispatch({
             type: 'storeSettings/updateSuccess',
             payload: {
               id: storeSettingsId, // Use storeSettingsId instead of reduxStoreSettings.id
-              ...storeSettingsData
-            }
+              ...storeSettingsData,
+            },
           });
         } else {
           console.log('Creating new settings');
-          
+
           // Create new settings in AWS
           const result = await client.graphql({
             query: createStoreSettingsMutation,
@@ -398,31 +418,31 @@ const StoreSettings = ({route, navigation}) => {
                 allowCreditSales: storeSettingsData.allowCreditSales,
                 currencySymbol: storeSettingsData.currencySymbol,
                 receiptFooterText: storeSettingsData.receiptFooterText,
-                businessHours: storeSettingsData.businessHours
-              }
-            }
+                businessHours: storeSettingsData.businessHours,
+              },
+            },
           });
-          
+
           const newSettings = result.data.createStoreSettings;
           console.log('New settings created:', newSettings.id);
-          
+
           // Update Redux state for immediate UI updates
           dispatch({
             type: 'storeSettings/createSuccess',
-            payload: newSettings
+            payload: newSettings,
           });
         }
       } catch (graphqlError) {
         console.error('GraphQL error saving settings:', graphqlError);
         throw graphqlError; // Re-throw to be caught by outer try/catch
       }
-      
+
       // Clear the timeout since the operation completed
       clearTimeout(saveTimeout);
 
-      // We no longer need to save to local AsyncStorage separately 
+      // We no longer need to save to local AsyncStorage separately
       // as our Redux actions now handle that directly
-      
+
       // Update staff PIN if changed (still using GraphQL API)
       if (newPin && newPin.trim() !== '') {
         await updateStaffPin();
@@ -490,21 +510,21 @@ const StoreSettings = ({route, navigation}) => {
     try {
       // Always use STORE.id for consistency with other operations
       const storeId = STORE.id;
-      
+
       if (!storeId) {
         console.log('Store ID not found, cannot update staff PIN');
         return; // Exit if no storeId is available
       }
-      
+
       // Get current user info
       const userInfo = await getCurrentUser();
       const userId = userInfo.userId;
-      
+
       if (!userId) {
         console.log('User ID not found, cannot update staff PIN');
         return;
       }
-      
+
       // Create a GraphQL client instance
       const client = generateClient();
 
@@ -513,8 +533,11 @@ const StoreSettings = ({route, navigation}) => {
         query: listStaff,
         variables: {filter: {ownerId: {eq: userId}}},
       });
-      
-      console.log('Staff query for PIN update result:', JSON.stringify(staffResult?.data?.listStaff || {}));
+
+      console.log(
+        'Staff query for PIN update result:',
+        JSON.stringify(staffResult?.data?.listStaff || {}),
+      );
 
       const staffList = staffResult?.data?.listStaff?.items || [];
       const currentStaff = staffList.find(staff => staff.ownerId === userId);
@@ -529,10 +552,13 @@ const StoreSettings = ({route, navigation}) => {
         } catch (hashError) {
           console.error('Error hashing PIN:', hashError);
           // Don't fall back to plain text - security first
-          Alert.alert('Error', 'There was a problem securing your PIN. Please try again.');
+          Alert.alert(
+            'Error',
+            'There was a problem securing your PIN. Please try again.',
+          );
           throw new Error('PIN hashing failed');
         }
-        
+
         // Update staff PIN with hashed value
         await client.graphql({
           query: updateStaff,
@@ -543,7 +569,7 @@ const StoreSettings = ({route, navigation}) => {
             },
           },
         });
-        
+
         console.log('Updated staff PIN with hash');
 
         console.log('Staff PIN updated successfully');
@@ -849,7 +875,7 @@ const StoreSettings = ({route, navigation}) => {
 
       {/* Network Status Indicator */}
       {/* <NetworkStatus /> */}
-      
+
       {/* Save Button */}
       <View style={styles.buttonContainer}>
         <Button
@@ -859,7 +885,9 @@ const StoreSettings = ({route, navigation}) => {
           loading={loading || reduxIsLoading}
           disabled={loading || reduxIsLoading || saveSuccess}
           labelStyle={{color: 'white', fontSize: 18, fontWeight: 'bold'}}
-          icon="content-save">  {/* Add an icon to make button more visible */}
+          icon="content-save">
+          {' '}
+          {/* Add an icon to make button more visible */}
           {saveSuccess ? 'SAVED SUCCESSFULLY!' : 'SAVE SETTINGS'}
         </Button>
       </View>
@@ -991,7 +1019,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#e0e0e0',
     elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: {width: 0, height: -2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },

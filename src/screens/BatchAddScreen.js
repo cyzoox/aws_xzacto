@@ -395,7 +395,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#fff',
     marginVertical: 2,
-
   },
   categoryPicker: {
     flexDirection: 'row',
@@ -432,18 +431,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   footer: {
-   
     backgroundColor: colors.primary,
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#ddd',
-    marginBottom: 50
+    marginBottom: 50,
   },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
     paddingBottom: 16,
-    marginBottom: 10
+    marginBottom: 10,
   },
   content: {
     flex: 1,
@@ -502,19 +500,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  footer: {
-    padding: 20,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: 1,
-  },
+  // footer: {
+  //   padding: 20,
+  //   paddingBottom: 24,
+  //   borderTopWidth: 1,
+  //   borderTopColor: colors.border,
+  //   marginTop: 1,
+  // },
   saveButton: {
     marginTop: 1,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: colors.secondary,
-
   },
 });
 

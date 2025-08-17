@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  ScrollView,
 } from 'react-native';
 import Appbar from '../../components/Appbar';
-import {
-  Provider,
-
-} from 'react-native-paper';
+import {Provider} from 'react-native-paper';
 import Cards from '../../components/Cards';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
@@ -25,7 +20,7 @@ import {Grid, Col, Row} from 'react-native-easy-grid';
 import colors from '../../themes/colors';
 
 // GraphQL
-import {listSaleTransactions, getSaleTransaction, getStaff} from '../../graphql/queries';
+import {listSaleTransactions, getStaff} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
 const client = generateClient();
 
@@ -60,16 +55,14 @@ const BillsAndReceiptReports = ({navigation, route}) => {
 
   useEffect(() => {
     fetchTransactions();
-  }, [store.id]);
+  }, [fetchTransactions, store.id]);
 
   useEffect(() => {
     filterTransactionsByDate();
-  }, [transactions, viewMode]); // Only run when transactions or viewMode changes
-  
-
+  }, [filterTransactionsByDate, transactions, viewMode]); // Only run when transactions or viewMode changes
 
   // Fetch all transactions for the store
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await client.graphql({
@@ -94,22 +87,26 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [generateReports, store.id]);
 
   // Generate reports from transaction data
-  const generateReports = async (transactionData) => {
-    console.log('Generating reports with', transactionData.length, 'transactions');
+  const generateReports = useCallback(async transactionData => {
+    console.log(
+      'Generating reports with',
+      transactionData.length,
+      'transactions',
+    );
     // Generate cashier reports
     const cashierData = {};
     const itemData = {};
-    
+
     // Process transactions and gather unique staff IDs
     const staffIds = new Set();
-    
+
     transactionData.forEach(transaction => {
       if (transaction.staffID) {
         staffIds.add(transaction.staffID);
-        
+
         if (!cashierData[transaction.staffID]) {
           // Initialize with default/placeholder name
           cashierData[transaction.staffID] = {
@@ -119,20 +116,20 @@ const BillsAndReceiptReports = ({navigation, route}) => {
             totalSales: 0,
           };
         }
-        
+
         cashierData[transaction.staffID].salesCount += 1;
         cashierData[transaction.staffID].totalSales += transaction.total || 0;
       }
     });
-    
+
     // Fetch actual staff names for each staffID
     try {
       for (const staffId of staffIds) {
         const staffResult = await client.graphql({
           query: getStaff,
-          variables: { id: staffId }
+          variables: {id: staffId},
         });
-        
+
         if (staffResult.data.getStaff) {
           const staffName = staffResult.data.getStaff.name;
           if (cashierData[staffId]) {
@@ -140,10 +137,12 @@ const BillsAndReceiptReports = ({navigation, route}) => {
           }
         }
       }
-      
+
       // Log successful staff name fetching
-      console.log('Updated cashier data with names:', Object.keys(cashierData).length);
-      
+      console.log(
+        'Updated cashier data with names:',
+        Object.keys(cashierData).length,
+      );
     } catch (error) {
       console.error('Error fetching staff details:', error);
     }
@@ -151,53 +150,55 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     // Update state with new data
     setCashierReports(cashierData);
     setItemReports(itemData);
-  };
+  }, []);
 
   // Filter transactions based on date range
-  const filterTransactionsByDate = async (period) => {
-    // Use the passed period or fall back to the state
-    const currentFilterPeriod = period || filterPeriod;
-    let start, end;
+  const filterTransactionsByDate = useCallback(
+    async period => {
+      // Use the passed period or fall back to the state
+      const currentFilterPeriod = period || filterPeriod;
+      let start, end;
 
-    switch (currentFilterPeriod) {
-      case 'today':
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-        break;
-      case 'yesterday':
-        start = moment().subtract(1, 'days').startOf('day');
-        end = moment().subtract(1, 'days').endOf('day');
-        break;
-      case 'thisWeek':
-        start = moment().startOf('week');
-        end = moment().endOf('week');
-        break;
-      case 'thisMonth':
-        start = moment().startOf('month');
-        end = moment().endOf('month');
-        break;
-      case 'custom':
-        start = moment(startDate);
-        end = moment(endDate);
-        break;
-      default:
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-    }
+      switch (currentFilterPeriod) {
+        case 'today':
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+          break;
+        case 'yesterday':
+          start = moment().subtract(1, 'days').startOf('day');
+          end = moment().subtract(1, 'days').endOf('day');
+          break;
+        case 'thisWeek':
+          start = moment().startOf('week');
+          end = moment().endOf('week');
+          break;
+        case 'thisMonth':
+          start = moment().startOf('month');
+          end = moment().endOf('month');
+          break;
+        case 'custom':
+          start = moment(startDate);
+          end = moment(endDate);
+          break;
+        default:
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+      }
 
-    const filtered = transactions.filter(transaction => {
-      const transactionDate = moment(transaction.createdAt);
-      return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
-    });
+      const filtered = transactions.filter(transaction => {
+        const transactionDate = moment(transaction.createdAt);
+        return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
+      });
 
-    // Update filtered transactions state
-    setFilteredTransactions(filtered);
-    
-    // Directly regenerate reports based on filtered transactions
+      // Update filtered transactions state
+      setFilteredTransactions(filtered);
+
+      // Directly regenerate reports based on filtered transactions
 
       await generateReports(filtered);
-
-  };
+    },
+    [generateReports, transactions, endDate, filterPeriod, startDate],
+  );
 
   // Handle date picker changes
   const onDateChange = (event, selectedDate) => {
@@ -226,17 +227,7 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     setDatePickerVisible(true);
   };
 
- 
-
   // Print transaction receipt
-  const printReceipt = transaction => {
-    // In a real app, this would interface with a printer
-    // For this example, we'll just show an alert
-    Alert.alert(
-      'Print Receipt',
-      `Printing receipt for transaction ${transaction.id.substring(0, 8)}`,
-    );
-  };
 
   // Calculate summary statistics
   const calculateSummary = () => {
@@ -254,8 +245,6 @@ const BillsAndReceiptReports = ({navigation, route}) => {
         totalTransactions > 0 ? totalAmount / totalTransactions : 0,
     };
   };
-
- 
 
   // Render custom date range selector
   const renderCustomDateRange = () =>
@@ -284,37 +273,37 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     );
 
   // Render summary statistics
-   const renderSummary = () => {
-     const summary = calculateSummary();
+  const renderSummary = () => {
+    const summary = calculateSummary();
 
-     return (
-       <Cards>
-         <View
-           style={{
-             flexDirection: 'row',
-             justifyContent: 'space-between',
-             marginBottom: 20,
-           }}>
-           <Text style={styles.summaryTitle}>Sales Overview</Text>
-           <View style={styles.periodFilter}>
-             <TouchableOpacity
-               style={[
-                 styles.periodButton,
-                 filterPeriod === 'today' && styles.activePeriod,
-               ]}
-               onPress={() => {
-                 setFilterPeriod('today');
-                 filterTransactionsByDate('today');
-               }}>
-               <Text
-                 style={[
-                   styles.periodText,
-                   filterPeriod === 'today' && styles.activePeriodText,
-                 ]}>
-                 Today
-               </Text>
-             </TouchableOpacity>
-             {/* <TouchableOpacity
+    return (
+      <Cards>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+          }}>
+          <Text style={styles.summaryTitle}>Sales Overview</Text>
+          <View style={styles.periodFilter}>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'today' && styles.activePeriod,
+              ]}
+              onPress={() => {
+                setFilterPeriod('today');
+                filterTransactionsByDate('today');
+              }}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'today' && styles.activePeriodText,
+                ]}>
+                Today
+              </Text>
+            </TouchableOpacity>
+            {/* <TouchableOpacity
               style={[
                 styles.periodButton,
                 filterPeriod === 'yesterday' && styles.activePeriod,
@@ -328,90 +317,85 @@ const BillsAndReceiptReports = ({navigation, route}) => {
                 Yesterday
               </Text>
             </TouchableOpacity> */}
-             <TouchableOpacity
-               style={[
-                 styles.periodButton,
-                 filterPeriod === 'thisWeek' && styles.activePeriod,
-               ]}
-               onPress={() => {
-                 setFilterPeriod('thisWeek');
-                 filterTransactionsByDate('thisWeek');
-               }}>
-               <Text
-                 style={[
-                   styles.periodText,
-                   filterPeriod === 'thisWeek' && styles.activePeriodText,
-                 ]}>
-                 This Week
-               </Text>
-             </TouchableOpacity>
-             <TouchableOpacity
-               style={[
-                 styles.periodButton,
-                 filterPeriod === 'thisMonth' && styles.activePeriod,
-               ]}
-               onPress={() => {
-                 setFilterPeriod('thisMonth');
-                 filterTransactionsByDate('thisMonth');
-               }}>
-               <Text
-                 style={[
-                   styles.periodText,
-                   filterPeriod === 'thisMonth' && styles.activePeriodText,
-                 ]}>
-                 This Month
-               </Text>
-             </TouchableOpacity>
-             <TouchableOpacity
-               style={[
-                 styles.periodButton,
-                 filterPeriod === 'custom' && styles.activePeriod,
-               ]}
-               onPress={() => {
-                 setFilterPeriod('custom');
-                 filterTransactionsByDate('custom');
-               }}>
-               <Text
-                 style={[
-                   styles.periodText,
-                   filterPeriod === 'custom' && styles.activePeriodText,
-                 ]}>
-                 Custom
-               </Text>
-             </TouchableOpacity>
-           </View>
-         </View>
-         <View style={styles.summaryContainer}>
-           <View style={styles.summaryCard}>
-             <Text style={styles.summaryValue}>
-               {summary.totalTransactions}
-             </Text>
-             <Text style={styles.summaryLabel}>Total Bills</Text>
-           </View>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'thisWeek' && styles.activePeriod,
+              ]}
+              onPress={() => {
+                setFilterPeriod('thisWeek');
+                filterTransactionsByDate('thisWeek');
+              }}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'thisWeek' && styles.activePeriodText,
+                ]}>
+                This Week
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'thisMonth' && styles.activePeriod,
+              ]}
+              onPress={() => {
+                setFilterPeriod('thisMonth');
+                filterTransactionsByDate('thisMonth');
+              }}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'thisMonth' && styles.activePeriodText,
+                ]}>
+                This Month
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                filterPeriod === 'custom' && styles.activePeriod,
+              ]}
+              onPress={() => {
+                setFilterPeriod('custom');
+                filterTransactionsByDate('custom');
+              }}>
+              <Text
+                style={[
+                  styles.periodText,
+                  filterPeriod === 'custom' && styles.activePeriodText,
+                ]}>
+                Custom
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.summaryContainer}>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>{summary.totalTransactions}</Text>
+            <Text style={styles.summaryLabel}>Total Bills</Text>
+          </View>
 
-           <View style={styles.summaryCard}>
-             <Text style={styles.summaryValue}>
-               {formatMoney(summary.totalAmount, {symbol: '₱', precision: 2})}
-             </Text>
-             <Text style={styles.summaryLabel}>Total Sales</Text>
-           </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {formatMoney(summary.totalAmount, {symbol: '₱', precision: 2})}
+            </Text>
+            <Text style={styles.summaryLabel}>Total Sales</Text>
+          </View>
 
-           <View style={styles.summaryCard}>
-             <Text style={styles.summaryValue}>
-               {formatMoney(summary.averageTransaction, {
-                 symbol: '₱',
-                 precision: 2,
-               })}
-             </Text>
-             <Text style={styles.summaryLabel}>Avg. Bill</Text>
-           </View>
-         </View>
-       </Cards>
-     );
-   };
-
- 
-
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {formatMoney(summary.averageTransaction, {
+                symbol: '₱',
+                precision: 2,
+              })}
+            </Text>
+            <Text style={styles.summaryLabel}>Avg. Bill</Text>
+          </View>
+        </View>
+      </Cards>
+    );
+  };
 
   // Render cashier report
   const renderCashierReport = () => {
@@ -419,7 +403,7 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     const cashierList = Object.values(cashierReports).sort(
       (a, b) => b.totalSales - a.totalSales,
     );
-    
+
     return (
       <DataTable
         total={calculateSummary().totalAmount}
@@ -444,11 +428,10 @@ const BillsAndReceiptReports = ({navigation, route}) => {
             renderItem={({item}) => (
               <Grid>
                 <Row style={{height: 30, backgroundColor: colors.white}}>
-                  <Col
-                    style={[styles.colStyle, {alignItems: 'center'}]}>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
                     <Text style={styles.textColor}>{item.name}</Text>
                   </Col>
-                  <Col style={[styles.colStyle,]}>
+                  <Col style={[styles.colStyle]}>
                     <Text style={styles.textColor}>{item.salesCount}</Text>
                   </Col>
                   <Col style={[styles.colStyle, {alignItems: 'center'}]}>
@@ -482,8 +465,6 @@ const BillsAndReceiptReports = ({navigation, route}) => {
     );
   };
 
- 
-
   // Main render
   return (
     <Provider>
@@ -492,7 +473,6 @@ const BillsAndReceiptReports = ({navigation, route}) => {
           title="Cashier Reports"
           subtitle={store.name}
           onBack={() => navigation.goBack()}
-        
         />
         {/* Summary Statistics */}
         {renderSummary()}
@@ -585,7 +565,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 10,
     marginBottom: 10,
- 
   },
   summaryCard: {
     flex: 1,
@@ -784,47 +763,47 @@ const styles = StyleSheet.create({
     color: colors.charcoalGrey,
     fontSize: 14,
   },
-   // Filter card styles
-      filterCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-      },
-      filterTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: colors.textDark,
-        marginBottom: 12,
-      },
-      periodFilter: {
-        flexDirection: 'row',
-        backgroundColor: '#F5F5F5',
-        borderRadius: 20,
-        padding: 2,
-        justifyContent: 'center',
-      },
-      periodButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 18,
-      },
-      activePeriod: {
-        backgroundColor: colors.primary,
-      },
-      periodText: {
-        color: colors.textDark,
-        fontSize: 14,
-      },
-      activePeriodText: {
-        color: '#FFFFFF',
-        fontWeight: '600',
-      },
+  // Filter card styles
+  filterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textDark,
+    marginBottom: 12,
+  },
+  periodFilter: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  periodButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+  },
+  activePeriod: {
+    backgroundColor: colors.primary,
+  },
+  periodText: {
+    color: colors.textDark,
+    fontSize: 14,
+  },
+  activePeriodText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 export default BillsAndReceiptReports;

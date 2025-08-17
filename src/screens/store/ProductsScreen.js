@@ -1,10 +1,9 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Text,
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Image,
   View,
   ActivityIndicator,
   Alert,
@@ -12,10 +11,9 @@ import {
 import {TextInput} from 'react-native-paper';
 import {useDispatch, useSelector} from 'react-redux';
 import NetInfo from '@react-native-community/netinfo';
-import { generateClient } from 'aws-amplify/api';
+import {generateClient} from 'aws-amplify/api';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {
-  listProducts,
   listVariants,
   listAddons,
   getWarehouseProduct,
@@ -28,7 +26,6 @@ import {
 } from '../../redux/slices/categorySlice';
 import {useStore} from '../../context/StoreContext';
 
-import ModalInputForm from '../../components/ModalInputForm';
 import Products from '../../components/Products';
 import colors from '../../themes/colors';
 import Appbar from '../../components/Appbar';
@@ -40,20 +37,13 @@ const client = generateClient();
 const ProductsScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
   // Get store directly from route params if available
-   const STORE = route.params.store;
+  const STORE = route.params.store;
 
   // Still use StoreContext as fallback
-  const {
-    currentStore: contextStore,
-    currentStaff,
-    staffStores,
-    fetchStores,
-  } = useStore();
+  const {currentStore: contextStore} = useStore();
 
   // Use store from params if available, otherwise fall back to context
-  const [activeStore, setActiveStore] = useState(
-    STORE || contextStore,
-  );
+  const [activeStore, setActiveStore] = useState(STORE || contextStore);
 
   const [term, setTerm] = useState('');
   const [categoryName, setCategoryName] = useState('');
@@ -66,7 +56,6 @@ const ProductsScreen = ({navigation, route}) => {
   // Get categories from Redux store
   const {
     items: categories,
-    loading: categoryLoading,
     error: categoryError,
     offlineMode,
   } = useSelector(state => state.categories);
@@ -98,13 +87,13 @@ const ProductsScreen = ({navigation, route}) => {
   // Initialize data on mount and when store changes
   useEffect(() => {
     console.log('Route params changed:', route.params);
-    
+
     // Check if we need to refresh products (coming from product creation/edit)
     if (route.params?.refresh) {
       console.log('Refresh flag detected, refreshing products');
       fetchProducts();
     }
-    
+
     // Update active store if it comes from navigation params
     if (route.params?.store) {
       console.log(
@@ -113,12 +102,12 @@ const ProductsScreen = ({navigation, route}) => {
       );
       setActiveStore(route.params.store);
     }
-    
+
     // Clear the refresh flag from navigation params to avoid repeated refreshes
     if (route.params?.refresh) {
-      navigation.setParams({ refresh: undefined, timestamp: undefined });
+      navigation.setParams({refresh: undefined, timestamp: undefined});
     }
-  }, [route.params]);
+  }, [fetchProducts, navigation, route.params]);
 
   // Fetch products when active store changes or on initial load
   useEffect(() => {
@@ -139,7 +128,7 @@ const ProductsScreen = ({navigation, route}) => {
       dispatch(fetchCategories(null));
       setInitialized(true);
     }
-  }, [activeStore, initialized, dispatch]);
+  }, [activeStore, initialized, dispatch, fetchProducts]);
 
   const fetchProductDetails = async productId => {
     try {
@@ -169,7 +158,7 @@ const ProductsScreen = ({navigation, route}) => {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -377,7 +366,7 @@ const ProductsScreen = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeStore, route.params?.store]);
 
   const saveCategory = async () => {
     if (!categoryName.trim()) {
@@ -419,7 +408,12 @@ const ProductsScreen = ({navigation, route}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar title="Products Dashboard" hideMenuButton onBack={() => navigation.goBack()} subtitle={activeStore.name}/>
+      <Appbar
+        title="Products Dashboard"
+        hideMenuButton
+        onBack={() => navigation.goBack()}
+        subtitle={activeStore.name}
+      />
       <Cards>
         <View style={styles.metricsContainer}>
           <TouchableOpacity
@@ -457,9 +451,7 @@ const ProductsScreen = ({navigation, route}) => {
 
           <TouchableOpacity
             style={styles.metricItem}
-            onPress={() =>
-             setCategoryModalVisible(true)
-            }>
+            onPress={() => setCategoryModalVisible(true)}>
             <View style={[styles.iconContainer, {backgroundColor: '#FFF3E0'}]}>
               <Icon name="add-to-photos" size={24} color="#F57C00" />
             </View>

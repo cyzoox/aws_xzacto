@@ -84,7 +84,7 @@ export default function StoreManagementScreen({navigation}) {
     };
 
     initialize();
-  }, []);
+  }, [dispatch]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newStore, setNewStore] = useState({
@@ -114,7 +114,7 @@ export default function StoreManagementScreen({navigation}) {
       const freshLimitsData = await AsyncStorage.getItem('subscriptionLimits');
       if (freshLimitsData) {
         const freshLimits = JSON.parse(freshLimitsData);
-        
+
         // Update state for future use
         setSubscriptionLimits(freshLimits);
 
@@ -159,11 +159,11 @@ export default function StoreManagementScreen({navigation}) {
 
     // Dispatch action to add store
     const storeResult = await dispatch(addStore(storeInput));
-    
+
     // Create default store settings for the new store
     if (storeResult.payload && storeResult.payload.id) {
       const storeId = storeResult.payload.id;
-      
+
       // Create default store settings
       const storeSettingsData = {
         storeId: storeId,
@@ -178,9 +178,9 @@ export default function StoreManagementScreen({navigation}) {
         allowCreditSales: true,
         currencySymbol: '$',
         receiptFooterText: 'Thank you for your business!',
-        businessHours: ''
+        businessHours: '',
       };
-      
+
       // Dispatch action to create store settings
       await dispatch(createStoreSettings(storeSettingsData));
     }
@@ -317,10 +317,10 @@ export default function StoreManagementScreen({navigation}) {
 }
 
 const styles = StyleSheet.create({
-  submitButton:{
+  submitButton: {
     marginTop: 16,
-    backgroundColor: colors.secondary
-    },
+    backgroundColor: colors.secondary,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -404,5 +404,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-
 });

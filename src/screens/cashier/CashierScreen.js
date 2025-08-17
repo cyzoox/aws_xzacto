@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   TouchableOpacity,
@@ -73,7 +73,7 @@ const CashierScreen = ({navigation, route}) => {
     navigation.navigate('Checkout');
   };
 
-  const fetchList = async () => {
+  const fetchList = useCallback(async () => {
     console.log(
       `Fetching cart items for store ${staffData.store_id}, cashier ${staffData.id}`,
     );
@@ -103,7 +103,7 @@ const CashierScreen = ({navigation, route}) => {
       console.log('Error fetching cart items:', err.message);
       // Don't clear cart on error - keep previous state
     }
-  };
+  }, [staffData.store_id, staffData.id]);
 
   useEffect(() => {
     const handleOrientationChange = () => {
@@ -128,7 +128,7 @@ const CashierScreen = ({navigation, route}) => {
       subscription.remove();
       unsubscribe();
     };
-  }, [staffData.store_id]);
+  }, [staffData.store_id, fetchList, navigation]);
 
   useEffect(() => {
     if (route.params?.refreshCart) {
@@ -144,7 +144,7 @@ const CashierScreen = ({navigation, route}) => {
         fetchList();
       }, 500);
     }
-  }, [route.params?.refreshCart, route.params?.timestamp]);
+  }, [route.params?.refreshCart, route.params?.timestamp, fetchList]);
 
   const calculateTotal = () =>
     cart.reduce((total, item) => total + item.quantity * item.sprice, 0);

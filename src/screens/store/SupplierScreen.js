@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Text,
   StyleSheet,
@@ -35,7 +35,6 @@ import Appbar from '../../components/Appbar';
 import colors from '../../themes/colors';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-
 const userSelector = context => [context.user];
 const KEYS_TO_FILTERS = ['store_id'];
 const client = generateClient();
@@ -63,7 +62,7 @@ const Supplier = ({navigation, route}) => {
   // Fetch suppliers on component mount
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [fetchSuppliers]);
 
   // Search functionality
   useEffect(() => {
@@ -80,7 +79,7 @@ const Supplier = ({navigation, route}) => {
     }
   }, [searchQuery, suppliers]);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     try {
       setLoading(true);
       const result = await client.graphql({
@@ -96,9 +95,9 @@ const Supplier = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeData.id]);
 
-  const saveSupplier = async () => {
+  const saveSupplier = useCallback(async () => {
     // Validate inputs
     if (!supplierName.trim()) {
       Alert.alert('Error', 'Supplier name is required!');
@@ -143,10 +142,10 @@ const Supplier = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supplierName, contact, address, storeData.id, fetchSuppliers]);
 
   // Update supplier function
-  const updateSupplierData = async () => {
+  const updateSupplierData = useCallback(async () => {
     if (!selectedSupplier) {
       return;
     }
@@ -192,41 +191,44 @@ const Supplier = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSupplier, supplierName, contact, address, fetchSuppliers]);
 
   // Delete supplier function
-  const deleteSupplierData = supplier => {
-    Alert.alert(
-      'Delete Supplier',
-      `Are you sure you want to delete ${supplier.name}?`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await client.graphql({
-                query: deleteSupplier,
-                variables: {input: {id: supplier.id}},
-              });
-              fetchSuppliers();
-              Alert.alert('Success', 'Supplier deleted successfully!');
-            } catch (error) {
-              console.error('Error deleting supplier:', error);
-              Alert.alert(
-                'Error',
-                'Failed to delete supplier. Please try again.',
-              );
-            } finally {
-              setLoading(false);
-            }
+  const deleteSupplierData = useCallback(
+    supplier => {
+      Alert.alert(
+        'Delete Supplier',
+        `Are you sure you want to delete ${supplier.name}?`,
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setLoading(true);
+                await client.graphql({
+                  query: deleteSupplier,
+                  variables: {input: {id: supplier.id}},
+                });
+                fetchSuppliers();
+                Alert.alert('Success', 'Supplier deleted successfully!');
+              } catch (error) {
+                console.error('Error deleting supplier:', error);
+                Alert.alert(
+                  'Error',
+                  'Failed to delete supplier. Please try again.',
+                );
+              } finally {
+                setLoading(false);
+              }
+            },
           },
-        },
-      ],
-    );
-  };
+        ],
+      );
+    },
+    [fetchSuppliers],
+  );
 
   // Open edit modal with supplier data
   const openEditModal = supplier => {
@@ -249,7 +251,7 @@ const Supplier = ({navigation, route}) => {
         containerStyle={{
           borderColor: 'grey',
           borderStyle: 'solid',
-        
+
           borderRadius: 20,
           backgroundColor: colors.white,
         }}
@@ -380,7 +382,7 @@ const Supplier = ({navigation, route}) => {
           setSupplierName('');
           setContact('');
           setAddress('');
-          
+
           // Open Add Supplier Modal
           setAddModalVisible(true);
         }}

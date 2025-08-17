@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Text,
   StyleSheet,
@@ -10,13 +10,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {
-  ListItem,
-  Avatar,
-  CheckBox,
-  Button,
-  FAB,
-} from 'react-native-elements';
+import {ListItem, Avatar, CheckBox, Button, FAB} from 'react-native-elements';
 import {TextInput} from 'react-native-paper';
 import Alert from '../../components/Alert';
 import Appbar from '../../components/Appbar';
@@ -61,9 +55,9 @@ const StaffsScreen = ({navigation, route}) => {
 
     getAuthUser();
     fetchStaff();
-  }, []);
+  }, [fetchStaff]);
 
-  const fetchStaff = async () => {
+  const fetchStaff = useCallback(async () => {
     setLoading(true);
     try {
       if (!STORE || !STORE.id) {
@@ -125,7 +119,7 @@ const StaffsScreen = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [STORE]);
 
   const saveStaff = async (
     name,
@@ -236,7 +230,7 @@ const StaffsScreen = ({navigation, route}) => {
         containerStyle={{
           borderColor: 'grey',
           borderStyle: 'solid',
-  
+
           borderRadius: 20,
           backgroundColor: colors.white,
         }}
@@ -270,7 +264,7 @@ const StaffsScreen = ({navigation, route}) => {
         confirmTitle="OK"
       />
       <Appbar
-        title={`Cashiers`}
+        title={'Cashiers'}
         subtitle={STORE.name || ''}
         onBack={() => navigation.goBack()}
       />
@@ -296,7 +290,7 @@ const StaffsScreen = ({navigation, route}) => {
           contentContainerStyle={styles.listContainer}
         />
       )}
-      
+
       {/* Edit Staff Modal */}
       <Modal
         animationType="slide"
@@ -311,7 +305,7 @@ const StaffsScreen = ({navigation, route}) => {
                 <Ionicons name="close" size={24} color={colors.darkGray} />
               </TouchableOpacity>
             </View>
-            
+
             <TextInput
               mode="outlined"
               label="Name"
@@ -320,7 +314,7 @@ const StaffsScreen = ({navigation, route}) => {
               style={styles.textInput}
               onChangeText={text => setName(text)}
             />
-            
+
             <TextInput
               mode="outlined"
               label="PIN"
@@ -360,7 +354,7 @@ const StaffsScreen = ({navigation, route}) => {
                 }}
               />
             </View>
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 title="Cancel"
@@ -381,7 +375,7 @@ const StaffsScreen = ({navigation, route}) => {
           </View>
         </View>
       </Modal>
-      
+
       {/* Add New Cashier Modal */}
       <Modal
         animationType="slide"
@@ -396,7 +390,7 @@ const StaffsScreen = ({navigation, route}) => {
                 <Ionicons name="close" size={24} color={colors.darkGray} />
               </TouchableOpacity>
             </View>
-            
+
             <TextInput
               mode="outlined"
               label="Name"
@@ -404,7 +398,7 @@ const StaffsScreen = ({navigation, route}) => {
               style={styles.textInput}
               onChangeText={text => setName(text)}
             />
-            
+
             <TextInput
               mode="outlined"
               label="PIN"
@@ -415,7 +409,7 @@ const StaffsScreen = ({navigation, route}) => {
               maxLength={5}
               secureTextEntry
             />
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 title="Cancel"
@@ -442,7 +436,7 @@ const StaffsScreen = ({navigation, route}) => {
           </View>
         </View>
       </Modal>
-      
+
       {/* Floating Action Button */}
       <FAB
         placement="right"
@@ -468,161 +462,161 @@ StaffsScreen.navigationOptions = () => {
 };
 
 const styles = StyleSheet.create({
-container: {
-flex: 1,
-backgroundColor: '#f9f9f9',
-},
-text: {
-fontSize: 30,
-},
-listStyle: {
-flex: 1,
-height: 75,
-backgroundColor: colors.white,
-marginHorizontal: 15,
-paddingHorizontal: 15,
-marginBottom: 10,
-marginTop: 10,
-borderRadius: 12,
-flexDirection: 'row',
-justifyContent: 'space-between',
-paddingHorizontal: 10,
-alignItems: 'center',
-shadowColor: '#000',
-shadowOffset: {
-width: 0,
-height: 2,
-},
-shadowOpacity: 0.1,
-shadowRadius: 3,
-elevation: 3,
-},
-statusText: {
-color: '#fff',
-fontSize: 10,
-marginTop: 2,
-},
-subText: {
-color: '#4c4c4c',
-fontSize: 12,
-},
-div: {
-height: 1,
-width: '100%',
-backgroundColor: '#e1e1e1',
-},
-loadingContainer: {
-flex: 1,
-justifyContent: 'center',
-alignItems: 'center',
-},
-loadingText: {
-marginTop: 10,
-color: colors.darkGray,
-fontSize: 16,
-},
-emptyContainer: {
-flex: 1,
-justifyContent: 'center',
-alignItems: 'center',
-paddingHorizontal: 30,
-},
-emptyText: {
-fontSize: 18,
-fontWeight: 'bold',
-color: colors.darkGray,
-marginTop: 16,
-},
-emptySubText: {
-fontSize: 14,
-color: colors.darkGray,
-marginTop: 8,
-textAlign: 'center',
-},
-// Modal Styles
-modalOverlay: {
-flex: 1,
-backgroundColor: 'rgba(0,0,0,0.5)',
-justifyContent: 'center',
-alignItems: 'center',
-padding: 20,
-},
-modalContent: {
-backgroundColor: '#fff',
-borderRadius: 12,
-padding: 20,
-width: '90%',
-maxWidth: 500,
-shadowColor: '#000',
-shadowOffset: {
-width: 0,
-height: 3,
-},
-shadowOpacity: 0.27,
-shadowRadius: 4.65,
-elevation: 6,
-},
-modalHeader: {
-flexDirection: 'row',
-justifyContent: 'space-between',
-alignItems: 'center',
-marginBottom: 16,
-},
-modalTitle: {
-fontSize: 18,
-fontWeight: 'bold',
-color: colors.darkGray,
-},
-textInput: {
-marginBottom: 12,
-backgroundColor: 'white',
-},
-statusLabel: {
-fontSize: 16,
-fontWeight: '500',
-marginBottom: 8,
-marginTop: 8,
-color: colors.darkGray,
-},
-checkboxContainer: {
-flexDirection: 'row',
-marginLeft: -10,
-marginBottom: 10,
-},
-checkbox: {
-backgroundColor: 'transparent',
-borderWidth: 0,
-padding: 8,
-marginLeft: 0,
-},
-buttonContainer: {
-flexDirection: 'row',
-justifyContent: 'space-between',
-marginTop: 16,
-},
-cancelButton: {
-borderColor: colors.darkGray,
-paddingHorizontal: 20,
-},
-saveButton: {
-backgroundColor: colors.primary,
-paddingHorizontal: 30,
-},
-listContainer: {
-paddingVertical: 12,
-paddingBottom: 80, 
-},
-fab: {
-position: 'absolute',
-margin: 16,
-right: 0,
-bottom: 60, 
-},
-fabButton: {
-height: 56,
-width: 56,
-borderRadius: 28,
-},
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
+  text: {
+    fontSize: 30,
+  },
+  listStyle: {
+    flex: 1,
+    height: 75,
+    backgroundColor: colors.white,
+    marginHorizontal: 15,
+    paddingHorizontal: 15,
+    marginBottom: 10,
+    marginTop: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    // paddingHorizontal: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  subText: {
+    color: '#4c4c4c',
+    fontSize: 12,
+  },
+  div: {
+    height: 1,
+    width: '100%',
+    backgroundColor: '#e1e1e1',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: colors.darkGray,
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.darkGray,
+    marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: colors.darkGray,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxWidth: 500,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.darkGray,
+  },
+  textInput: {
+    marginBottom: 12,
+    backgroundColor: 'white',
+  },
+  statusLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+    marginTop: 8,
+    color: colors.darkGray,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    marginLeft: -10,
+    marginBottom: 10,
+  },
+  checkbox: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 8,
+    marginLeft: 0,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  cancelButton: {
+    borderColor: colors.darkGray,
+    paddingHorizontal: 20,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 30,
+  },
+  listContainer: {
+    paddingVertical: 12,
+    paddingBottom: 80,
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 60,
+  },
+  fabButton: {
+    height: 56,
+    width: 56,
+    borderRadius: 28,
+  },
 });
 
 export default StaffsScreen;

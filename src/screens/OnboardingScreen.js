@@ -45,7 +45,7 @@ const OnboardingScreen = () => {
       navigation.replace('RoleSelection');
     }
   };
-  
+
   // Render each slide
   const _renderItem = ({item}) => {
     return (
@@ -60,16 +60,20 @@ const OnboardingScreen = () => {
       </View>
     );
   };
-  
+
   // Custom button components
   const _renderNextButton = () => {
     return (
       <View style={styles.buttonCircle}>
-        <Ionicons name="arrow-forward" color="rgba(255, 255, 255, .9)" size={24} />
+        <Ionicons
+          name="arrow-forward"
+          color="rgba(255, 255, 255, .9)"
+          size={24}
+        />
       </View>
     );
   };
-  
+
   const _renderDoneButton = () => {
     return (
       <View style={styles.buttonCircle}>
@@ -85,7 +89,7 @@ const OnboardingScreen = () => {
       </View>
     );
   };
-  
+
   return (
     <AppIntroSlider
       data={slides}

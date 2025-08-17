@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import React, {useState, useEffect, useCallback} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {useSelector} from 'react-redux';
 import {useNavigation} from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 import {generateClient} from 'aws-amplify/api';
-import { getCurrentUser } from 'aws-amplify/auth';
+import {getCurrentUser} from 'aws-amplify/auth';
 import Appbar from '../../components/Appbar';
 import * as queries from '../../graphql/queries';
 import * as mutations from '../../graphql/mutations';
@@ -37,7 +37,6 @@ const CustomerScreen = ({route}) => {
   const [allowCredit, setAllowCredit] = useState(false);
   const [creditLimit, setCreditLimit] = useState('0');
 
-
   // Use useFocusEffect instead of useEffect to ensure this runs every time the screen is focused
   useFocusEffect(
     React.useCallback(() => {
@@ -48,15 +47,10 @@ const CustomerScreen = ({route}) => {
       return () => {
         // Cleanup function (optional)
       };
-    }, [STORE?.id])
+    }, [STORE, fetchCustomers]),
   );
-  
-  // Keep the useEffect for initial mount if needed
-  useEffect(() => {
-    console.log('CustomerScreen mounted, STORE:', STORE);
-  }, []);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     if (!STORE || !STORE.id) {
       Alert.alert('Error', 'Store information is missing.');
       return;
@@ -73,7 +67,7 @@ const CustomerScreen = ({route}) => {
       console.error('Error fetching customers:', error);
       Alert.alert('Error', 'Could not fetch customers.');
     }
-  };
+  }, [STORE]);
 
   const handleAddCustomer = () => {
     setSelectedCustomer(null);
@@ -94,7 +88,9 @@ const CustomerScreen = ({route}) => {
   };
 
   const handleSwitchToEditMode = () => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer) {
+      return;
+    }
     setName(selectedCustomer.name);
     setEmail(selectedCustomer.email || '');
     setPhone(selectedCustomer.phone || '');
@@ -182,9 +178,13 @@ const CustomerScreen = ({route}) => {
       <View style={styles.cardMiddle}>
         <Text style={styles.pointsText}>Points: {item.points || 0}</Text>
         {/* Display credit status and limit */}
-        <Text style={[styles.creditText, {color: item.allowCredit ? '#007E33' : '#999'}]}>
-          {item.allowCredit 
-            ? `Credit: ₱${parseFloat(item.creditLimit || 0).toFixed(2)}` 
+        <Text
+          style={[
+            styles.creditText,
+            {color: item.allowCredit ? '#007E33' : '#999'},
+          ]}>
+          {item.allowCredit
+            ? `Credit: ₱${parseFloat(item.creditLimit || 0).toFixed(2)}`
             : 'No Credit'}
         </Text>
       </View>
@@ -198,13 +198,19 @@ const CustomerScreen = ({route}) => {
 
   return (
     <View style={styles.container}>
-      <Appbar title="Customers" onBack={() => navigation.goBack()} subtitle={STORE.name}/>
+      <Appbar
+        title="Customers"
+        onBack={() => navigation.goBack()}
+        subtitle={STORE.name}
+      />
       <FlatList
         data={customers}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={<Text style={styles.emptyListText}>No customers yet. Add one!</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyListText}>No customers yet. Add one!</Text>
+        }
       />
       <TouchableOpacity style={styles.fab} onPress={handleAddCustomer}>
         <Text style={styles.fabText}>+</Text>
@@ -219,8 +225,10 @@ const CustomerScreen = ({route}) => {
           {modalMode === 'details' && selectedCustomer ? (
             // Loyalty Card View
             <View style={styles.loyaltyCard}>
-                <TouchableOpacity style={styles.closeButton} onPress={() => setIsModalVisible(false)}>
-                  <Text style={styles.closeButtonText}>X</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setIsModalVisible(false)}>
+                <Text style={styles.closeButtonText}>X</Text>
               </TouchableOpacity>
               <View style={styles.loyaltyCardHeader}>
                 <Text style={styles.loyaltyCardTitle}>MEMBER</Text>
@@ -248,9 +256,19 @@ const CustomerScreen = ({route}) => {
                     Points: {selectedCustomer.points || 0}
                   </Text>
                   {/* Display credit status and limit in detail view */}
-                  <Text style={[styles.loyaltyCardCredit, {color: selectedCustomer.allowCredit ? '#007E33' : '#999'}]}>
-                    {selectedCustomer.allowCredit 
-                      ? `Credit Limit: ₱${parseFloat(selectedCustomer.creditLimit || 0).toFixed(2)}` 
+                  <Text
+                    style={[
+                      styles.loyaltyCardCredit,
+                      {
+                        color: selectedCustomer.allowCredit
+                          ? '#007E33'
+                          : '#999',
+                      },
+                    ]}>
+                    {selectedCustomer.allowCredit
+                      ? `Credit Limit: ₱${parseFloat(
+                          selectedCustomer.creditLimit || 0,
+                        ).toFixed(2)}`
                       : 'No Credit Available'}
                   </Text>
                 </View>
@@ -334,10 +352,10 @@ const styles = StyleSheet.create({
     paddingBottom: 80, // To make space for FAB
   },
   emptyListText: {
-      textAlign: 'center',
-      marginTop: 50,
-      fontSize: 16,
-      color: '#666',
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 16,
+    color: '#666',
   },
   customerCard: {
     backgroundColor: '#FFFFFF',

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -63,10 +63,10 @@ const SummaryReportScreen = ({navigation, route}) => {
   // Fetch data on initial load and when date range changes
   useEffect(() => {
     fetchReportData();
-  }, [dateRange, startDate, endDate]);
+  }, [dateRange, startDate, endDate, fetchReportData]);
 
   // Main function to fetch all report data
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     setIsLoading(true);
     try {
       // Get date range based on selected filter
@@ -127,7 +127,7 @@ const SummaryReportScreen = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [store.id, getDateRangeForFilter]);
 
   // Process transaction and expense data
   const processReportData = (transactions, expenses, categories) => {
@@ -231,7 +231,7 @@ const SummaryReportScreen = ({navigation, route}) => {
   };
 
   // Helper function to get date range based on filter
-  const getDateRangeForFilter = () => {
+  const getDateRangeForFilter = useCallback(() => {
     let start, end;
 
     switch (dateRange) {
@@ -261,7 +261,7 @@ const SummaryReportScreen = ({navigation, route}) => {
     }
 
     return {start, end};
-  };
+  }, [dateRange, startDate, endDate]);
 
   // Get formatted date range string for display
   const getDateRangeString = () => {

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ const client = generateClient();
 
 const SubscriptionScreen = ({navigation, route}) => {
   const dispatch = useDispatch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const subscriptionState = useSelector(state => state.subscription) || {
     plans: [],
     loading: false,
@@ -77,7 +78,13 @@ const SubscriptionScreen = ({navigation, route}) => {
     return () => {
       unsubscribe();
     };
-  }, [isSuperAdmin]);
+  }, [
+    isSuperAdmin,
+    loadData,
+    offlineChanges,
+    subscriptionState,
+    syncOfflineChanges,
+  ]);
 
   // Check for errors
   useEffect(() => {
@@ -86,7 +93,7 @@ const SubscriptionScreen = ({navigation, route}) => {
     }
   }, [error]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     console.log('Loading subscription data...');
 
     try {
@@ -129,10 +136,10 @@ const SubscriptionScreen = ({navigation, route}) => {
     } finally {
       setLoadingPlans(false);
     }
-  };
+  }, [createTemporaryPlans, dispatch, isConnected, staffData]);
 
   // Create a set of temporary subscription plans and save them to AWS
-  const createTemporaryPlans = async () => {
+  const createTemporaryPlans = useCallback(async () => {
     console.log('Creating subscription plans in AWS...');
     try {
       // Define subscription plans
@@ -241,9 +248,9 @@ const SubscriptionScreen = ({navigation, route}) => {
       console.error('Error creating temporary subscription plans:', error);
       Alert.alert('Error', 'Failed to create temporary subscription plans');
     }
-  };
+  }, [dispatch]);
 
-  const syncOfflineChanges = async () => {
+  const syncOfflineChanges = useCallback(async () => {
     dispatch(syncSubscriptionActions())
       .unwrap()
       .then(() => {
@@ -256,7 +263,7 @@ const SubscriptionScreen = ({navigation, route}) => {
       .catch(err => {
         console.error('Failed to sync offline changes:', err);
       });
-  };
+  }, [dispatch]);
 
   const createFreePlan = () => {
     if (!isConnected) {
@@ -665,17 +672,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 20,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  createButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 15,
-  },
+  // headerRow: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   paddingHorizontal: 10,
+  //   marginBottom: 10,
+  // },
+  // createButton: {
+  //   backgroundColor: '#2196F3',
+  //   paddingHorizontal: 15,
+  // },
   mainContent: {
     flex: 1,
   },

@@ -88,7 +88,7 @@ const ExpensesScreen = ({navigation, route}) => {
     };
 
     getStaffData();
-  }, []);
+  }, [staffData, navigation]);
 
   // Load staff data from storage
   const loadStaffData = async () => {
@@ -111,17 +111,17 @@ const ExpensesScreen = ({navigation, route}) => {
     if (staffData && staffData.store_id) {
       fetchExpenses();
     }
-  }, [staffData]);
+  }, [staffData, fetchExpenses]);
 
   // Filter expenses when search query or category filter changes
   useEffect(() => {
     if (expenses.length > 0) {
       applyFilters();
     }
-  }, [expenses, searchQuery, categoryFilter]);
+  }, [expenses, searchQuery, categoryFilter, applyFilters]);
 
   // Apply filters to expenses
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...expenses];
 
     // Apply search query filter
@@ -139,17 +139,17 @@ const ExpensesScreen = ({navigation, route}) => {
     }
 
     setFilteredExpenses(filtered);
-  };
+  }, [expenses, searchQuery, categoryFilter]);
 
   // Refresh data
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchExpenses();
     setRefreshing(false);
-  }, []);
+  }, [fetchExpenses]);
 
   // Fetch expenses from the database
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     if (!staffData || !staffData.store_id) {
       console.log('No staff data or store ID available');
       return;
@@ -176,7 +176,7 @@ const ExpensesScreen = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [staffData]);
 
   const handleAddExpense = async () => {
     if (!description || !amount) {

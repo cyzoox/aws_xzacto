@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   StyleSheet,
   View,
@@ -9,12 +9,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import {
-  TextInput,
-  Button,
-  FAB,
-  Title,
-} from 'react-native-paper';
+import {TextInput, Button, FAB, Title} from 'react-native-paper';
 import Feather from 'react-native-vector-icons/Feather';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
 import SelectDropdown from 'react-native-select-dropdown';
@@ -40,7 +35,7 @@ const ExpensesScreen = ({navigation, route}) => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  
+
   // Filter states
   const [timeFilter, setTimeFilter] = useState('all');
   const [staffFilter, setStaffFilter] = useState('all');
@@ -63,20 +58,20 @@ const ExpensesScreen = ({navigation, route}) => {
   ];
 
   const timeFilterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Today', value: 'today' },
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Year', value: 'year' },
+    {label: 'All', value: 'all'},
+    {label: 'Today', value: 'today'},
+    {label: 'This Week', value: 'week'},
+    {label: 'This Month', value: 'month'},
+    {label: 'This Year', value: 'year'},
   ];
 
   const staffFilterOptions = [
-    { label: 'All Staff', value: 'all' },
-    { label: 'Admin', value: 'admin' },
-    { label: 'Cashier', value: 'cashier' }
+    {label: 'All Staff', value: 'all'},
+    {label: 'Admin', value: 'admin'},
+    {label: 'Cashier', value: 'cashier'},
   ];
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     if (!initialStore?.id) {
       setLoading(false);
       return;
@@ -103,14 +98,14 @@ const ExpensesScreen = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [initialStore.id]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchAllData();
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [fetchAllData, navigation]);
 
   const handleSaveExpense = async () => {
     if (!description || !amount) {
@@ -119,7 +114,8 @@ const ExpensesScreen = ({navigation, route}) => {
     setIsSaving(true);
     try {
       const {userId} = await getCurrentUser();
-      const expenseName = description === 'Others please specify' ? other : description;
+      const expenseName =
+        description === 'Others please specify' ? other : description;
 
       const newExpense = {
         name: expenseName,
@@ -151,21 +147,24 @@ const ExpensesScreen = ({navigation, route}) => {
   };
 
   const calculateTotal = () => {
-    return filteredExpenses.reduce((total, item) => total + (item.amount || 0), 0);
+    return filteredExpenses.reduce(
+      (total, item) => total + (item.amount || 0),
+      0,
+    );
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let results = [...allExpenses];
-    
+
     // Apply time filter
     if (timeFilter !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       results = results.filter(item => {
         const expenseDate = new Date(item.date);
-        
-        switch(timeFilter) {
+
+        switch (timeFilter) {
           case 'today':
             return expenseDate >= today;
           case 'week':
@@ -183,7 +182,7 @@ const ExpensesScreen = ({navigation, route}) => {
         }
       });
     }
-    
+
     // Apply staff filter
     if (staffFilter !== 'all') {
       results = results.filter(item => {
@@ -195,19 +194,21 @@ const ExpensesScreen = ({navigation, route}) => {
         return true;
       });
     }
-    
+
     setFilteredExpenses(results);
     setFilterModalVisible(false);
-  };
-  
+  }, [timeFilter, staffFilter, allExpenses]);
+
   useEffect(() => {
     applyFilters();
-  }, [timeFilter, staffFilter, allExpenses]);
+  }, [timeFilter, staffFilter, allExpenses, applyFilters]);
 
   const renderItem = ({item}) => {
     const date = new Date(item.date);
-    const formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
-    
+    const formattedDate = `${
+      date.getMonth() + 1
+    }/${date.getDate()}/${date.getFullYear()}`;
+
     return (
       <Row style={styles.tableRow}>
         <Col style={styles.descriptionCol}>
@@ -241,7 +242,7 @@ const ExpensesScreen = ({navigation, route}) => {
   return (
     <View style={styles.container}>
       <Appbar
-        title={`Expenses`}
+        title={'Expenses'}
         subtitle={store?.name || ''}
         onBack={() => navigation.goBack()}
       />
@@ -289,14 +290,17 @@ const ExpensesScreen = ({navigation, route}) => {
             <View style={styles.modalButtonContainer}>
               <Button
                 onPress={() => setModalVisible(false)}
-                style={[styles.modalButton,{backgroundColor: colors.red}]}
+                style={[styles.modalButton, {backgroundColor: colors.red}]}
                 labelStyle={{color: colors.white}}
                 mode="flat">
                 Cancel
               </Button>
               <Button
                 onPress={handleSaveExpense}
-                style={[styles.modalButton,{backgroundColor: colors.secondary}]}
+                style={[
+                  styles.modalButton,
+                  {backgroundColor: colors.secondary},
+                ]}
                 mode="contained"
                 loading={isSaving}
                 disabled={isSaving}>
@@ -356,7 +360,7 @@ const ExpensesScreen = ({navigation, route}) => {
             />
           </View>
           <View style={styles.modalView}>
-           <View style={styles.modalButtonContainer}>
+            <View style={styles.modalButtonContainer}>
               <Button
                 onPress={applyFilters}
                 style={styles.modalButton}
@@ -364,7 +368,7 @@ const ExpensesScreen = ({navigation, route}) => {
                 mode="contained">
                 Apply Filters
               </Button>
-           </View>
+            </View>
           </View>
         </View>
       </Cards>
@@ -497,7 +501,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
-    width: '90%',
+    // width: '90%',
     maxWidth: 500,
     shadowColor: '#000',
     shadowOffset: {

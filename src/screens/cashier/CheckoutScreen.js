@@ -9,13 +9,12 @@ import {
   SafeAreaView,
   FlatList,
 } from 'react-native';
-import AppHeader from '../../components/AppHeader';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import colors from '../../themes/colors';
 import AlertwithChild from '../../components/AlertwithChild';
-import {Col, Grid, Row} from 'react-native-easy-grid';
+import {Grid, Row} from 'react-native-easy-grid';
 import List from '../../components/List';
-import {TextInput, Checkbox} from 'react-native-paper';
+import {TextInput} from 'react-native-paper';
 import AmountKeys from '../../components/AmountKeys';
 
 import {generateClient} from 'aws-amplify/api';
@@ -28,9 +27,10 @@ const CheckoutScreen = ({navigation, route}) => {
 
   const [id, setCusId] = useState('');
   const [name, setCusName] = useState('');
-  
+
   // Customer selection state variables
-  const [customerSelectionVisible, setCustomerSelectionVisible] = useState(false);
+  const [customerSelectionVisible, setCustomerSelectionVisible] =
+    useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
@@ -65,7 +65,7 @@ const CheckoutScreen = ({navigation, route}) => {
   const fetchCustomers = async () => {
     try {
       const response = await client.graphql({
-        query: listCustomers
+        query: listCustomers,
       });
       const customerData = response.data.listCustomers.items || [];
       setCustomers(customerData);
@@ -74,40 +74,41 @@ const CheckoutScreen = ({navigation, route}) => {
       console.error('Error fetching customers:', error);
     }
   };
-  
+
   // Filter customers based on search term
-  const filterCustomers = (searchTerm) => {
+  const filterCustomers = searchTerm => {
     setCustomerSearchTerm(searchTerm);
     if (!searchTerm.trim()) {
       setFilteredCustomers(customers);
       return;
     }
-    
-    const filtered = customers.filter(customer => 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.phone && customer.phone.includes(searchTerm))
+
+    const filtered = customers.filter(
+      customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.phone && customer.phone.includes(searchTerm)),
     );
     setFilteredCustomers(filtered);
   };
-  
+
   // Close customer selection modal
   const closeCustomerSelection = () => {
     setCustomerSelectionVisible(false);
     setCustomerSearchTerm('');
     setFilteredCustomers(customers);
   };
-  
+
   // Select a customer
-  const selectCustomer = (customer) => {
+  const selectCustomer = customer => {
     setSelectedCustomer(customer);
     closeCustomerSelection();
   };
-  
+
   // Clear selected customer
   const clearSelectedCustomer = () => {
     setSelectedCustomer(null);
   };
-  
+
   // Load customers on component mount
   useEffect(() => {
     fetchCustomers();
@@ -117,7 +118,10 @@ const CheckoutScreen = ({navigation, route}) => {
     <SafeAreaView style={styles.container}>
       <Appbar
         title={'Checkout'}
-        onBack={() => {setDiscount(0); navigation.goBack()}}
+        onBack={() => {
+          setDiscount(0);
+          navigation.goBack();
+        }}
       />
       {/* <View style={styles.header}>
         <TouchableOpacity
@@ -129,24 +133,28 @@ const CheckoutScreen = ({navigation, route}) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
       </View> */}
-      
+
       {/* Customer Selection Button */}
       <View style={styles.customerSelectionContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.customerSelectButton}
           onPress={() => setCustomerSelectionVisible(true)}>
           <Text style={styles.customerSelectLabel}>
-            {selectedCustomer ? selectedCustomer.name : "Select Customer"}
+            {selectedCustomer ? selectedCustomer.name : 'Select Customer'}
           </Text>
           <EvilIcons name="chevron-down" size={24} color={colors.primary} />
         </TouchableOpacity>
         {selectedCustomer && (
           <View style={styles.customerInfoContainer}>
             <Text style={styles.customerInfoText}>
-              {selectedCustomer.points ? `Points: ${selectedCustomer.points}` : ''}
-              {selectedCustomer.creditLimit ? ` | Credit Limit: ${selectedCustomer.creditLimit}` : ''}
+              {selectedCustomer.points
+                ? `Points: ${selectedCustomer.points}`
+                : ''}
+              {selectedCustomer.creditLimit
+                ? ` | Credit Limit: ${selectedCustomer.creditLimit}`
+                : ''}
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={clearSelectedCustomer}
               style={styles.clearCustomerButton}>
               <EvilIcons name="close" size={22} color={colors.darkGrey} />
@@ -154,7 +162,7 @@ const CheckoutScreen = ({navigation, route}) => {
           </View>
         )}
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         {/* Customer Selection Modal */}
         <AlertwithChild
@@ -182,14 +190,16 @@ const CheckoutScreen = ({navigation, route}) => {
           <FlatList
             style={styles.customerListContainer}
             data={filteredCustomers}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item: customer }) => (
+            keyExtractor={item => item.id}
+            renderItem={({item: customer}) => (
               <TouchableOpacity
                 style={styles.customerItem}
                 onPress={() => selectCustomer(customer)}>
                 <View style={styles.customerInfo}>
                   <Text style={styles.customerName}>{customer.name}</Text>
-                  <Text style={styles.customerPhone}>{customer.phone || 'No phone'}</Text>
+                  <Text style={styles.customerPhone}>
+                    {customer.phone || 'No phone'}
+                  </Text>
                 </View>
                 <View style={styles.customerDetails}>
                   {customer.creditLimit > 0 && (
@@ -199,7 +209,9 @@ const CheckoutScreen = ({navigation, route}) => {
                   )}
                   {customer.points > 0 && (
                     <View style={styles.pointsBadge}>
-                      <Text style={styles.pointsBadgeText}>{customer.points} PTS</Text>
+                      <Text style={styles.pointsBadgeText}>
+                        {customer.points} PTS
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -208,14 +220,15 @@ const CheckoutScreen = ({navigation, route}) => {
             ListEmptyComponent={() => (
               <View style={styles.noCustomersContainer}>
                 <Text style={styles.noCustomersText}>
-                  {customerSearchTerm ? 'No customers found' : 'No customers yet'}
+                  {customerSearchTerm
+                    ? 'No customers found'
+                    : 'No customers yet'}
                 </Text>
               </View>
             )}
           />
-
         </AlertwithChild>
-        
+
         {/* Discount Modal */}
         <AlertwithChild
           visible={discountVisible}
@@ -250,15 +263,29 @@ const CheckoutScreen = ({navigation, route}) => {
           <View style={styles.presetDiscountRow}>
             <TouchableOpacity
               onPress={() => setSelected(5)}
-              style={selected === 5 ? styles.discountButton2 : styles.discountButton}>
-              <Text style={selected === 5 ? styles.discountTextSelected : styles.discountText}>
+              style={
+                selected === 5 ? styles.discountButton2 : styles.discountButton
+              }>
+              <Text
+                style={
+                  selected === 5
+                    ? styles.discountTextSelected
+                    : styles.discountText
+                }>
                 5%
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setSelected(10)}
-              style={selected === 10 ? styles.discountButton2 : styles.discountButton}>
-              <Text style={selected === 10 ? styles.discountTextSelected : styles.discountText}>
+              style={
+                selected === 10 ? styles.discountButton2 : styles.discountButton
+              }>
+              <Text
+                style={
+                  selected === 10
+                    ? styles.discountTextSelected
+                    : styles.discountText
+                }>
                 10%
               </Text>
             </TouchableOpacity>
@@ -340,7 +367,7 @@ const CheckoutScreen = ({navigation, route}) => {
                     setCreditVisible={setCreditVisible}
                     navigation={navigation}
                     staff={staffData}
-                    customer={selectedCustomer}  // Pass selected customer
+                    customer={selectedCustomer} // Pass selected customer
                   />
                 </View>
               </Row>
@@ -366,7 +393,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -530,7 +557,6 @@ const styles = StyleSheet.create({
     padding: 0,
     marginHorizontal: 'auto',
     alignSelf: 'center',
-   
   },
   discountButton: {
     paddingVertical: 8,
@@ -557,9 +583,9 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: 'bold',
   },
-  discountInputWrapper: {
-    marginVertical: 10,
-  },
+  // discountInputWrapper: {
+  //   marginVertical: 10,
+  // },
   discountLabel: {
     fontSize: 16,
     fontWeight: '600',

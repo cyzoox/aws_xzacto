@@ -84,7 +84,7 @@ const EditProductScreen = ({navigation, route}) => {
       variants,
       addons,
     }));
-  }, [product.id]);
+  }, [product.id, product.variants?.items, product.addons?.items]);
 
   // Variant and Addon state
   const [newVariant, setNewVariant] = useState({name: '', price: ''});

@@ -1,5 +1,5 @@
-import React, {useEffect, useState} from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import React, {useEffect, useState, useCallback} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   Text,
   StyleSheet,
@@ -7,15 +7,11 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import {Picker} from '@react-native-picker/picker';
-import CustomAppbar from '../../components/Appbar';
 import colors from '../../themes/colors';
 import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
@@ -27,10 +23,9 @@ const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
 const {width, height} = Dimensions.get('window');
 
-import {listSaleTransactions, getSale, getProduct} from '../../graphql/queries';
-import {updateSaleTransaction, updateProduct} from '../../graphql/mutations';
+import {listSaleTransactions} from '../../graphql/queries';
+import {updateSaleTransaction} from '../../graphql/mutations';
 import {generateClient} from 'aws-amplify/api';
-import {theme} from '../../constants';
 import Appbar from '../../components/Appbar';
 const client = generateClient();
 
@@ -62,19 +57,26 @@ const TransactionScreen = ({navigation, route}) => {
   useFocusEffect(
     React.useCallback(() => {
       fetchTransactions();
-    }, [])
+    }, [fetchTransactions]),
   );
 
   useEffect(() => {
     filterTransactionsByDate();
-  }, [filterPeriod, startDate, endDate, transactions, selected]);
+  }, [
+    filterPeriod,
+    startDate,
+    endDate,
+    transactions,
+    selected,
+    filterTransactionsByDate,
+  ]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
       const client = generateClient();
       let resultList = [];
-      
+
       if (staffData?.store_id) {
         const result = await client.graphql({
           query: listSaleTransactions,
@@ -91,78 +93,97 @@ const TransactionScreen = ({navigation, route}) => {
         });
         resultList = result.data.listSaleTransactions.items;
       }
-      
+
       // Filter out any null or malformed items to ensure data consistency
       const validTransactions = resultList.filter(
-        item => item && item.id && item.createdAt && item.status && typeof item.total !== 'undefined' && item.total !== null
+        item =>
+          item &&
+          item.id &&
+          item.createdAt &&
+          item.status &&
+          typeof item.total !== 'undefined' &&
+          item.total !== null,
       );
 
       const sortedTransactions = validTransactions.sort(
         (a, b) => moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf(),
       );
-      
+
       setTransactions(sortedTransactions);
-      
-      const completed = sortedTransactions.filter(t => t.status === 'Completed');
+
+      const completed = sortedTransactions.filter(
+        t => t.status === 'Completed',
+      );
       const voided = sortedTransactions.filter(t => t.status === 'Voided');
-      
+
       setCompletedTransactions(completed);
       setVoidedTransactions(voided);
 
       // Manually trigger filtering to ensure UI updates on initial load
       filterTransactionsByDate(completed, voided);
-      
     } catch (error) {
       console.error('Error fetching transactions:', error);
       Alert.alert('Error', 'Failed to load transactions. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [staffData.store_id, filterTransactionsByDate]);
 
-  const filterTransactionsByDate = (completed = completedTransactions, voided = voidedTransactions) => {
-    const transactionsToFilter = selected === 0 ? completed : voided;
-    
-    let start, end;
-    
-    switch (filterPeriod) {
-      case 'today':
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-        break;
-      case 'yesterday':
-        start = moment().subtract(1, 'days').startOf('day');
-        end = moment().subtract(1, 'days').endOf('day');
-        break;
-      case 'this_week':
-        start = moment().startOf('week');
-        end = moment().endOf('week');
-        break;
-      case 'this_month':
-        start = moment().startOf('month');
-        end = moment().endOf('month');
-        break;
-      case 'last_6_months':
-        start = moment().subtract(6, 'months').startOf('day');
-        end = moment().endOf('day');
-        break;
-      case 'custom':
-        start = moment(startDate);
-        end = moment(endDate);
-        break;
-      default:
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-    }
-    
-    const filtered = transactionsToFilter.filter(transaction => {
-      if (!transaction || !transaction.createdAt) return false;
-      const transactionDate = moment(transaction.createdAt);
-      return transactionDate.isBetween(start, end, null, '[]');
-    });
-    
-    setFilteredTransactions(filtered);
-  };
+  const filterTransactionsByDate = useCallback(
+    (completed = completedTransactions, voided = voidedTransactions) => {
+      const transactionsToFilter = selected === 0 ? completed : voided;
+
+      let start, end;
+
+      switch (filterPeriod) {
+        case 'today':
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+          break;
+        case 'yesterday':
+          start = moment().subtract(1, 'days').startOf('day');
+          end = moment().subtract(1, 'days').endOf('day');
+          break;
+        case 'this_week':
+          start = moment().startOf('week');
+          end = moment().endOf('week');
+          break;
+        case 'this_month':
+          start = moment().startOf('month');
+          end = moment().endOf('month');
+          break;
+        case 'last_6_months':
+          start = moment().subtract(6, 'months').startOf('day');
+          end = moment().endOf('day');
+          break;
+        case 'custom':
+          start = moment(startDate);
+          end = moment(endDate);
+          break;
+        default:
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+      }
+
+      const filtered = transactionsToFilter.filter(transaction => {
+        if (!transaction || !transaction.createdAt) {
+          return false;
+        }
+        const transactionDate = moment(transaction.createdAt);
+        return transactionDate.isBetween(start, end, null, '[]');
+      });
+
+      setFilteredTransactions(filtered);
+    },
+    [
+      completedTransactions,
+      voidedTransactions,
+      endDate,
+      filterPeriod,
+      selected,
+      startDate,
+    ],
+  );
 
   const onDateChange = (event, selectedDate) => {
     setDatePickerVisible(false);
@@ -180,7 +201,7 @@ const TransactionScreen = ({navigation, route}) => {
     setDatePickerVisible(true);
   };
 
-  const openVoidModal = (transaction) => {
+  const openVoidModal = transaction => {
     setSelectedTransaction(transaction);
     setVoidModalVisible(true);
   };
@@ -199,7 +220,7 @@ const TransactionScreen = ({navigation, route}) => {
     setIsLoading(true);
     try {
       const client = generateClient();
-      
+
       await client.graphql({
         query: updateSaleTransaction,
         variables: {
@@ -244,7 +265,9 @@ const TransactionScreen = ({navigation, route}) => {
   };
 
   const renderCompletedItem = ({item}) => {
-    if (!item) return null;
+    if (!item) {
+      return null;
+    }
     const createdAt = moment(item.createdAt);
     return (
       <Card style={styles.card}>
@@ -288,23 +311,42 @@ const TransactionScreen = ({navigation, route}) => {
   };
 
   const renderVoidedItem = ({item}) => {
-    if (!item) return null;
+    if (!item) {
+      return null;
+    }
     const createdAt = moment(item.createdAt);
     return (
       <Card style={[styles.card, styles.voidedCard]}>
         <Card.Content>
           <View style={styles.cardRow}>
             <Title style={styles.cardTitle}>#{item.id.substring(0, 8)}</Title>
-            <Title style={styles.cardTotal}>{formatMoney(item.total, { symbol: '₱', precision: 2 })}</Title>
+            <Title style={styles.cardTotal}>
+              {formatMoney(item.total, {symbol: '₱', precision: 2})}
+            </Title>
           </View>
           <View style={styles.cardRow}>
-            <Paragraph style={styles.cardSubtitle}>{createdAt.format('DD MMM YYYY, hh:mm A')}</Paragraph>
-            <Paragraph style={styles.cardSubtitle}>{item.payment_status || 'Cash'}</Paragraph>
+            <Paragraph style={styles.cardSubtitle}>
+              {createdAt.format('DD MMM YYYY, hh:mm A')}
+            </Paragraph>
+            <Paragraph style={styles.cardSubtitle}>
+              {item.payment_status || 'Cash'}
+            </Paragraph>
           </View>
-          <Paragraph style={styles.voidedReason}>Reason: {item.notes || 'N/A'}</Paragraph>
+          <Paragraph style={styles.voidedReason}>
+            Reason: {item.notes || 'N/A'}
+          </Paragraph>
         </Card.Content>
         <Card.Actions style={styles.cardActions}>
-          <Button mode="outlined" onPress={() => navigation.navigate('TransactionsDetails', { transactions: item, staffData: staffData })}>View</Button>
+          <Button
+            mode="outlined"
+            onPress={() =>
+              navigation.navigate('TransactionsDetails', {
+                transactions: item,
+                staffData: staffData,
+              })
+            }>
+            View
+          </Button>
         </Card.Actions>
       </Card>
     );
@@ -370,10 +412,9 @@ const TransactionScreen = ({navigation, route}) => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={filterPeriod}
-              onValueChange={(itemValue) => setFilterPeriod(itemValue)}
+              onValueChange={itemValue => setFilterPeriod(itemValue)}
               style={styles.picker}
-              dropdownIconColor={colors.primary}
-            >
+              dropdownIconColor={colors.primary}>
               <Picker.Item label="Today" value="today" />
               <Picker.Item label="Yesterday" value="yesterday" />
               <Picker.Item label="This Week" value="this_week" />
@@ -382,17 +423,23 @@ const TransactionScreen = ({navigation, route}) => {
               <Picker.Item label="Custom Range" value="custom" />
             </Picker>
           </View>
-          
+
           {filterPeriod === 'custom' && renderCustomDateRange()}
 
           {renderTransactionSummary()}
 
           {isLoading ? (
-            <ActivityIndicator size="large" color={colors.primary} style={{marginTop: 20, flex: 1}} />
+            <ActivityIndicator
+              size="large"
+              color={colors.primary}
+              style={{marginTop: 20, flex: 1}}
+            />
           ) : (
             <FlatList
               data={filteredTransactions}
-              renderItem={selected === 0 ? renderCompletedItem : renderVoidedItem}
+              renderItem={
+                selected === 0 ? renderCompletedItem : renderVoidedItem
+              }
               keyExtractor={item => item.id}
               contentContainerStyle={{paddingBottom: 100}}
               ListEmptyComponent={() => (
@@ -443,7 +490,9 @@ const TransactionScreen = ({navigation, route}) => {
               style={styles.input}
             />
 
-            {voidError ? <Text style={styles.errorText}>{voidError}</Text> : null}
+            {voidError ? (
+              <Text style={styles.errorText}>{voidError}</Text>
+            ) : null}
 
             <View style={styles.buttonContainer}>
               <Button
@@ -466,7 +515,7 @@ const TransactionScreen = ({navigation, route}) => {
                 disabled={isLoading}>
                 Cancel
               </Button>
-              </View>
+            </View>
           </Modal>
         </Portal>
       </View>
@@ -485,7 +534,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.white,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },

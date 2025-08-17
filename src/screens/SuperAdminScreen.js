@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -120,96 +120,99 @@ export default function SuperAdminScreen({navigation, route}) {
     };
 
     initializeScreen();
-  }, [dispatch, initialized]);
+  }, [dispatch, initialized, checkUserSubscription]);
 
   // Function to check if user has an active subscription and get subscription plan limits
-  const checkUserSubscription = async userId => {
-    try {
-      // Fetch all accounts for this user
-      const accountResult = await client.graphql({
-        query: listAccounts,
-        variables: {
-          filter: {
-            ownerId: {eq: userId},
+  const checkUserSubscription = useCallback(
+    async userId => {
+      try {
+        // Fetch all accounts for this user
+        const accountResult = await client.graphql({
+          query: listAccounts,
+          variables: {
+            filter: {
+              ownerId: {eq: userId},
+            },
           },
-        },
-      });
+        });
 
-      const userAccounts = accountResult.data.listAccounts.items;
-      const currentDate = new Date();
+        const userAccounts = accountResult.data.listAccounts.items;
+        const currentDate = new Date();
 
-      // If no accounts found, redirect to subscription screen
-      if (userAccounts.length === 0) {
-        console.log('No accounts found, redirecting to subscription screen');
-        navigation.navigate('Subscription', {staffData, isNewUser: true});
-        return;
-      }
-
-      // Find active account and subscription
-      let activeAccount = null;
-      let subscriptionActive = false;
-
-      for (const account of userAccounts) {
-        const isExpired =
-          account.subscriptionEndDate &&
-          new Date(account.subscriptionEndDate) < currentDate;
-
-        if (account.subscriptionStatus === 'ACTIVE' && !isExpired) {
-          activeAccount = account;
-          subscriptionActive = true;
-          break;
+        // If no accounts found, redirect to subscription screen
+        if (userAccounts.length === 0) {
+          console.log('No accounts found, redirecting to subscription screen');
+          navigation.navigate('Subscription', {staffData, isNewUser: true});
+          return;
         }
-      }
 
-      if (!subscriptionActive) {
-        console.log(
-          'No active subscription found, redirecting to subscription screen',
-        );
-        navigation.navigate('Subscription', {
-          staffData,
-          account: userAccounts[0],
-          isRenewal: userAccounts[0].subscriptionStatus === 'EXPIRED',
-        });
-        return;
-      }
+        // Find active account and subscription
+        let activeAccount = null;
+        let subscriptionActive = false;
 
-      // Get the subscription plan details for the active account
-      if (activeAccount && activeAccount.subscriptionPlan) {
-        const plan = activeAccount.subscriptionPlan;
-        console.log('Active subscription plan found:', plan.name);
+        for (const account of userAccounts) {
+          const isExpired =
+            account.subscriptionEndDate &&
+            new Date(account.subscriptionEndDate) < currentDate;
 
-        // Store the subscription limits
-        setSubscriptionLimits({
-          storeLimit: plan.storeLimit || 0,
-          staffPerStoreLimit: plan.staffPerStoreLimit || 0,
-          adminPerStoreLimit: plan.adminPerStoreLimit || 0,
-          subscriptionStatus: activeAccount.subscriptionStatus,
-          planName: plan.name,
-        });
+          if (account.subscriptionStatus === 'ACTIVE' && !isExpired) {
+            activeAccount = account;
+            subscriptionActive = true;
+            break;
+          }
+        }
 
-        // Save subscription limits to AsyncStorage for other screens to use
-        await AsyncStorage.setItem(
-          'subscriptionLimits',
-          JSON.stringify({
+        if (!subscriptionActive) {
+          console.log(
+            'No active subscription found, redirecting to subscription screen',
+          );
+          navigation.navigate('Subscription', {
+            staffData,
+            account: userAccounts[0],
+            isRenewal: userAccounts[0].subscriptionStatus === 'EXPIRED',
+          });
+          return;
+        }
+
+        // Get the subscription plan details for the active account
+        if (activeAccount && activeAccount.subscriptionPlan) {
+          const plan = activeAccount.subscriptionPlan;
+          console.log('Active subscription plan found:', plan.name);
+
+          // Store the subscription limits
+          setSubscriptionLimits({
             storeLimit: plan.storeLimit || 0,
             staffPerStoreLimit: plan.staffPerStoreLimit || 0,
             adminPerStoreLimit: plan.adminPerStoreLimit || 0,
             subscriptionStatus: activeAccount.subscriptionStatus,
             planName: plan.name,
-          }),
-        );
+          });
 
-        console.log(
-          `Subscription limits: ${plan.storeLimit} stores, ${plan.staffPerStoreLimit} staff per store`,
-        );
-      } else {
-        console.log('Account has no associated subscription plan');
+          // Save subscription limits to AsyncStorage for other screens to use
+          await AsyncStorage.setItem(
+            'subscriptionLimits',
+            JSON.stringify({
+              storeLimit: plan.storeLimit || 0,
+              staffPerStoreLimit: plan.staffPerStoreLimit || 0,
+              adminPerStoreLimit: plan.adminPerStoreLimit || 0,
+              subscriptionStatus: activeAccount.subscriptionStatus,
+              planName: plan.name,
+            }),
+          );
+
+          console.log(
+            `Subscription limits: ${plan.storeLimit} stores, ${plan.staffPerStoreLimit} staff per store`,
+          );
+        } else {
+          console.log('Account has no associated subscription plan');
+        }
+      } catch (error) {
+        console.error('Error checking user subscription:', error);
+        // Don't block access to the screen on error, just log it
       }
-    } catch (error) {
-      console.error('Error checking user subscription:', error);
-      // Don't block access to the screen on error, just log it
-    }
-  };
+    },
+    [navigation, staffData],
+  );
 
   // Function to check for accounts without active subscriptions
   const checkAccountsWithoutSubscription = async () => {

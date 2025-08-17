@@ -1,4 +1,5 @@
-import React, {useState, useEffect} from 'react';
+/* eslint-disable react-native/no-inline-styles */
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,20 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  ScrollView,
 } from 'react-native';
 import Appbar from '../../components/Appbar';
-import {
-  TextInput,
-  Button,
-  Modal,
-  Portal,
-  Provider,
-  SegmentedControl,
-} from 'react-native-paper';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
+import {Provider} from 'react-native-paper';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import formatMoney from 'accounting-js/lib/formatMoney.js';
@@ -30,12 +21,10 @@ import {Grid, Col, Row} from 'react-native-easy-grid';
 import colors from '../../themes/colors';
 
 // GraphQL
-import {listSaleTransactions, listSales, getSaleTransaction} from '../../graphql/queries';
+import {listSaleTransactions, listSales} from '../../graphql/queries';
 import {generateClient} from 'aws-amplify/api';
 import Cards from '../../components/Cards';
 const client = generateClient();
-
-const {width} = Dimensions.get('window');
 
 const BillsAndReceiptItemsReport = ({navigation, route}) => {
   const {store} = route.params;
@@ -43,9 +32,7 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
   // State for transactions
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('all'); // 'all', 'cashier', 'item'
 
   // State for filtering
   const [filterPeriod, setFilterPeriod] = useState('today');
@@ -54,21 +41,19 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
   const [startDate, setStartDate] = useState(moment().startOf('day').toDate());
   const [endDate, setEndDate] = useState(moment().endOf('day').toDate());
 
-
-
   // State for item reports
   const [itemReports, setItemReports] = useState({});
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
   useEffect(() => {
     filterTransactionsByDate();
-  }, [transactions, viewMode]); // Only run when transactions or viewMode changes
+  }, [filterTransactionsByDate, transactions]); // Only run when transactions or viewMode changes
 
   // Fetch all transactions for the store
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch transactions
@@ -80,7 +65,7 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
           },
         },
       });
-      
+
       // Fetch sales data
       const salesResult = await client.graphql({
         query: listSales,
@@ -92,23 +77,25 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
           limit: 1000, // Adjust limit as needed
         },
       });
-      
+
       // Get sales data
       const salesData = salesResult.data.listSales.items;
       console.log('Fetched sales data:', salesData.length, 'items');
 
       // Sort transactions by creation date (newest first)
-      const sortedTransactions = transactionsResult.data.listSaleTransactions.items.sort(
-        (a, b) => moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf(),
-      );
-      
+      const sortedTransactions =
+        transactionsResult.data.listSaleTransactions.items.sort(
+          (a, b) =>
+            moment(b.createdAt).valueOf() - moment(a.createdAt).valueOf(),
+        );
+
       // Add sales data to each transaction
       const transactionsWithSales = sortedTransactions.map(transaction => {
         // Find sales related to this transaction
         const transactionSales = salesData.filter(
-          sale => sale.transactionID === transaction.id
+          sale => sale.transactionID === transaction.id,
         );
-        
+
         // Add sales to the transaction
         return {
           ...transaction,
@@ -124,27 +111,36 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [store.id]);
 
   // Generate reports from transaction data
   const generateReports = transactionData => {
-    console.log('Generating item reports with', transactionData.length, 'transactions');
+    console.log(
+      'Generating item reports with',
+      transactionData.length,
+      'transactions',
+    );
     // Generate item reports
 
     const itemData = {};
 
     transactionData.forEach(transaction => {
       // First check for sales data that we fetched
-      if (transaction.sales && Array.isArray(transaction.sales) && transaction.sales.length > 0) {
-        console.log(`Processing ${transaction.sales.length} sales for transaction ${transaction.id}`);
-        
+      if (
+        transaction.sales &&
+        Array.isArray(transaction.sales) &&
+        transaction.sales.length > 0
+      ) {
+        console.log(
+          `Processing ${transaction.sales.length} sales for transaction ${transaction.id}`,
+        );
         // Process sales data - this comes directly from the Sale schema
         transaction.sales.forEach(sale => {
           const itemId = sale.productID;
           const itemName = sale.productName || 'Unknown';
           const quantity = sale.quantity || 1;
           const price = sale.price || 0;
-          
+
           if (!itemData[itemId]) {
             itemData[itemId] = {
               id: itemId,
@@ -153,11 +149,11 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
               totalRevenue: 0,
             };
           }
-          
+
           itemData[itemId].totalSold += quantity;
           itemData[itemId].totalRevenue += price * quantity;
         });
-      } 
+      }
       // Fall back to items data if sales is not available
       else if (transaction.items && Array.isArray(transaction.items)) {
         transaction.items.forEach(item => {
@@ -185,52 +181,54 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
       }
     });
 
-
     setItemReports(itemData);
   };
 
   // Filter transactions based on date range
-  const filterTransactionsByDate = async (period) => {
-    // Use the passed period or fall back to the state
-    const currentFilterPeriod = period || filterPeriod;
-    let start, end;
+  const filterTransactionsByDate = useCallback(
+    async period => {
+      // Use the passed period or fall back to the state
+      const currentFilterPeriod = period || filterPeriod;
+      let start, end;
 
-    switch (currentFilterPeriod) {
-      case 'today':
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-        break;
-      case 'yesterday':
-        start = moment().subtract(1, 'days').startOf('day');
-        end = moment().subtract(1, 'days').endOf('day');
-        break;
-      case 'thisWeek':
-        start = moment().startOf('week');
-        end = moment().endOf('week');
-        break;
-      case 'thisMonth':
-        start = moment().startOf('month');
-        end = moment().endOf('month');
-        break;
-      case 'custom':
-        start = moment(startDate);
-        end = moment(endDate);
-        break;
-      default:
-        start = moment().startOf('day');
-        end = moment().endOf('day');
-    }
+      switch (currentFilterPeriod) {
+        case 'today':
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+          break;
+        case 'yesterday':
+          start = moment().subtract(1, 'days').startOf('day');
+          end = moment().subtract(1, 'days').endOf('day');
+          break;
+        case 'thisWeek':
+          start = moment().startOf('week');
+          end = moment().endOf('week');
+          break;
+        case 'thisMonth':
+          start = moment().startOf('month');
+          end = moment().endOf('month');
+          break;
+        case 'custom':
+          start = moment(startDate);
+          end = moment(endDate);
+          break;
+        default:
+          start = moment().startOf('day');
+          end = moment().endOf('day');
+      }
 
-    const filtered = transactions.filter(transaction => {
-      const transactionDate = moment(transaction.createdAt);
-      return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
-    });
+      const filtered = transactions.filter(transaction => {
+        const transactionDate = moment(transaction.createdAt);
+        return transactionDate.isBetween(start, end, null, '[]'); // inclusive range
+      });
 
-    setFilteredTransactions(filtered);
-    
-    // Regenerate reports with filtered transactions
-    generateReports(filtered);
-  };
+      setFilteredTransactions(filtered);
+
+      // Regenerate reports with filtered transactions
+      generateReports(filtered);
+    },
+    [filterPeriod, startDate, endDate, transactions],
+  );
 
   // Handle date picker changes
   const onDateChange = (event, selectedDate) => {
@@ -259,17 +257,7 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
     setDatePickerVisible(true);
   };
 
- 
-
   // Print transaction receipt
-  const printReceipt = transaction => {
-    // In a real app, this would interface with a printer
-    // For this example, we'll just show an alert
-    Alert.alert(
-      'Print Receipt',
-      `Printing receipt for transaction ${transaction.id.substring(0, 8)}`,
-    );
-  };
 
   // Calculate summary statistics
   const calculateSummary = () => {
@@ -288,7 +276,6 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
     };
   };
 
- 
   // Render custom date range selector
   const renderCustomDateRange = () =>
     filterPeriod === 'custom' && (
@@ -440,9 +427,6 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
     );
   };
 
-  
-
- 
   // Render item report
   const renderItemReport = () => {
     const itemList = Object.values(itemReports).sort(
@@ -473,8 +457,7 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
             renderItem={({item}) => (
               <Grid>
                 <Row style={{height: 30, backgroundColor: colors.white}}>
-                  <Col
-                    style={[styles.colStyle, {alignItems: 'center'}]}>
+                  <Col style={[styles.colStyle, {alignItems: 'center'}]}>
                     <Text style={styles.textColor}>{item.name}</Text>
                   </Col>
                   <Col style={[styles.colStyle]}>
@@ -511,7 +494,6 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
     );
   };
 
- 
   // Main render
   return (
     <Provider>
@@ -536,8 +518,6 @@ const BillsAndReceiptItemsReport = ({navigation, route}) => {
         {/* Main Content */}
         <View style={styles.contentContainer}>{renderItemReport()}</View>
 
-       
-
         {/* Date picker */}
         {datePickerVisible && (
           <DateTimePicker
@@ -558,7 +538,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   contentContainer: {
-    marginTop:10,
+    marginTop: 10,
     flex: 1,
     paddingHorizontal: 10,
   },
@@ -623,7 +603,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 10,
     backgroundColor: colors.white,
-  
   },
   summaryCard: {
     flex: 1,
@@ -830,46 +809,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   // Filter card styles
-    filterCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    filterTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: colors.textDark,
-      marginBottom: 12,
-    },
-    periodFilter: {
-      flexDirection: 'row',
-      backgroundColor: '#F5F5F5',
-      borderRadius: 20,
-      padding: 2,
-      justifyContent: 'center',
-    },
-    periodButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 18,
-    },
-    activePeriod: {
-      backgroundColor: colors.primary,
-    },
-    periodText: {
-      color: colors.textDark,
-      fontSize: 14,
-    },
-    activePeriodText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-    },
+  filterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textDark,
+    marginBottom: 12,
+  },
+  periodFilter: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  periodButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+  },
+  activePeriod: {
+    backgroundColor: colors.primary,
+  },
+  periodText: {
+    color: colors.textDark,
+    fontSize: 14,
+  },
+  activePeriodText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 export default BillsAndReceiptItemsReport;

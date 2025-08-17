@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -24,13 +24,13 @@ const CustomerDetailScreen = () => {
 
   useEffect(() => {
     fetchCustomerDetails();
-  }, [customerId]);
+  }, [customerId, fetchCustomerDetails]);
 
-  const fetchCustomerDetails = async () => {
+  const fetchCustomerDetails = useCallback(async () => {
     try {
       const customerData = await client.graphql({
-        query: queries.getCustomer, 
-        variables: {id: customerId}
+        query: queries.getCustomer,
+        variables: {id: customerId},
       });
       setCustomer(customerData.data.getCustomer);
     } catch (error) {
@@ -39,7 +39,7 @@ const CustomerDetailScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId]);
 
   const handleEdit = () => {
     navigation.navigate('CustomerScreen', {customerToEditId: customer.id});
@@ -81,7 +81,9 @@ const CustomerDetailScreen = () => {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.label}>Allow Credit:</Text>
-            <Text style={styles.value}>{customer.allowCredit ? 'Yes' : 'No'}</Text>
+            <Text style={styles.value}>
+              {customer.allowCredit ? 'Yes' : 'No'}
+            </Text>
           </View>
           {customer.allowCredit && (
             <View style={styles.detailRow}>

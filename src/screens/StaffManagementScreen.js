@@ -419,7 +419,7 @@ function StaffManagementScreen({navigation}) {
         device_id: '',
         device_name: '',
       };
-      
+
       // Hash password for new staff
       if (!selectedStaffId) {
         try {
@@ -427,13 +427,16 @@ function StaffManagementScreen({navigation}) {
           const defaultPassword = '00000';
           // Use our custom password hashing utility
           const hashedPassword = hashPassword(defaultPassword);
-          
+
           console.log('Created hashed password for new staff');
           staffData.password = hashedPassword;
         } catch (hashError) {
           console.error('Error hashing password:', hashError);
           // Don't continue if hashing fails - security first
-          Alert.alert('Error', 'There was a problem with security. Please try again.');
+          Alert.alert(
+            'Error',
+            'There was a problem with security. Please try again.',
+          );
           setIsSaving(false);
           return;
         }
@@ -982,7 +985,7 @@ function StaffManagementScreen({navigation}) {
                       setSelectedStaffId(null);
                       setNewStaff({name: '', role: '', stores: []});
                     }}
-                     labelStyle={{color: colors.red}}
+                    labelStyle={{color: colors.red}}
                     style={styles.cancelButton}
                     disabled={isSaving}>
                     Cancel
@@ -1019,9 +1022,9 @@ function StaffManagementScreen({navigation}) {
 
 const styles = StyleSheet.create({
   addButton: {
-      margin: 16,
-      backgroundColor: colors.secondary,
-    },
+    margin: 16,
+    backgroundColor: colors.secondary,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -1296,10 +1299,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   actionButton: {
- 
     borderRadius: 20,
- 
-    marginTop: 10
+
+    marginTop: 10,
   },
   cancelButton: {
     borderColor: colors.red,

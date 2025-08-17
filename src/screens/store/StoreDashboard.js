@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Text,
   StyleSheet,
@@ -11,9 +11,8 @@ import {
 } from 'react-native';
 import Appbar from '../../components/Appbar';
 import CardTiles from '../../components/CardTiles';
-import {useStore} from '../../context/StoreContext';
 import colors from '../../themes/colors';
-import {LineChart, BarChart, PieChart} from 'react-native-chart-kit';
+import {LineChart} from 'react-native-chart-kit';
 import {generateClient} from 'aws-amplify/api';
 import {
   listSaleTransactions,
@@ -21,7 +20,6 @@ import {
   listStaffStores,
 } from '../../graphql/queries';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import formatMoney from 'accounting-js/lib/formatMoney.js';
 
 const client = generateClient();
 
@@ -40,9 +38,9 @@ const StoreDashboard = ({navigation, route}) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [selectedPeriod]);
+  }, [fetchDashboardData, selectedPeriod]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       // Get date range based on selected period
@@ -108,7 +106,7 @@ const StoreDashboard = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriod, store.id]);
 
   const getDateRange = period => {
     const endDate = new Date();
