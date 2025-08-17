@@ -48,7 +48,9 @@ const WarehouseProductAddScreen = ({navigation}) => {
   const [uniqueCategories, setUniqueCategories] = useState([]);
 
   const checkSku = async skuValue => {
-    if (!skuValue) return;
+    if (!skuValue) {
+      return;
+    }
     setSkuLoading(true);
     try {
       const result = await client.graphql({
@@ -91,34 +93,50 @@ const WarehouseProductAddScreen = ({navigation}) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!name) newErrors.name = 'Product name is required';
-    if (!sku) newErrors.sku = 'SKU is required';
-    else if (skuExists) newErrors.sku = 'This SKU already exists';
-    if (!purchasePrice) newErrors.purchasePrice = 'Purchase price is required';
-    if (!sellingPrice) newErrors.sellingPrice = 'Selling price is required';
-    if (!totalStock) newErrors.totalStock = 'Total stock is required';
+    if (!name) {
+      newErrors.name = 'Product name is required';
+    }
+    if (!sku) {
+      newErrors.sku = 'SKU is required';
+    } else if (skuExists) {
+      newErrors.sku = 'This SKU already exists';
+    }
+    if (!purchasePrice) {
+      newErrors.purchasePrice = 'Purchase price is required';
+    }
+    if (!sellingPrice) {
+      newErrors.sellingPrice = 'Selling price is required';
+    }
+    if (!totalStock) {
+      newErrors.totalStock = 'Total stock is required';
+    }
 
     const pPrice = parseFloat(purchasePrice);
     const sPrice = parseFloat(sellingPrice);
 
-    if (isNaN(pPrice) || pPrice < 0)
+    if (isNaN(pPrice) || pPrice < 0) {
       newErrors.purchasePrice = 'Enter a valid purchase price';
+    }
 
-    if (isNaN(sPrice) || sPrice < 0)
+    if (isNaN(sPrice) || sPrice < 0) {
       newErrors.sellingPrice = 'Enter a valid selling price';
-    else if (!isNaN(pPrice) && sPrice <= pPrice)
+    } else if (!isNaN(pPrice) && sPrice <= pPrice) {
       newErrors.sellingPrice =
         'Selling price must be greater than purchase price';
+    }
 
-    if (isNaN(parseFloat(totalStock)) || parseFloat(totalStock) < 0)
+    if (isNaN(parseFloat(totalStock)) || parseFloat(totalStock) < 0) {
       newErrors.totalStock = 'Enter a valid stock quantity';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -188,13 +206,9 @@ const WarehouseProductAddScreen = ({navigation}) => {
                 style={styles.input}
                 error={!!errors.sku}
                 mode="outlined"
-                right={
-                  skuLoading && <TextInput.Icon icon="timer-sand-empty" />
-                }
+                right={skuLoading && <TextInput.Icon icon="timer-sand-empty" />}
               />
-              {errors.sku && (
-                <HelperText type="error">{errors.sku}</HelperText>
-              )}
+              {errors.sku && <HelperText type="error">{errors.sku}</HelperText>}
             </Card.Content>
           </Card>
 
@@ -374,7 +388,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 8,
   },
-  });
-
+});
 
 export default WarehouseProductAddScreen;

@@ -1,17 +1,6 @@
 import React, {useState, useCallback} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-} from 'react-native';
-import {
-  Card,
-  Title,
-  Paragraph,
-  Button,
-} from 'react-native-paper';
+import {View, Text, StyleSheet, ScrollView, RefreshControl} from 'react-native';
+import {Card, Title, Paragraph, Button} from 'react-native-paper';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import Appbar from '../../components/Appbar';
 import SummaryCard from '../../components/SummaryCard'; // Import the new component
@@ -24,7 +13,11 @@ import colors from '../../themes/colors';
 
 const WarehouseHomeScreen = () => {
   const navigation = useNavigation();
-  const [summary, setSummary] = useState({PENDING: 0, PARTIALLY_FULFILLED: 0, FULFILLED: 0});
+  const [summary, setSummary] = useState({
+    PENDING: 0,
+    PARTIALLY_FULFILLED: 0,
+    FULFILLED: 0,
+  });
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [productCount, setProductCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,7 +34,7 @@ const WarehouseHomeScreen = () => {
       });
       const allProducts = productsData.data.listWarehouseProducts.items;
       setProductCount(allProducts.length);
-      
+
       const lowStock = allProducts.filter(p => p.availableStock < 10);
       setLowStockProducts(lowStock);
 
@@ -80,11 +73,12 @@ const WarehouseHomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Appbar title="Dashboard"  subtitle="Warehouse" hideMenuButton/>
+      <Appbar title="Dashboard" subtitle="Warehouse" hideMenuButton />
       <ScrollView
         style={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }>
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Quick Summary</Text>
           <View style={styles.summaryContainer}>
@@ -109,37 +103,50 @@ const WarehouseHomeScreen = () => {
               count={summary.PENDING}
               icon="alert-circle-outline"
               color="#FFA000"
-              onPress={() => navigation.navigate('StoreRequests', {statusFilter: 'PENDING'})}
+              onPress={() =>
+                navigation.navigate('StoreRequests', {statusFilter: 'PENDING'})
+              }
             />
             <SummaryCard
               title="Partial"
               count={summary.PARTIALLY_FULFILLED}
               icon="progress-check"
               color="#2196F3"
-              onPress={() => navigation.navigate('StoreRequests', {statusFilter: 'PARTIALLY_FULFILLED'})}
+              onPress={() =>
+                navigation.navigate('StoreRequests', {
+                  statusFilter: 'PARTIALLY_FULFILLED',
+                })
+              }
             />
             <SummaryCard
               title="Completed"
               count={summary.FULFILLED}
               icon="check-circle-outline"
               color="#4CAF50"
-              onPress={() => navigation.navigate('StoreRequests', {statusFilter: 'FULFILLED'})}
+              onPress={() =>
+                navigation.navigate('StoreRequests', {
+                  statusFilter: 'FULFILLED',
+                })
+              }
             />
           </View>
 
-          <Card style={styles.reportCard} onPress={() => navigation.navigate('Reports')}>
+          <Card
+            style={styles.reportCard}
+            onPress={() => navigation.navigate('Reports')}>
             <Card.Content style={styles.reportCardContent}>
               <View style={styles.reportCardTextContainer}>
                 <Title>Inventory Health Reports</Title>
-                <Paragraph>View detailed inventory metrics and stock value analysis</Paragraph>
+                <Paragraph>
+                  View detailed inventory metrics and stock value analysis
+                </Paragraph>
               </View>
               <Button
                 mode="contained"
                 icon="chart-box"
                 color={colors.primary}
                 style={styles.reportButton}
-                onPress={() => navigation.navigate('Reports')}
-              >
+                onPress={() => navigation.navigate('Reports')}>
                 View Reports
               </Button>
             </Card.Content>
@@ -151,7 +158,9 @@ const WarehouseHomeScreen = () => {
               <Card key={product.id} style={styles.listCard}>
                 <Card.Content>
                   <Title>{product.name}</Title>
-                  <Paragraph>Available Stock: {product.availableStock}</Paragraph>
+                  <Paragraph>
+                    Available Stock: {product.availableStock}
+                  </Paragraph>
                 </Card.Content>
               </Card>
             ))
@@ -163,8 +172,7 @@ const WarehouseHomeScreen = () => {
             <Button
               mode="text"
               onPress={() => navigation.navigate('WarehouseInventory')}
-              style={styles.viewMoreButton}
-            >
+              style={styles.viewMoreButton}>
               View All Low Stock Items
             </Button>
           )}

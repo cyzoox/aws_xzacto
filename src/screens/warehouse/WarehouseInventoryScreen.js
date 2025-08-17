@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import { differenceInDays } from 'date-fns';
+import {differenceInDays} from 'date-fns';
 import {
   View,
   StyleSheet,
@@ -38,27 +38,40 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
   const filterParams = route?.params || {};
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(filterParams.searchQuery || ''); 
-  const [categoryFilter, setCategoryFilter] = useState(filterParams.categoryFilter || '');
+  const [searchQuery, setSearchQuery] = useState(
+    filterParams.searchQuery || '',
+  );
+  const [categoryFilter, setCategoryFilter] = useState(
+    filterParams.categoryFilter || '',
+  );
   const [filterType, setFilterType] = useState(filterParams.filter || 'all'); // 'all', 'lowStock', 'overstock', 'aging'
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [editForm, setEditForm] = useState({name: '', sku: '', sellingPrice: '', availableStock: '', unit: '', reorderPoint: ''});
+  const [editForm, setEditForm] = useState({
+    name: '',
+    sku: '',
+    sellingPrice: '',
+    availableStock: '',
+    unit: '',
+    reorderPoint: '',
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [modalError, setModalError] = useState('');
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
 
   const fetchProducts = useCallback(async () => {
-    if (!refreshing) setLoading(true);
+    if (!refreshing) {
+      setLoading(true);
+    }
     try {
       const productsData = await client.graphql({
         query: listWarehouseProducts,
       });
       setProducts(productsData.data.listWarehouseProducts.items || []);
       setError(null);
-      
+
       // Reset filters to what came from route params when re-fetching data
       if (filterParams.searchQuery) {
         setSearchQuery(filterParams.searchQuery);
@@ -73,9 +86,11 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
       console.error('Error fetching products:', err);
       setError('Failed to load products. Please try again.');
     } finally {
-      if (!refreshing) setLoading(false);
+      if (!refreshing) {
+        setLoading(false);
+      }
     }
-  }, [refreshing, filterParams]);  // Add filterParams to dependency array
+  }, [refreshing, filterParams]); // Add filterParams to dependency array
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -89,7 +104,7 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
     fetchProducts().finally(() => setRefreshing(false));
   }, [fetchProducts]);
 
-  const handleEditOpen = (product) => {
+  const handleEditOpen = product => {
     setSelectedProduct(product);
     setEditForm({
       name: product.name,
@@ -113,7 +128,9 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
   };
 
   const handleSaveChanges = async () => {
-    if (!selectedProduct || isSaving) return;
+    if (!selectedProduct || isSaving) {
+      return;
+    }
 
     setIsSaving(true);
     setModalError('');
@@ -125,11 +142,17 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
       sellingPrice: parseFloat(editForm.sellingPrice),
       availableStock: parseInt(editForm.availableStock, 10),
       unit: editForm.unit || 'Units',
-      reorderPoint: editForm.reorderPoint ? parseInt(editForm.reorderPoint, 10) : LOW_STOCK_THRESHOLD,
+      reorderPoint: editForm.reorderPoint
+        ? parseInt(editForm.reorderPoint, 10)
+        : LOW_STOCK_THRESHOLD,
       updatedAt: new Date().toISOString(),
     };
 
-    if (!input.name || isNaN(input.sellingPrice) || isNaN(input.availableStock)) {
+    if (
+      !input.name ||
+      isNaN(input.sellingPrice) ||
+      isNaN(input.availableStock)
+    ) {
       setModalError('Please fill out all fields correctly.');
       setIsSaving(false);
       return;
@@ -138,11 +161,13 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
     try {
       await client.graphql({
         query: updateWarehouseProduct,
-        variables: { input },
+        variables: {input},
       });
       // Refresh local data
-      setProducts(prevProducts => 
-        prevProducts.map(p => p.id === selectedProduct.id ? {...p, ...input} : p)
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === selectedProduct.id ? {...p, ...input} : p,
+        ),
       );
       handleEditClose();
     } catch (err) {
@@ -153,27 +178,34 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
     }
   };
 
-  const applyFilters = (products) => {
+  const applyFilters = products => {
     let filtered = products;
-    
+
     // Apply text search
     if (searchQuery.trim()) {
       filtered = filtered.filter(
         product =>
           product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (product.category && product.category.toLowerCase().includes(searchQuery.toLowerCase()))
+          (product.category &&
+            product.category.toLowerCase().includes(searchQuery.toLowerCase())),
       );
     }
-    
+
     // Apply category filter
     if (categoryFilter) {
-      filtered = filtered.filter(product => product.category === categoryFilter);
+      filtered = filtered.filter(
+        product => product.category === categoryFilter,
+      );
     }
-    
+
     // Apply type filters
     if (filterType === 'lowStock') {
-      filtered = filtered.filter(product => product.availableStock < (product.reorderPoint || LOW_STOCK_THRESHOLD));
+      filtered = filtered.filter(
+        product =>
+          product.availableStock <
+          (product.reorderPoint || LOW_STOCK_THRESHOLD),
+      );
     } else if (filterType === 'overstock') {
       filtered = filtered.filter(product => {
         const overstockThreshold = (product.reorderQuantity || 20) * 1.5;
@@ -190,17 +222,15 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
         return false;
       });
     }
-    
+
     return filtered;
   };
-  
+
   const filteredProducts = applyFilters(products);
-
-
 
   return (
     <View style={styles.container}>
-      <Appbar title="Inventory" subtitle="Warehouse" hideMenuButton/>
+      <Appbar title="Inventory" subtitle="Warehouse" hideMenuButton />
       <Searchbar
         placeholder="Search products by name or SKU"
         onChangeText={setSearchQuery}
@@ -262,51 +292,59 @@ const WarehouseInventoryScreen = ({navigation, route}) => {
                   'Last Updated',
                 ]}
                 colStyle={[
-                  { width: 200 },
-                  { width: 150 },
-                  { width: 100 },
-                  { width: 120 },
-                  { width: 100 },
-                  { width: 130 }
+                  {width: 200},
+                  {width: 150},
+                  {width: 100},
+                  {width: 120},
+                  {width: 100},
+                  {width: 130},
                 ]}
                 total={0} // Not using total for inventory
               >
-                {filteredProducts.map((product) => (
+                {filteredProducts.map(product => (
                   <TouchableOpacity
                     key={product.id}
                     onPress={() => handleEditOpen(product)}
                     activeOpacity={0.7}>
-                    <Row 
+                    <Row
                       style={[
                         styles.dataRow,
-                        product.availableStock < (product.reorderPoint || LOW_STOCK_THRESHOLD)
+                        product.availableStock <
+                        (product.reorderPoint || LOW_STOCK_THRESHOLD)
                           ? styles.lowStockRow
                           : null,
-                      ]}
-                  >
-                    <Col style={{ width: 200 }}>
-                      <Text style={styles.cellText}>{product.name}</Text>
-                    </Col>
-                    <Col style={{ width: 150 }}>
-                      <Text style={styles.cellText}>{product.sku || 'N/A'}</Text>
-                    </Col>
-                    <Col style={{ width: 100, alignItems: 'center' }}>
-                      <Text style={styles.cellText}>{product.availableStock}</Text>
-                    </Col>
-                    <Col style={{ width: 120, alignItems: 'center' }}>
-                      <Text style={styles.cellText}>{product.reorderPoint || LOW_STOCK_THRESHOLD}</Text>
-                    </Col>
-                    <Col style={{ width: 100, alignItems: 'center' }}>
-                      <Text style={styles.cellText}>{product.unit || 'Units'}</Text>
-                    </Col>
-                    <Col style={{ width: 130, alignItems: 'center' }}>
-                      <Text style={styles.cellText}>
-                        {product.updatedAt
-                          ? new Date(product.updatedAt).toLocaleDateString()
-                          : 'N/A'}
-                      </Text>
-                    </Col>
-                  </Row>
+                      ]}>
+                      <Col style={{width: 200}}>
+                        <Text style={styles.cellText}>{product.name}</Text>
+                      </Col>
+                      <Col style={{width: 150}}>
+                        <Text style={styles.cellText}>
+                          {product.sku || 'N/A'}
+                        </Text>
+                      </Col>
+                      <Col style={{width: 100, alignItems: 'center'}}>
+                        <Text style={styles.cellText}>
+                          {product.availableStock}
+                        </Text>
+                      </Col>
+                      <Col style={{width: 120, alignItems: 'center'}}>
+                        <Text style={styles.cellText}>
+                          {product.reorderPoint || LOW_STOCK_THRESHOLD}
+                        </Text>
+                      </Col>
+                      <Col style={{width: 100, alignItems: 'center'}}>
+                        <Text style={styles.cellText}>
+                          {product.unit || 'Units'}
+                        </Text>
+                      </Col>
+                      <Col style={{width: 130, alignItems: 'center'}}>
+                        <Text style={styles.cellText}>
+                          {product.updatedAt
+                            ? new Date(product.updatedAt).toLocaleDateString()
+                            : 'N/A'}
+                        </Text>
+                      </Col>
+                    </Row>
                   </TouchableOpacity>
                 ))}
               </DataTable>

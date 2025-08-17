@@ -55,7 +55,11 @@ const StoreRequestsScreen = () => {
               itemCount,
             };
           } catch (error) {
-            console.error('Error fetching store for request:', request.id, error);
+            console.error(
+              'Error fetching store for request:',
+              request.id,
+              error,
+            );
             return {
               ...request,
               storeName: 'Error',
@@ -83,7 +87,9 @@ const StoreRequestsScreen = () => {
       .filter(
         request =>
           ((request.storeName &&
-            request.storeName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            request.storeName
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
             request.id.toLowerCase().includes(searchQuery.toLowerCase())) &&
           (!statusFilter || request.status === statusFilter),
       )
@@ -107,8 +113,9 @@ const StoreRequestsScreen = () => {
 
   const renderRequestItem = ({item}) => (
     <TouchableOpacity
-      onPress={() => navigation.navigate('RequestDetails', {requestId: item.id})}
-    >
+      onPress={() =>
+        navigation.navigate('RequestDetails', {requestId: item.id})
+      }>
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.cardHeader}>
@@ -130,7 +137,7 @@ const StoreRequestsScreen = () => {
   return (
     <Provider>
       <View style={styles.container}>
-        <Appbar title="Delivery Request" subtitle="Warehouse" hideMenuButton/>
+        <Appbar title="Delivery Request" subtitle="Warehouse" hideMenuButton />
         <View style={styles.controlsContainer}>
           <Searchbar
             placeholder="Search by store or order ID"
@@ -147,12 +154,10 @@ const StoreRequestsScreen = () => {
                 mode="outlined"
                 style={styles.filterButton}
                 labelStyle={styles.filterButtonLabel}
-                icon="filter-variant"
-              >
+                icon="filter-variant">
                 {statusFilter || 'All'}
               </Button>
-            }
-          >
+            }>
             <Menu.Item
               onPress={() => {
                 setStatusFilter('');
@@ -185,7 +190,11 @@ const StoreRequestsScreen = () => {
         </View>
 
         {loading ? (
-          <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
+          <ActivityIndicator
+            style={styles.loader}
+            size="large"
+            color={colors.primary}
+          />
         ) : filteredRequests.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No requests found.</Text>

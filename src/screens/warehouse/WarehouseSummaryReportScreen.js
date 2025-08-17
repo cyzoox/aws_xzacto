@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,34 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { Card, Title, Paragraph, Chip, Searchbar, Menu, Button, DataTable } from 'react-native-paper';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { generateClient } from 'aws-amplify/api';
-import { listWarehouseProducts, listInventoryRequests, getStore } from '../../graphql/queries';
-import { format, subDays, startOfMonth, startOfWeek, startOfDay, endOfDay, differenceInDays } from 'date-fns';
+import {
+  Card,
+  Title,
+  Paragraph,
+  Chip,
+  Searchbar,
+  Menu,
+  Button,
+  DataTable,
+} from 'react-native-paper';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
+import {generateClient} from 'aws-amplify/api';
+import {
+  listWarehouseProducts,
+  listInventoryRequests,
+  getStore,
+} from '../../graphql/queries';
+import {
+  format,
+  subDays,
+  startOfMonth,
+  startOfWeek,
+  startOfDay,
+  endOfDay,
+  differenceInDays,
+} from 'date-fns';
 import Appbar from '../../components/Appbar';
-import { colors } from '../../constants/theme';
+import {colors} from '../../constants/theme';
 import Cards from '../../components/Cards';
 
 const WarehouseSummaryReportScreen = () => {
@@ -42,10 +63,10 @@ const WarehouseSummaryReportScreen = () => {
   const calculateDateRangeFilter = () => {
     const now = new Date();
     let startDate;
-    
+
     switch (dateRange) {
       case 'week':
-        startDate = startOfWeek(now, { weekStartsOn: 1 }); // Week starts on Monday
+        startDate = startOfWeek(now, {weekStartsOn: 1}); // Week starts on Monday
         break;
       case 'month':
         startDate = startOfMonth(now);
@@ -55,7 +76,7 @@ const WarehouseSummaryReportScreen = () => {
         startDate = startOfDay(now);
         break;
     }
-    
+
     return startDate;
   };
 
@@ -66,57 +87,68 @@ const WarehouseSummaryReportScreen = () => {
       const productsData = await client.graphql({
         query: listWarehouseProducts,
       });
-      
+
       // Get date range filter
       const startDate = calculateDateRangeFilter();
       const now = new Date();
-      
+
       // Fetch inventory requests for branch fulfillment section
       const inventoryRequestsResponse = await client.graphql({
         query: listInventoryRequests,
-        variables: { filter: { createdAt: { ge: startDate.toISOString() } } }
+        variables: {filter: {createdAt: {ge: startDate.toISOString()}}},
       });
-      const inventoryRequests = inventoryRequestsResponse.data.listInventoryRequests.items;
-      
+      const inventoryRequests =
+        inventoryRequestsResponse.data.listInventoryRequests.items;
+
       // Process branch fulfillment data
       const branchMap = new Map();
-      
+
       // First, gather all unique storeIds
-      const storeIds = [...new Set(inventoryRequests
-        .filter(req => req.storeId) // Filter out requests without storeId
-        .map(req => req.storeId))];
-      
+      const storeIds = [
+        ...new Set(
+          inventoryRequests
+            .filter(req => req.storeId) // Filter out requests without storeId
+            .map(req => req.storeId),
+        ),
+      ];
       // Create a map of storeId to store name for faster lookups
       const storeNameMap = new Map();
-      
+
       // Fetch all store names in parallel
-      await Promise.all(storeIds.map(async (storeId) => {
-        try {
-          const storeData = await client.graphql({
-            query: getStore,
-            variables: { id: storeId }
-          });
-          
-          if (storeData.data.getStore) {
-            storeNameMap.set(storeId, storeData.data.getStore.name);
+      await Promise.all(
+        storeIds.map(async storeId => {
+          try {
+            const storeData = await client.graphql({
+              query: getStore,
+              variables: {id: storeId},
+            });
+
+            if (storeData.data.getStore) {
+              storeNameMap.set(storeId, storeData.data.getStore.name);
+            }
+          } catch (error) {
+            console.error(`Error fetching store with ID ${storeId}:`, error);
           }
-        } catch (error) {
-          console.error(`Error fetching store with ID ${storeId}:`, error);
-        }
-      }));
-      
+        }),
+      );
       // Now process the requests with the store names we've gathered
       for (const request of inventoryRequests) {
         // Get branch name from storeId using our lookup map
-        const branchName = request.storeId && storeNameMap.has(request.storeId) 
-          ? storeNameMap.get(request.storeId) 
-          : 'Unknown Branch';
-          
+        const branchName =
+          request.storeId && storeNameMap.has(request.storeId)
+            ? storeNameMap.get(request.storeId)
+            : 'Unknown Branch';
+
         const isFulfilled = request.status === 'FULFILLED';
         const isPending = request.status === 'PENDING';
-        const fulfillmentTime = isFulfilled && request.fulfillmentDate ? 
-          differenceInDays(new Date(request.fulfillmentDate), new Date(request.createdAt)) : null;
-        
+        const fulfillmentTime =
+          isFulfilled && request.fulfillmentDate
+            ? differenceInDays(
+                new Date(request.fulfillmentDate),
+                new Date(request.createdAt),
+              )
+            : null;
+
         if (!branchMap.has(branchName)) {
           branchMap.set(branchName, {
             name: branchName,
@@ -124,10 +156,10 @@ const WarehouseSummaryReportScreen = () => {
             fulfilled: 0,
             pending: 0,
             totalFulfillmentTime: 0,
-            fulfillmentCount: 0
+            fulfillmentCount: 0,
           });
         }
-        
+
         if (!branchMap.has(branchName)) {
           branchMap.set(branchName, {
             name: branchName,
@@ -135,13 +167,13 @@ const WarehouseSummaryReportScreen = () => {
             fulfilled: 0,
             pending: 0,
             totalFulfillmentTime: 0,
-            fulfillmentCount: 0
+            fulfillmentCount: 0,
           });
         }
-        
+
         const branchData = branchMap.get(branchName);
         branchData.requestsSent++;
-        
+
         if (isFulfilled) {
           branchData.fulfilled++;
           if (fulfillmentTime !== null) {
@@ -149,56 +181,72 @@ const WarehouseSummaryReportScreen = () => {
             branchData.fulfillmentCount++;
           }
         }
-        
+
         if (isPending) {
           branchData.pending++;
         }
       }
-      
+
       // Convert map to array and calculate average fulfillment time
-      const branchFulfillmentData = Array.from(branchMap.values()).map(branch => ({
-        ...branch,
-        avgFulfillmentTime: branch.fulfillmentCount > 0 ? 
-          Math.round(branch.totalFulfillmentTime / branch.fulfillmentCount) : 0
-      }));
-      
+      const branchFulfillmentData = Array.from(branchMap.values()).map(
+        branch => ({
+          ...branch,
+          avgFulfillmentTime:
+            branch.fulfillmentCount > 0
+              ? Math.round(
+                  branch.totalFulfillmentTime / branch.fulfillmentCount,
+                )
+              : 0,
+        }),
+      );
       setBranchFulfillment(branchFulfillmentData);
-      
+
       let allProducts = productsData.data.listWarehouseProducts.items;
-      
+
       // Extract all unique categories for filter dropdown
-      const uniqueCategories = [...new Set(allProducts.map(product => product.category).filter(Boolean))];
+      const uniqueCategories = [
+        ...new Set(
+          allProducts.map(product => product.category).filter(Boolean),
+        ),
+      ];
       setCategories(uniqueCategories);
-      
+
       // Apply filters to products based on date range
       if (dateRange !== 'all') {
         allProducts = allProducts.filter(product => {
           // Filter based on lastUpdated date if available, otherwise use createdAt
-          const productDate = new Date(product.lastUpdated || product.createdAt || product.lastRestockDate);
+          const productDate = new Date(
+            product.lastUpdated || product.createdAt || product.lastRestockDate,
+          );
           return productDate >= startDate && productDate <= now;
         });
       }
-      
+
       // Apply search filter if present
       if (searchQuery.trim() !== '') {
-        allProducts = allProducts.filter(product => 
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (product.sku && product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (product.category && product.category.toLowerCase().includes(searchQuery.toLowerCase()))
+        allProducts = allProducts.filter(
+          product =>
+            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (product.sku &&
+              product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (product.category &&
+              product.category
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase())),
         );
       }
-      
+
       // Apply category filter if selected
       if (categoryFilter) {
-        allProducts = allProducts.filter(product => 
-          product.category === categoryFilter
+        allProducts = allProducts.filter(
+          product => product.category === categoryFilter,
         );
       }
-      
+
       // Apply type filters
       if (filterType === 'lowStock') {
-        allProducts = allProducts.filter(product => 
-          product.availableStock < (product.reorderPoint || 10)
+        allProducts = allProducts.filter(
+          product => product.availableStock < (product.reorderPoint || 10),
         );
       } else if (filterType === 'overstock') {
         allProducts = allProducts.filter(product => {
@@ -216,33 +264,46 @@ const WarehouseSummaryReportScreen = () => {
           return false;
         });
       }
-      
+
       // Apply custom filters if any
       if (customFilters.length > 0) {
         // This would be expanded based on specific custom filter needs
         customFilters.forEach(filter => {
-          if (filter.type === 'price' && filter.min !== undefined && filter.max !== undefined) {
-            allProducts = allProducts.filter(product => 
-              product.purchasePrice >= filter.min && product.purchasePrice <= filter.max
+          if (
+            filter.type === 'price' &&
+            filter.min !== undefined &&
+            filter.max !== undefined
+          ) {
+            allProducts = allProducts.filter(
+              product =>
+                product.purchasePrice >= filter.min &&
+                product.purchasePrice <= filter.max,
             );
           }
         });
       }
-      
+
       setProducts(allProducts);
-      
+
       // Calculate metrics for all products (not filtered) to maintain overall metrics
       const unfilteredProducts = productsData.data.listWarehouseProducts.items;
       calculateSummary(unfilteredProducts);
-      
     } catch (error) {
       console.error('Error fetching inventory data:', error);
     } finally {
       setLoading(false);
     }
-  }, [dateRange, filterType, searchQuery, categoryFilter, customFilters]);
+  }, [
+    client,
+    calculateDateRangeFilter,
+    dateRange,
+    searchQuery,
+    categoryFilter,
+    filterType,
+    customFilters,
+  ]);
 
-  const calculateSummary = (productsData) => {
+  const calculateSummary = productsData => {
     const now = new Date();
     let totalValue = 0;
     let totalQuantity = 0;
@@ -252,23 +313,24 @@ const WarehouseSummaryReportScreen = () => {
 
     productsData.forEach(product => {
       // Calculate total value (Purchase Price * Available Stock)
-      const productValue = (product.purchasePrice || 0) * (product.availableStock || 0);
+      const productValue =
+        (product.purchasePrice || 0) * (product.availableStock || 0);
       totalValue += productValue;
-      
+
       // Total quantity
-      totalQuantity += (product.availableStock || 0);
-      
+      totalQuantity += product.availableStock || 0;
+
       // Low stock items (below reorder point)
       if (product.availableStock < (product.reorderPoint || 10)) {
         lowStock++;
       }
-      
+
       // Overstock items (let's assume overstock is 150% of reorder quantity)
       const overstockThreshold = (product.reorderQuantity || 20) * 1.5;
       if (product.availableStock > overstockThreshold) {
         overstock++;
       }
-      
+
       // Aging stock (items not moved for 90+ days)
       // This assumes lastRestockDate is updated when stock is moved
       if (product.lastRestockDate) {
@@ -292,70 +354,95 @@ const WarehouseSummaryReportScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [fetchData])
+    }, [fetchData]),
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData().finally(() => setRefreshing(false));
   }, [fetchData]);
-  
-  const handleFilterChange = (newFilter) => {
+
+  const handleFilterChange = newFilter => {
     setFilterType(newFilter);
     // Re-fetch will happen automatically due to dependency array in useCallback
   };
-  
+
   const onChangeSearch = query => {
     setSearchQuery(query);
   };
-  
+
   const resetFilters = () => {
     setFilterType('all');
     setSearchQuery('');
     setCategoryFilter('');
     setCustomFilters([]);
   };
-  
-  const viewFilteredInventory = (filter) => {
-    navigation.navigate('WarehouseInventory', { 
+
+  const viewFilteredInventory = filter => {
+    navigation.navigate('WarehouseInventory', {
       filter: filter || filterType,
       searchQuery: searchQuery,
       categoryFilter: categoryFilter,
-      customFilters: customFilters
+      customFilters: customFilters,
     });
   };
 
-  const formatCurrency = (value) => {
+  const formatCurrency = value => {
     return '₱' + value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
   };
 
   return (
     <View style={styles.container}>
-      <Appbar title="Summary Reports" subtitle="Warehouse" hideMenuButton/>
+      <Appbar title="Summary Reports" subtitle="Warehouse" hideMenuButton />
       <ScrollView
         style={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }>
         <View style={styles.content}>
           {/* Date Range Selector */}
           <View style={styles.dateRangeContainer}>
             <TouchableOpacity
-              style={[styles.dateRangeButton, dateRange === 'today' && styles.activeDateRange]}
-              onPress={() => setDateRange('today')}
-            >
-              <Text style={[styles.dateRangeText, dateRange === 'today' && styles.activeDateRangeText]}>Today</Text>
+              style={[
+                styles.dateRangeButton,
+                dateRange === 'today' && styles.activeDateRange,
+              ]}
+              onPress={() => setDateRange('today')}>
+              <Text
+                style={[
+                  styles.dateRangeText,
+                  dateRange === 'today' && styles.activeDateRangeText,
+                ]}>
+                Today
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.dateRangeButton, dateRange === 'week' && styles.activeDateRange]}
-              onPress={() => setDateRange('week')}
-            >
-              <Text style={[styles.dateRangeText, dateRange === 'week' && styles.activeDateRangeText]}>This Week</Text>
+              style={[
+                styles.dateRangeButton,
+                dateRange === 'week' && styles.activeDateRange,
+              ]}
+              onPress={() => setDateRange('week')}>
+              <Text
+                style={[
+                  styles.dateRangeText,
+                  dateRange === 'week' && styles.activeDateRangeText,
+                ]}>
+                This Week
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.dateRangeButton, dateRange === 'month' && styles.activeDateRange]}
-              onPress={() => setDateRange('month')}
-            >
-              <Text style={[styles.dateRangeText, dateRange === 'month' && styles.activeDateRangeText]}>This Month</Text>
+              style={[
+                styles.dateRangeButton,
+                dateRange === 'month' && styles.activeDateRange,
+              ]}
+              onPress={() => setDateRange('month')}>
+              <Text
+                style={[
+                  styles.dateRangeText,
+                  dateRange === 'month' && styles.activeDateRangeText,
+                ]}>
+                This Month
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -366,101 +453,113 @@ const WarehouseSummaryReportScreen = () => {
             value={searchQuery}
             style={styles.searchBar}
           />
-          
+
           {/* Filter Chips */}
           {/* <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsContainer}>
-            <Chip 
+            <Chip
               selected={filterType === 'all'}
-              onPress={() => handleFilterChange('all')} 
+              onPress={() => handleFilterChange('all')}
               style={[styles.filterChip, filterType === 'all' && styles.selectedFilterChip]}
               textStyle={filterType === 'all' ? styles.selectedChipText : null}
             >
               All Items
             </Chip>
-            <Chip 
+            <Chip
               selected={filterType === 'lowStock'}
-              onPress={() => handleFilterChange('lowStock')} 
+              onPress={() => handleFilterChange('lowStock')}
               style={[styles.filterChip, filterType === 'lowStock' && styles.selectedFilterChip]}
               textStyle={filterType === 'lowStock' ? styles.selectedChipText : null}
             >
               Low Stock
             </Chip>
-            <Chip 
+            <Chip
               selected={filterType === 'overstock'}
-              onPress={() => handleFilterChange('overstock')} 
+              onPress={() => handleFilterChange('overstock')}
               style={[styles.filterChip, filterType === 'overstock' && styles.selectedFilterChip]}
               textStyle={filterType === 'overstock' ? styles.selectedChipText : null}
             >
               Overstock
             </Chip>
-            <Chip 
+            <Chip
               selected={filterType === 'aging'}
-              onPress={() => handleFilterChange('aging')} 
+              onPress={() => handleFilterChange('aging')}
               style={[styles.filterChip, filterType === 'aging' && styles.selectedFilterChip]}
               textStyle={filterType === 'aging' ? styles.selectedChipText : null}
             >
               Aging (90+ days)
             </Chip>
           </ScrollView> */}
-          
+
           {/* Category Filter - Dropdown */}
           {categories.length > 0 && (
             <Menu
               visible={menuVisible}
               onDismiss={() => setMenuVisible(false)}
               anchor={
-                <Chip 
-                  icon="filter-variant" 
-                  onPress={() => setMenuVisible(true)} 
-                  style={styles.categoryChip}
-                >
-                  {categoryFilter ? `Category: ${categoryFilter}` : 'Filter by Category'}
+                <Chip
+                  icon="filter-variant"
+                  onPress={() => setMenuVisible(true)}
+                  style={styles.categoryChip}>
+                  {categoryFilter
+                    ? `Category: ${categoryFilter}`
+                    : 'Filter by Category'}
                 </Chip>
-              }
-            >
-              <Menu.Item onPress={() => {
-                setCategoryFilter('');
-                setMenuVisible(false);
-              }} title="All Categories" />
+              }>
+              <Menu.Item
+                onPress={() => {
+                  setCategoryFilter('');
+                  setMenuVisible(false);
+                }}
+                title="All Categories"
+              />
               {categories.map((category, index) => (
-                <Menu.Item 
-                  key={index} 
+                <Menu.Item
+                  key={index}
                   onPress={() => {
                     setCategoryFilter(category);
                     setMenuVisible(false);
-                  }} 
-                  title={category} 
+                  }}
+                  title={category}
                 />
               ))}
             </Menu>
           )}
-          
+
           {/* Reset Filters Button */}
-          {(filterType !== 'all' || searchQuery !== '' || categoryFilter !== '') && (
-            <Button 
-              mode="outlined" 
+          {(filterType !== 'all' ||
+            searchQuery !== '' ||
+            categoryFilter !== '') && (
+            <Button
+              mode="outlined"
               onPress={resetFilters}
-              style={styles.resetButton}
-            >
+              style={styles.resetButton}>
               Reset Filters
             </Button>
           )}
 
           {/* Section 1 - Inventory Health Snapshot */}
           <Text style={styles.sectionTitle}>Inventory Health Snapshot</Text>
-          
+
           <View style={styles.cardsRow}>
             <Card style={styles.valueCard}>
               <Card.Content>
-                <Title style={styles.cardValueText}>{formatCurrency(summary.totalStockValue)}</Title>
-                <Paragraph style={styles.cardLabelText}>Total Stock Value</Paragraph>
+                <Title style={styles.cardValueText}>
+                  {formatCurrency(summary.totalStockValue)}
+                </Title>
+                <Paragraph style={styles.cardLabelText}>
+                  Total Stock Value
+                </Paragraph>
               </Card.Content>
             </Card>
-            
+
             <Card style={styles.valueCard}>
               <Card.Content>
-                <Title style={styles.cardValueText}>{summary.totalStockQuantity.toLocaleString()}</Title>
-                <Paragraph style={styles.cardLabelText}>Total Stock Quantity</Paragraph>
+                <Title style={styles.cardValueText}>
+                  {summary.totalStockQuantity.toLocaleString()}
+                </Title>
+                <Paragraph style={styles.cardLabelText}>
+                  Total Stock Quantity
+                </Paragraph>
               </Card.Content>
             </Card>
           </View>
@@ -468,15 +567,23 @@ const WarehouseSummaryReportScreen = () => {
           <View style={styles.cardsRow}>
             <Card style={styles.alertCard}>
               <Card.Content>
-                <Title style={styles.cardValueText}>{summary.lowStockCount}</Title>
-                <Paragraph style={styles.cardLabelText}>Low Stock Items</Paragraph>
+                <Title style={styles.cardValueText}>
+                  {summary.lowStockCount}
+                </Title>
+                <Paragraph style={styles.cardLabelText}>
+                  Low Stock Items
+                </Paragraph>
               </Card.Content>
             </Card>
-            
+
             <Card style={styles.warningCard}>
               <Card.Content>
-                <Title style={styles.cardValueText}>{summary.overstockCount}</Title>
-                <Paragraph style={styles.cardLabelText}>Overstock Items</Paragraph>
+                <Title style={styles.cardValueText}>
+                  {summary.overstockCount}
+                </Title>
+                <Paragraph style={styles.cardLabelText}>
+                  Overstock Items
+                </Paragraph>
               </Card.Content>
             </Card>
           </View>
@@ -494,7 +601,7 @@ const WarehouseSummaryReportScreen = () => {
                 <Text style={styles.agingStockCount}>{summary.agingStock}</Text>
                 <Text style={styles.agingStockLabel}>Items</Text>
               </View>
-              {/* <TouchableOpacity 
+              {/* <TouchableOpacity
                 style={styles.viewDetailsButton}
                 onPress={() => viewFilteredInventory('aging')}
               >
@@ -502,12 +609,12 @@ const WarehouseSummaryReportScreen = () => {
               </TouchableOpacity> */}
             </Card.Content>
           </Card>
-        
+
           {/* Branch Fulfillment Section */}
           <Card style={styles.sectionContainer}>
             <Card.Content>
               <Text style={styles.sectionTitle}>Branch Fulfillment</Text>
-              
+
               {loading ? (
                 <View style={styles.centeredContent}>
                   <Text>Loading branch data...</Text>
@@ -523,18 +630,26 @@ const WarehouseSummaryReportScreen = () => {
                     <DataTable.Title numeric>Requests Sent</DataTable.Title>
                     <DataTable.Title numeric>Fulfilled</DataTable.Title>
                     <DataTable.Title numeric>Pending</DataTable.Title>
-                    <DataTable.Title numeric>Avg. Fulfillment Time</DataTable.Title>
+                    <DataTable.Title numeric>
+                      Avg. Fulfillment Time
+                    </DataTable.Title>
                   </DataTable.Header>
-                  
+
                   {branchFulfillment.map((branch, index) => (
                     <DataTable.Row key={index} style={styles.tableRow}>
                       <DataTable.Cell>{branch.name}</DataTable.Cell>
-                      <DataTable.Cell numeric>{branch.requestsSent}</DataTable.Cell>
-                      <DataTable.Cell numeric>{branch.fulfilled}</DataTable.Cell>
+                      <DataTable.Cell numeric>
+                        {branch.requestsSent}
+                      </DataTable.Cell>
+                      <DataTable.Cell numeric>
+                        {branch.fulfilled}
+                      </DataTable.Cell>
                       <DataTable.Cell numeric>{branch.pending}</DataTable.Cell>
                       <DataTable.Cell numeric>
-                        {branch.avgFulfillmentTime > 0 
-                          ? `${branch.avgFulfillmentTime} ${branch.avgFulfillmentTime === 1 ? 'day' : 'days'}` 
+                        {branch.avgFulfillmentTime > 0
+                          ? `${branch.avgFulfillmentTime} ${
+                              branch.avgFulfillmentTime === 1 ? 'day' : 'days'
+                            }`
                           : 'N/A'}
                       </DataTable.Cell>
                     </DataTable.Row>

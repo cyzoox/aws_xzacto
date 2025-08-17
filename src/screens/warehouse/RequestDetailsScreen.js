@@ -43,7 +43,9 @@ const RequestDetailsScreen = ({navigation, route}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchRequestDetails = async () => {
-    if (!refreshing) setLoading(true);
+    if (!refreshing) {
+      setLoading(true);
+    }
     try {
       // Step 1: Fetch the core inventory request details
       const requestResponse = await client.graphql({
@@ -69,14 +71,17 @@ const RequestDetailsScreen = ({navigation, route}) => {
       }
 
       // Step 3: Batch fetch all warehouse products for these items
-      const productIds = requestItems.map(item => ({id: {eq: item.warehouseProductId}}));
+      const productIds = requestItems.map(item => ({
+        id: {eq: item.warehouseProductId},
+      }));
       const productsResponse = await client.graphql({
         query: listWarehouseProducts,
         variables: {
           filter: {or: productIds},
         },
       });
-      const warehouseProducts = productsResponse.data.listWarehouseProducts.items;
+      const warehouseProducts =
+        productsResponse.data.listWarehouseProducts.items;
       const productMap = warehouseProducts.reduce((map, product) => {
         map[product.id] = product;
         return map;
@@ -125,7 +130,10 @@ const RequestDetailsScreen = ({navigation, route}) => {
       setFulfilledQuantities(prev => ({...prev, [itemId]: ''}));
     } else if (!isNaN(num)) {
       const clampedQty = Math.max(0, Math.min(num, requestedQty));
-      setFulfilledQuantities(prev => ({...prev, [itemId]: clampedQty.toString()}));
+      setFulfilledQuantities(prev => ({
+        ...prev,
+        [itemId]: clampedQty.toString(),
+      }));
     }
   };
 
@@ -145,14 +153,17 @@ const RequestDetailsScreen = ({navigation, route}) => {
     });
   };
 
-  const submitFulfillment = async (finalStatus) => {
+  const submitFulfillment = async finalStatus => {
     setIsSubmitting(true);
     try {
       for (const item of requestItems) {
         const fulfilledQty = parseInt(fulfilledQuantities[item.id] || 0, 10);
 
         if (isNaN(fulfilledQty) || fulfilledQty < 0) {
-          Alert.alert('Invalid Quantity', `Please enter a valid quantity for ${item.product.name}.`);
+          Alert.alert(
+            'Invalid Quantity',
+            `Please enter a valid quantity for ${item.product.name}.`,
+          );
           setIsSubmitting(false);
           return;
         }
@@ -176,7 +187,8 @@ const RequestDetailsScreen = ({navigation, route}) => {
               variables: {
                 input: {
                   id: item.product.id,
-                  availableStock: (item.product.availableStock || 0) - stockChange,
+                  availableStock:
+                    (item.product.availableStock || 0) - stockChange,
                 },
               },
             });
@@ -186,11 +198,11 @@ const RequestDetailsScreen = ({navigation, route}) => {
 
       await client.graphql({
         query: updateInventoryRequest,
-        variables: { input: { id: requestId, status: finalStatus } },
+        variables: {input: {id: requestId, status: finalStatus}},
       });
 
       Alert.alert('Success', `Request status updated to ${finalStatus}.`, [
-        { text: 'OK', onPress: () => fetchRequestDetails() },
+        {text: 'OK', onPress: () => fetchRequestDetails()},
       ]);
     } catch (err) {
       console.error('Error updating fulfillment:', err);
@@ -200,12 +212,14 @@ const RequestDetailsScreen = ({navigation, route}) => {
     }
   };
 
-
-
   if (loading && !refreshing) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator animating={true} size="large" color={colors.primary} />
+        <ActivityIndicator
+          animating={true}
+          size="large"
+          color={colors.primary}
+        />
       </View>
     );
   }
@@ -231,7 +245,9 @@ const RequestDetailsScreen = ({navigation, route}) => {
           <Card.Content style={styles.cardContent}>
             <Title style={styles.title}>Request Details</Title>
             <Text style={styles.subtitle}>Status: {request?.status}</Text>
-            <Text style={styles.subtitle}>From Store: {request?.store.name}</Text>
+            <Text style={styles.subtitle}>
+              From Store: {request?.store.name}
+            </Text>
             <Text style={styles.subtitle}>
               Created:{' '}
               {request?.createdAt
@@ -317,7 +333,8 @@ const RequestDetailsScreen = ({navigation, route}) => {
                 <Text style={styles.buttonText}>Save as Partial</Text>
               </TouchableOpacity>
             )}
-            {(request?.status === 'PENDING' || request?.status === 'PARTIALLY_FULFILLED') && (
+            {(request?.status === 'PENDING' ||
+              request?.status === 'PARTIALLY_FULFILLED') && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.completeButton]}
                 onPress={() => submitFulfillment('FULFILLED')}
@@ -331,8 +348,6 @@ const RequestDetailsScreen = ({navigation, route}) => {
     </View>
   );
 };
-
-      
 
 const styles = StyleSheet.create({
   buttonContainer: {
